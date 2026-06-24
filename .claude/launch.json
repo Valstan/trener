@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-dev",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": ["pnpm", "-C", "web", "dev"],
+      "port": 3000
+    },
+    {
+      "name": "web-prod",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": ["pnpm", "-C", "web", "start"],
+      "port": 3000
+    }
+  ]
+}
