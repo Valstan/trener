@@ -3,23 +3,25 @@
 > Sticky-note для непрерывности сессий. Перезаписывается `/close_session`. История через `git log -- docs/SESSION_HANDOFF.md`.
 
 **Status:** ACTIVE
-**Updated:** 2026-06-24 (bootstrap — репо заведён Мозгом, mailbox-канал подключён)
+**Updated:** 2026-06-24 (M1 PR1 + проектные `.claude`-команды смержены в main)
 **Branch:** main
 
 ## Текущая нитка
 
-Проект **только что заведён** из brain_matrica (репозиторий + mailbox-канал + реестровая карточка). Каркаса приложения ещё нет. Главный стартовый документ — [`../brain_matrica/docs/plans/trener-kickoff.md`](../brain_matrica/docs/plans/trener-kickoff.md).
+**M1 (каркас + 152-ФЗ floor) — в работе, режется на 3 PR.** Смержено:
+- **[#2](https://github.com/Valstan/trener/pull/2)** — каркас Payload+Next + модель данных + роли authz (#015).
+- **[#3](https://github.com/Valstan/trener/pull/3)** — проектные slash-команды (`/start`, `/close_session`, `/obriv`) + `.claude/settings.json`/`launch.json`.
 
 ## Следующий шаг
 
-**M1 — каркас + 152-ФЗ day-1 floor** (kickoff §8):
-1. Scaffold Payload+Next по образцу `../GONBA/` / `../SabantuyMalmyzh/`; коллекции Users/Players/Groups/TrainingSessions; роли (#015).
-2. Онбординг magic-link (без пароля). PWA-клиент с установкой «на экран».
-3. 152-ФЗ floor (kickoff §5): согласие отдельной бумагой (reuse `Registrations.ts` из Sabantuy), уведомление РКН до go-live, РФ-хостинг, политика, минимизация данных ребёнка.
-4. PR-only flow; по готовности M1 — ack-письмо brain в `mailbox/to-brain/`.
+**PR2 — magic-link онбординг (без пароля) + invite-код тренера** (kickoff §7.1 — адопшен-критично: первое открытие <30с решает выживание продукта). Payload auth strategy (disableLocalStrategy + кастомный verify-токен/endpoint), invite-код тренера → создание parent-аккаунта + привязка Player.
+Затем **PR3** — PWA (manifest/SW/install) + 152-ФЗ статика (политика + UX согласия). Затем **docs** (incident-playbook) + **ack-письмо brain** по готовности всего M1.
 
 ## Контекст
 
-- **Стек зафиксирован** (kickoff §2): PWA на React/Next + Payload + Postgres; пуш platform-split best-effort, корректность на in-app очереди «непринятых».
-- **Mailbox:** входящие читать из `../brain_matrica/mailboxes/trener/from-brain/`; писать в свой `mailbox/to-brain/`. Первое входящее письмо brain — welcome+kickoff.
-- **Решения владельца (06-24):** PWA-first (не RN сейчас); чат — fast-follow M4 (в MVP суррогат «вопрос тренеру»); тренеры правят свои группы.
+- **Каркас `web/`** готов: Payload 3.75 / Next 15.4 / React 19 / Postgres, 1:1 по Sabantuy. Коллекции: Users(admin|coach|parent), Groups, Players, TrainingSessions(=Events+`status`), Consents(=Registrations, 152-ФЗ).
+- **Verify-гейты зелёные** (`pnpm typecheck/build/lint/knip`). ⚠️ **Рантайм-boot БД НЕ проверен** — нет локального Postgres/Docker (порт 5432 пуст). create-first-user / push-схемы / фактический прогон access → перенесено на **deploy-smoke #011 (веха M3)**. При появлении dev-БД — поднять `corepack pnpm -C web dev`, завести первого пользователя (станет admin), проверить скоупинг ролей.
+- **authz #015 (day-1):** async access возвращает `Where`; coach→свои группы, parent→свои дети; служебные `find` с `overrideAccess` (разрыв рекурсии — находка отправлена brain).
+- **Bootstrap:** первый пользователь → admin (`ensureFirstUserAdmin`). Секреты вне репо (`web/.env` локально, `/etc/trener/` на проде, #008).
+- **Команды/CI:** `.claude/` команды активны на main. CI/деплой и команды `reliz`/`sql`/`check` (по образцу GONBA) — на M3, когда появится `deploy-prod.yml`.
+- **Решения владельца (06-24):** PWA-first (не RN); чат — M4 (в MVP суррогат «вопрос тренеру»); тренеры правят свои группы.
