@@ -37,3 +37,6 @@ Thumbs.db
 # Test / coverage
 coverage/
 .nyc_output/
+
+# Claude Code — личные оверрайды прав не коммитим (общий конфиг — .claude/settings.json)
+.claude/settings.local.json
