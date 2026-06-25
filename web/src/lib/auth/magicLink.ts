@@ -63,11 +63,52 @@ export const peekLoginToken = async (payload: Payload, rawToken: string): Promis
   return new Date(tok.expiresAt).getTime() >= Date.now()
 }
 
-export type ConsumeResult = { ok: true; userId: number | string } | { ok: false }
+export type ConsumeResult =
+  | { ok: true; kind: 'login'; userId: number | string }
+  | { ok: true; kind: 'invite'; email: string; playerId: number | string }
+  | { ok: false }
 
-// АВТОРИТЕТНЫЙ консьюм: находит валидный токен, помечает использованным (single-use)
-// и возвращает id пользователя для выписки сессии. Повторный вызов с тем же токеном
-// уже не сматчит (usedAt проставлен).
+const relId = (rel: unknown): number | string | null => {
+  if (rel === undefined || rel === null) return null
+  if (typeof rel === 'object') {
+    const id = (rel as { id?: number | string }).id
+    return id ?? null
+  }
+  return rel as number | string
+}
+
+export type TokenShape = { player?: unknown; user?: unknown; email?: unknown; expiresAt: string }
+export type TokenClass =
+  | { kind: 'login'; userId: number | string }
+  | { kind: 'invite'; email: string; playerId: number | string }
+  | { kind: 'invalid' }
+
+// Чистый security-гейт классификации токена (без БД — потому тестируем юнитом):
+//   • invite — player И непустой email (доказанный адрес родителя).
+//   • login  — задан user.
+//   • invalid— просрочен ИЛИ join-токен (player без email): прямой POST join-ссылки
+//              в complete НЕ должен логинить/создавать аккаунт на пустой email.
+export const classifyToken = (tok: TokenShape, now: number): TokenClass => {
+  if (new Date(tok.expiresAt).getTime() < now) return { kind: 'invalid' }
+  const playerId = relId(tok.player)
+  const userId = relId(tok.user)
+  const email = typeof tok.email === 'string' ? tok.email.trim() : ''
+  if (playerId !== null && email !== '') return { kind: 'invite', email, playerId }
+  if (userId !== null) return { kind: 'login', userId }
+  return { kind: 'invalid' }
+}
+
+// АВТОРИТЕТНЫЙ консьюм magic-link-токена. Находит валидный токен, определяет его тип
+// и помечает использованным (single-use) — но ТОЛЬКО если токен действительно
+// консьюмабелен (login или invite-accept), чтобы зонд join-ссылкой её не сжигал.
+//
+//   • login        — token.user задан → вход существующего пользователя.
+//   • invite-accept— token.player И непустой token.email → онбординг родителя
+//                    (создать/найти аккаунт по доказанному email + привязать ребёнка).
+//
+// Join-токен (player задан, email пуст) сюда не попадает как валидный: он лишь
+// peek'ается на /join и гасится в acceptInvite. Прямой POST join-токена в complete
+// даёт { ok:false } и НЕ гасит токен (см. порядок ниже).
 export const consumeLoginToken = async (
   payload: Payload,
   rawToken: string,
@@ -86,9 +127,13 @@ export const consumeLoginToken = async (
   })
   const tok = found.docs[0]
   if (!tok) return { ok: false }
-  if (new Date(tok.expiresAt).getTime() < Date.now()) return { ok: false }
 
-  // single-use: гасим токен сразу.
+  // Классифицируем ДО гашения — невалидный/join-токен не помечаем использованным
+  // (иначе зонд join-ссылкой её сжёг бы).
+  const cls = classifyToken(tok, Date.now())
+  if (cls.kind === 'invalid') return { ok: false }
+
+  // single-use: гасим токен.
   await payload.update({
     collection: 'login-tokens',
     id: tok.id,
@@ -96,8 +141,7 @@ export const consumeLoginToken = async (
     overrideAccess: true,
   })
 
-  const userId = typeof tok.user === 'object' && tok.user !== null ? tok.user.id : tok.user
-  if (userId === undefined || userId === null) return { ok: false }
-
-  return { ok: true, userId }
+  return cls.kind === 'invite'
+    ? { ok: true, kind: 'invite', email: cls.email, playerId: cls.playerId }
+    : { ok: true, kind: 'login', userId: cls.userId }
 }

@@ -17,12 +17,16 @@ export const CompleteLogin = ({ token }: { token: string }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       })
-      const data = (await res.json()) as { ok?: boolean; redirect?: string }
+      const data = (await res.json()) as { ok?: boolean; redirect?: string; reason?: string }
       if (res.ok && data.ok) {
         window.location.href = data.redirect || '/'
         return
       }
-      setError('Ссылка недействительна или истекла. Запросите вход заново.')
+      if (data.reason === 'claimed') {
+        setError('Этот ребёнок уже привязан к другому аккаунту. Обратитесь к тренеру.')
+      } else {
+        setError('Ссылка недействительна или истекла. Запросите вход заново.')
+      }
     } catch {
       setError('Не удалось войти. Попробуйте ещё раз.')
     }
