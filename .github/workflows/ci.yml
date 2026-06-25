@@ -1,0 +1,90 @@
+name: CI
+
+# Обязательный зелёный гейт = аппрувер мержа (ADR-0002 §4 амендмент 2026-06-25,
+# постулат 30, pool #027). Без зелёного CI зрелый PR не мержится; авто-мерж
+# опирается ровно на эти проверки, поэтому гейт не должен быть пустым.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# Один прогон на ветку — новый пуш отменяет предыдущий незавершённый.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web-quality:
+    runs-on: ubuntu-latest
+
+    # Postgres-сервис: payload.config работает с push:true (схема синхронизируется
+    # при инициализации). lint/typecheck/build БД не трогают, но сервис заложен
+    # для будущих интеграционных тестов, дёргающих payload.init (#011/M2+).
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: trener_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trener_ci
+      PAYLOAD_SECRET: ci-secret-not-for-production
+      NEXT_PUBLIC_SERVER_URL: http://localhost:3000
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # pnpm/action-setup ставит pnpm напрямую (без corepack) → обходит G53
+      # («download pnpm? Y/n» виснет на headless) и corepack-в-subdir (packageManager
+      # лежит в web/package.json, не в корне). Версия пинится под packageManager.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      # Канонический lockfile — pnpm-lock.yaml (G52: расхождение lockfile'ов ломает CI).
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Payload types
+        run: pnpm generate:types
+
+      - name: Generate Payload import map
+        run: pnpm generate:importmap
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Dead code (knip)
+        run: pnpm deadcode
+
+      - name: Build
+        run: pnpm build
