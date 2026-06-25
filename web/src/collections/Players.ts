@@ -73,6 +73,19 @@ export const Players: CollectionConfig = {
           'Аккаунт родителя — контакт и адресат уведомлений. Привязывается при онбординге по magic-link (PR2).',
       },
     },
+    {
+      // Кнопка генерации ссылки-приглашения родителю (sidebar). Сама привязка —
+      // через /join + magic-link (см. lib/auth/invite). Доступ к генерации
+      // ограничен на стороне endpoint /auth/invite (staff + своя группа, #015).
+      name: 'inviteLink',
+      type: 'ui',
+      admin: {
+        position: 'sidebar',
+        components: {
+          Field: '@/components/admin/GenerateInviteLink',
+        },
+      },
+    },
   ],
   timestamps: true,
 }

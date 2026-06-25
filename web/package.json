@@ -25,6 +25,7 @@
     "@payloadcms/email-nodemailer": "3.75.0",
     "@payloadcms/next": "3.75.0",
     "@payloadcms/richtext-lexical": "3.75.0",
+    "@payloadcms/ui": "3.75.0",
     "graphql": "^16.8.2",
     "next": "15.4.11",
     "payload": "3.75.0",
