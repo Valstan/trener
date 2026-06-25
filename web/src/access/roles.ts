@@ -67,3 +67,26 @@ export const parentGroupIds = async (
     .filter((g): g is number => typeof g === 'number')
   return Array.from(new Set(ids))
 }
+
+// ID тренировок групп, где данный пользователь — тренер. Нужен для scoped-read
+// производных коллекций M2 (Notifications, Rsvps), которые привязаны к session, а
+// не к group напрямую. Возвращаем плоский список session-id → access-фильтр
+// `{ session: { in: [...] } }` (НЕ вложенный relationship-where `session.group` —
+// тот заставил бы Payload джойнить training-sessions и применять их async-access,
+// риск рекурсии/протечки; критик M2 H2). Служебный find — overrideAccess (G90).
+export const coachSessionIds = async (
+  req: PayloadRequest,
+  userId: string | number,
+): Promise<(string | number)[]> => {
+  const groupIds = await coachGroupIds(req, userId)
+  if (!groupIds.length) return []
+  const res = await req.payload.find({
+    collection: 'training-sessions',
+    where: { group: { in: groupIds } },
+    depth: 0,
+    limit: 10000,
+    pagination: false,
+    overrideAccess: true,
+  })
+  return res.docs.map((doc) => doc.id)
+}
