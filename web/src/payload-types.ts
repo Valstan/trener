@@ -73,6 +73,9 @@ export interface Config {
     'training-sessions': TrainingSession;
     consents: Consent;
     'login-tokens': LoginToken;
+    devices: Device;
+    notifications: Notification;
+    rsvps: Rsvp;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -86,6 +89,9 @@ export interface Config {
     'training-sessions': TrainingSessionsSelect<false> | TrainingSessionsSelect<true>;
     consents: ConsentsSelect<false> | ConsentsSelect<true>;
     'login-tokens': LoginTokensSelect<false> | LoginTokensSelect<true>;
+    devices: DevicesSelect<false> | DevicesSelect<true>;
+    notifications: NotificationsSelect<false> | NotificationsSelect<true>;
+    rsvps: RsvpsSelect<false> | RsvpsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -200,6 +206,24 @@ export interface TrainingSession {
    */
   status: 'planned' | 'changed' | 'cancelled';
   note?: string | null;
+  /**
+   * Список реально изменившихся полей последней волны (служебное).
+   */
+  changedFields?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Метка последней значимой правки. Coverage и снимок в Notifications.changedAt.
+   */
+  changedAt?: string | null;
+  prevStartDate?: string | null;
+  prevLocation?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -238,6 +262,83 @@ export interface LoginToken {
   player?: (number | null) | Player;
   expiresAt: string;
   usedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Web-push подписки. Адрес доставки best-effort пуша. Доступ — только свой владелец.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "devices".
+ */
+export interface Device {
+  id: number;
+  user: number | User;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  /**
+   * Для диагностики протухания подписки (особенно iOS).
+   */
+  platform?: string | null;
+  userAgent?: string | null;
+  lastSuccessAt?: string | null;
+  /**
+   * Dead-letter: при 410/404 запись удаляется сервисом отправки.
+   */
+  failureCount?: number | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Очередь «непринятых» + ack. Первичный гарант доведения (не зависит от пуша). Источник coverage «N из M».
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notifications".
+ */
+export interface Notification {
+  id: number;
+  session: number | TrainingSession;
+  parent: number | User;
+  /**
+   * Какие дети этого родителя затронуты. Имена в payload пуша НЕ уходят (152-ФЗ).
+   */
+  players: (number | Player)[];
+  type: 'changed' | 'cancelled';
+  /**
+   * delivered→seen→acked. Родитель двигает только вперёд (ack). superseded ставит фан-аут.
+   */
+  status: 'delivered' | 'seen' | 'acked' | 'superseded';
+  /**
+   * Снимок session.changedAt. Coverage сверяет с текущей волной сессии.
+   */
+  changedAt: string;
+  /**
+   * Диагностика best-effort. Не корректность.
+   */
+  pushSentAt?: string | null;
+  pushResult?: ('ok' | 'failed' | 'skipped') | null;
+  seenAt?: string | null;
+  ackedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Кто придёт на тренировку. Один ответ на (тренировка × ребёнок). Сводка — на coverage-экране.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rsvps".
+ */
+export interface Rsvp {
+  id: number;
+  session: number | TrainingSession;
+  player: number | Player;
+  parent: number | User;
+  response: 'going' | 'not_going';
+  /**
+   * Для cron-напоминания только нереспондентам (PR9).
+   */
+  respondedAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -288,6 +389,18 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'login-tokens';
         value: number | LoginToken;
+      } | null)
+    | ({
+        relationTo: 'devices';
+        value: number | Device;
+      } | null)
+    | ({
+        relationTo: 'notifications';
+        value: number | Notification;
+      } | null)
+    | ({
+        relationTo: 'rsvps';
+        value: number | Rsvp;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -389,6 +502,10 @@ export interface TrainingSessionsSelect<T extends boolean = true> {
   location?: T;
   status?: T;
   note?: T;
+  changedFields?: T;
+  changedAt?: T;
+  prevStartDate?: T;
+  prevLocation?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -417,6 +534,53 @@ export interface LoginTokensSelect<T extends boolean = true> {
   player?: T;
   expiresAt?: T;
   usedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "devices_select".
+ */
+export interface DevicesSelect<T extends boolean = true> {
+  user?: T;
+  endpoint?: T;
+  p256dh?: T;
+  auth?: T;
+  platform?: T;
+  userAgent?: T;
+  lastSuccessAt?: T;
+  failureCount?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notifications_select".
+ */
+export interface NotificationsSelect<T extends boolean = true> {
+  session?: T;
+  parent?: T;
+  players?: T;
+  type?: T;
+  status?: T;
+  changedAt?: T;
+  pushSentAt?: T;
+  pushResult?: T;
+  seenAt?: T;
+  ackedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "rsvps_select".
+ */
+export interface RsvpsSelect<T extends boolean = true> {
+  session?: T;
+  player?: T;
+  parent?: T;
+  response?: T;
+  respondedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
