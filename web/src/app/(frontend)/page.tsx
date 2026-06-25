@@ -21,6 +21,9 @@ const HomePage = () => (
       Каркас (M1). Клиентское приложение — на следующих этапах.{' '}
       <Link href="/admin">Войти в панель управления →</Link>
     </p>
+    <footer style={{ marginTop: '3rem', fontSize: '0.9rem', color: 'var(--muted)' }}>
+      <Link href="/privacy">Политика обработки персональных данных</Link>
+    </footer>
   </main>
 )
 
