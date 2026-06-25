@@ -11,6 +11,7 @@ import { Groups } from './collections/Groups'
 import { Players } from './collections/Players'
 import { TrainingSessions } from './collections/TrainingSessions'
 import { Consents } from './collections/Consents'
+import { LoginTokens } from './collections/LoginTokens'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -34,7 +35,7 @@ export default buildConfig({
     // на этапе деплоя (web/src/migrations/), как у GONBA/Sabantuy (#017).
     push: true,
   }),
-  collections: [Users, Groups, Players, TrainingSessions, Consents],
+  collections: [Users, Groups, Players, TrainingSessions, Consents, LoginTokens],
   // Email — magic-link онбординг (PR2) + уведомления. Провайдеро-независимо через
   // внешний SMTP-relay (env). Пока SMTP_HOST не задан, адаптер не подключаем →
   // Payload пишет письма в консоль (dev/CI: WARN «No email adapter»); сборка и
