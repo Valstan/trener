@@ -1,4 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/scripts/*.ts"],
+  "ignore": ["public/sw.js"],
   "ignoreDependencies": ["eslint", "eslint-config-next", "prettier"]
 }
