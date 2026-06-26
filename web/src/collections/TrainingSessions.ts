@@ -10,6 +10,10 @@ import {
   isParent,
   parentGroupIds,
 } from '../access/roles'
+import { cleanupSessionRelations } from '../hooks/cleanupSessionRelations'
+import { fanOutScheduleChange } from '../hooks/fanOutScheduleChange'
+import { revalidateSchedule, revalidateScheduleDelete } from '../hooks/revalidateSchedule'
+import { trackSessionChange } from '../hooks/trackSessionChange'
 
 // Тренировка (запись расписания). ← Sabantuy Events.ts + поле `status`.
 //
@@ -50,6 +54,14 @@ export const TrainingSessions: CollectionConfig = {
   admin: {
     defaultColumns: ['group', 'startDate', 'status', 'location'],
     useAsTitle: 'startDate',
+  },
+  // M2-ядро: diff-трекинг правки (beforeChange) → фан-аут уведомлений + ISR
+  // (afterChange) → каскадная чистка связей при удалении (afterDelete).
+  // Подробности и решения критика — docs/m2-core-design.md.
+  hooks: {
+    beforeChange: [trackSessionChange],
+    afterChange: [fanOutScheduleChange, revalidateSchedule],
+    afterDelete: [cleanupSessionRelations, revalidateScheduleDelete],
   },
   fields: [
     {
