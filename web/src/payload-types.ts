@@ -76,6 +76,7 @@ export interface Config {
     devices: Device;
     notifications: Notification;
     rsvps: Rsvp;
+    announcements: Announcement;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -92,6 +93,7 @@ export interface Config {
     devices: DevicesSelect<false> | DevicesSelect<true>;
     notifications: NotificationsSelect<false> | NotificationsSelect<true>;
     rsvps: RsvpsSelect<false> | RsvpsSelect<true>;
+    announcements: AnnouncementsSelect<false> | AnnouncementsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -343,6 +345,29 @@ export interface Rsvp {
   createdAt: string;
 }
 /**
+ * Новости тренера группе. Не ack-очередь (coverage не затрагивает). Пуш — только по флагу.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "announcements".
+ */
+export interface Announcement {
+  id: number;
+  author?: (number | null) | User;
+  group: number | Group;
+  title: string;
+  /**
+   * 152-ФЗ: массовая рассылка — без персональных данных детей в тексте.
+   */
+  body: string;
+  /**
+   * best-effort, normal-приоритет. Пуш уходит ОДИН раз — на создании (granularity §6).
+   */
+  triggersPush?: boolean | null;
+  publishedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -401,6 +426,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'rsvps';
         value: number | Rsvp;
+      } | null)
+    | ({
+        relationTo: 'announcements';
+        value: number | Announcement;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -581,6 +610,20 @@ export interface RsvpsSelect<T extends boolean = true> {
   parent?: T;
   response?: T;
   respondedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "announcements_select".
+ */
+export interface AnnouncementsSelect<T extends boolean = true> {
+  author?: T;
+  group?: T;
+  title?: T;
+  body?: T;
+  triggersPush?: T;
+  publishedAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

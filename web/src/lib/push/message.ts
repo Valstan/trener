@@ -16,3 +16,13 @@ export const buildRsvpReminderMessage = (): PushMessage => ({
   body: 'Подтвердите в приложении, придёт ли ребёнок.',
   url: '/parent',
 })
+
+// Объявление тренера (M3-PR10). Best-effort, normal-urgency (granularity §6: не high,
+// в отличие от изменений расписания). 152-ФЗ R4: заголовок объявления НЕ кладём в payload
+// (он проходит через Apple/Google) — только неидентифицирующий зов открыть приложение;
+// текст объявления родитель читает из РФ-БД в ленте. Без ПДн ребёнка.
+export const buildAnnouncementMessage = (): PushMessage => ({
+  title: 'Новое объявление',
+  body: 'Откройте приложение — тренер оставил сообщение.',
+  url: '/parent',
+})
