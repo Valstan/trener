@@ -1,0 +1,32 @@
+[Unit]
+Description=trener Next.js + Payload (standalone artifact)
+After=network.target
+
+[Service]
+Type=simple
+User=valstan
+# Рантайм сервится из готового standalone-артефакта, собранного в CI (deploy-prod.yml,
+# «Бокс 1»): build-спайков на боксе нет (G20/G24 — общий бокс с GONBA/KARMAN/малмыж).
+# Симлинк releases/current переключается деплоем атомарно; юнит ставится идемпотентно
+# remote-скриптом деплоя из этого файла (sudo cp + daemon-reload) ПЕРЕД restart.
+WorkingDirectory=/home/valstan/trener/releases/current
+Environment=NODE_ENV=production
+# Секреты/конфиг — из /etc/trener/trener.env (root:valstan, 0640), вне дерева репо
+# (#008 / ADR-0005). NEXT_PUBLIC_* запекаются в бандл на CI-сборке (TRENER_BUILD_ENV);
+# здесь env нужен для runtime-секретов (DATABASE_URL, PAYLOAD_SECRET, VAPID_PRIVATE_KEY,
+# CRON_SECRET, SMTP_*).
+EnvironmentFile=-/etc/trener/trener.env
+# standalone server.js читает HOSTNAME/PORT из env (флагов нет). Порт 3007 — свободен на
+# Боксе 1 (заняты: gonba 3000, karman 3002, vmalmyzhe 3004, dkmalmyzh 3005, kalinino 3006).
+Environment=PORT=3007
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=3
+# Noisy-neighbor гард (server-consolidation §6 шаг4): RAM на боксе тесная (~2 ГБ).
+# OOM локализуется в cgroup проекта, а не валит соседей/Postgres.
+MemoryHigh=450M
+MemoryMax=600M
+
+[Install]
+WantedBy=multi-user.target

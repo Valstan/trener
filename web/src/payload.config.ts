@@ -35,9 +35,11 @@ export default buildConfig({
     pool: {
       connectionString: process.env.DATABASE_URL || '',
     },
-    // MVP/greenfield: push автосинхронизирует схему в dev. Прод-миграции —
-    // на этапе деплоя (web/src/migrations/), как у GONBA/Sabantuy (#017).
-    push: true,
+    // push автосинхронизирует схему в dev. В ПРОДЕ push выключен (G20/GONBA-паттерн):
+    // drizzle-push на старте может зависнуть на интерактивном y/N-промпте в non-TTY
+    // (systemd) и опасен деструктивными авто-изменениями. Прод-схема материализуется
+    // контролируемо (миграции #017 — PR12; первый деплой — pre-push через туннель).
+    push: process.env.NODE_ENV !== 'production',
   }),
   collections: [
     Users,
