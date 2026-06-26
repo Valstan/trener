@@ -3,45 +3,44 @@
 > Sticky-note для непрерывности сессий. Перезаписывается `/close_session`. История через `git log -- docs/SESSION_HANDOFF.md`.
 
 **Status:** ACTIVE
-**Updated:** 2026-06-26 (M2 «Ядро» ЗАВЕРШЁН — PR5–PR9 + magic-link фикс смержены и верифицированы на живой dev-БД; заведены профили машин #050)
+**Updated:** 2026-06-26 (M3 = ПЕРВЫЙ ПРОД сдан — объявления + «вопрос тренеру» + деплой на Бокс 1; живёт на `https://интер.вмалмыже.рф`)
 **Branch:** main
 
 ## Текущая нитка
 
-**M2 «Ядро» завершён.** Весь критический путь (изменение тренером → пуш/in-app → ack → coverage + RSVP) собран, верифицирован на dev-БД (curl + реальные сессии) и смержен. Блюпринт — [`docs/m2-core-design.md`](m2-core-design.md).
+**M3 «первый прод lovable MVP» завершён продуктово** (kickoff §8). Все три нитки сделаны и **в проде**:
 
-- **[#19](https://github.com/Valstan/trener/pull/19) PR5 — фан-аут.** `trackSessionChange` (beforeChange diff, C1) + `fanOutScheduleChange` (afterChange → Notifications, H4/C2/G90) + `revalidateSchedule` + `cleanupSessionRelations` (**beforeDelete** — FK `ON DELETE SET NULL` ⨯ `NOT NULL` поймано живым smoke).
-- **[#20](https://github.com/Valstan/trener/pull/20) PR6 — in-app очередь + ack.** `/parent` (scoped-read + field-locked детали → готовый текст, 152-ФЗ) + `POST /parent/ack` (M8) + `/parent/seen`.
-- **[#21](https://github.com/Valstan/trener/pull/21) fix — magic-link session.** ⚠️ Payload 3.x `useSessions` по умолчанию: токен без `sid` молча отвергался → вход родителя НЕ работал. `buildAuthCookie` теперь создаёт сессию через `addSessionToUser`. Письмо brain ([#22](https://github.com/Valstan/trener/pull/22)) — поправка R12.
-- **[#23](https://github.com/Valstan/trener/pull/23) PR7 — coverage «N из M».** `loadCoverage`+`buildCoverage` + `GET /coach/coverage` + `/coach/schedule` + `/coach/session/[id]` (опрос 15с). Достижимость отдельной метрикой (pool #059).
-- **[#24](https://github.com/Valstan/trener/pull/24) PR8 — web-push.** VAPID (1 пара iOS+Android, без Firebase, R1) + `Devices` subscribe/unsubscribe + `lib/push/send` (dead-letter 404/410) + SW v2 (push/notificationclick/pushsubscriptionchange) + `PushSubscribe` (iOS-гард) + проводка в фан-аут (pushSentAt/pushResult, R4-payload без ПДн).
-- **[#25](https://github.com/Valstan/trener/pull/25) PR9 — RSVP + cron.** `POST /parent/rsvp` (upsert session×player, #015) + RSVP-кнопки на `/parent` + RSVP-сводка на coverage + `GET|POST /cron/rsvp-reminders` (только нереспонденты H3, `CRON_SECRET`-гард).
+- **[#30](https://github.com/Valstan/trener/pull/30) PR10 — объявления.** Коллекция `Announcements` (author/group/title/body/triggersPush/publishedAt) + `fanOutAnnouncement` (afterChange create + флаг → best-effort `normal`-пуш родителям группы, **НЕ создаёт Notifications**, coverage не трогает — F1) + компоновщик `/coach/announcements` + `POST /coach/announcement` + лента на `/parent` (`AnnouncementsFeed`, «новое» через localStorage F6). Блюпринт — [`docs/m3-design.md`](m3-design.md).
+- **[#33](https://github.com/Valstan/trener/pull/33) PR11 — «вопрос тренеру»** (суррогат чата). Коллекция `Questions` (parent/group/session?/body/status new→read→answered), read scoped (родитель свои, тренер по группам `coachGroupIds`), create server-only, update adminOnly. `fanOutQuestion` → пуш тренерам группы. `POST /parent/question` + `POST /coach/question/[id]/status` + инбокс `/coach/questions` + `QuestionForm` на `/parent`. Односторонне — двусторонний чат = M4 (тогда `Questions` → Threads/Messages).
+- **Деплой ([#31](https://github.com/Valstan/trener/pull/31)/[#32](https://github.com/Valstan/trener/pull/32))** — `payload.config` push гейтится `NODE_ENV` (прод не пушит), `/health`, `deploy/systemd/trener.service`, `.github/workflows/deploy-prod.yml` (standalone на node20, service-postgres без туннеля, scp → systemd restart → smoke).
 
-**M1 завершён ранее** (PR1–3): каркас + magic-link/invite + PWA + 152-ФЗ статика.
+Найденные M2 (#29) и ранее M1/M2 (PR1–9) — в проде. brain уведомлён (`mailbox/to-brain/2026-06-26-m3-first-prod-box1-findings.md`) — закрывает welcome+kickoff/M1-ack + 3 pool-находки.
 
 ## Следующий шаг
 
-**M3 = первый прод** (kickoff §8): объявления + «вопрос тренеру» (суррогат чата) + **деплой на Бокс 1**. Развёртывание разблокирует то, что в M2 проверено только логикой:
-- **Реальная доставка web-push iOS/Android** — нужен HTTPS (локально SW в dev не регистрируется; код-путь верифицирован, кроме сетевой доставки в push-сервис).
-- **Cron RSVP-напоминаний** — повесить systemd-таймер с `CRON_SECRET` (дёргает `/cron/rsvp-reminders`).
-- **152-ФЗ go-live (вне репо):** уведомление РКН до go-live; `web/src/lib/operator.ts` — реальные реквизиты + дата, `OPERATOR_FINALIZED=true` (уберёт черновик-плашку с `/privacy`).
-- **Провижен Бокс 1** (точь-в-точь вМалмыже/KARMAN): БД `trener` + роль `trener_app`, секреты `/etc/trener/trener.env` (#008: `DATABASE_URL`, `PAYLOAD_SECRET`, SMTP, **VAPID_*, CRON_SECRET**), `trener.service`, порт предв. **3007** (свериться на боксе), CI-standalone деплой (G17/G20), TLS certbot, deploy-smoke (#011).
+**PR12 — прод-миграции (#017)** — главный технический долг. Сейчас прод-схема без формальных миграций: `push` выключен в проде, новые таблицы доливаются **вручную pre-push'ем через SSH-туннель** (делал для `announcements` и `questions`). Не масштабируется → перевести на Payload-миграции (как GONBA `deploy-prod.yml` guard + ручное применение до merge). Спросил brain про отлаженный рецепт в письме.
 
-## Контекст
+Параллельно (не блокеры): offsite-бэкапы прод-БД (PII детей, обязательно по плану brain); systemd-таймер cron RSVP-напоминаний (`/cron/rsvp-reminders` + `CRON_SECRET`).
 
-- **🖥️ Профили машин (#050) — локальное окружение теперь живёт здесь:** [`docs/machines/<hostname>.md`](machines/README.md), `/start` читает по hostname. Разработка с двух машин: **PC40** (работа, `D:\GitHubReps\`) — профиль сверен; **rmz4val** (дом, `D:\PROGRAMMING\`) — сид, уточнить на месте. Не дублировать сюда машинные факты — они в профиле.
-- **⚠️ dev-БД (ключевое, детали — в [`PC40.md`](machines/PC40.md)):** на PC40 Postgres `postgresql-x64-17` на порту **5433** (НЕ 5432!), БД `trener_dev`, пароль `postgres` = как у GONBA (в `web/.env`, gitignored). Прошлый handoff (5432/«postgres») описывал исчезнувший инстанс. **pnpm 11 в PATH, но проект пинит 10.15 → только `corepack pnpm`.** Скрипты: `./node_modules/.bin/payload run ./script.ts` (нужен **top-level await**).
-- **dev-секреты в `web/.env` (gitignored):** добавлены VAPID-пара (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`) и `CRON_SECRET=dev-cron-secret-pr9`. Шаблоны — в `web/.env.example`.
-- **Namespace кастомных эндпоинтов:** под `/parent/*`, `/coach/*`, `/push/*`, `/cron/*` — НЕ под `/api/*` (там Payload REST по слагам коллекций). Дизайн писал `/api/...` — отклонились осознанно.
-- **vitest:** добавлен алиас `@/`→`src` (`vitest.config.mts`) — тестируемые модули теперь могут импортировать через `@/`.
-- **Браузерная верификация авторизованных страниц:** preview-инструмент НЕ сохраняет httpOnly-cookie из fetch → авторизованный скриншот не снять. Верифицировал curl'ом с реальной сессией (рендер HTML + проверка БД). Для UI-PR это рабочий обход.
-- **Каркас `web/`:** Payload 3.75 / Next 15.4 / React 19 / Postgres. Коллекции: Users/Groups/Players/TrainingSessions/Consents/LoginTokens/Devices/Notifications/Rsvps. authz #015 day-1. 67 юнит-тестов зелёные.
-- **Авто-мерж** (#027): native auto-merge отключён в репо → сессия мержит зелёный PR вручную `gh pr merge --squash --delete-branch` (зелёный CI = аппрувер). Force-push запрещён правами — фиксы поверх PR делать новым коммитом, не amend.
+**Гейты go-live (действия владельца, вне кода):** РКН-уведомление до приёма реальных ПДн детей; реквизиты оператора в `web/src/lib/operator.ts` + `OPERATOR_FINALIZED=true` (уберёт черновик-плашку с `/privacy`); **SMTP-relay** в `/etc/trener/trener.env` (сейчас magic-link пишется в консоль → реальный родитель не залогинится).
 
-## Хвосты на потом (не блокеры)
+## Контекст — ПРОД (Бокс 1 = сервер GONBA, появилось в этой сессии)
 
-- **DB partial-unique индексы (C4):** `(session,player)` на Rsvps + dedup `(session,parent,changedAt)` на фан-ауте — hand-authored миграцией на M3 (сейчас гонки страхует endpoint-upsert).
-- **RSVP отдельным экраном:** сейчас RSVP-кнопки только на карточках изменений `/parent`. «RSVP ко всем предстоящим сессиям» — за рамками M2 (M3/M4).
-- **Каскады delete Player/User:** та же FK-грабля (`SET NULL` ⨯ `NOT NULL`), что у сессии — при удалении родителя/ребёнка чистить Notifications/Rsvps/Devices в beforeDelete. Редкое admin-действие, отложено.
-- **Локальный node_modules:** после pull PR с изменением `web/pnpm-lock.yaml` (PR8 добавил `web-push`) — `corepack pnpm -C web install`, иначе typecheck падает `Cannot find module`.
-- **CI дублируется** (push + pull_request) — не блокер.
+- **Бокс:** myjino VPS `831d0ce99bdf.vps.myjino.ru` (user `valstan`), SSH с rmz4val по `~/.ssh/id_ed25519`. Это «Бокс 1» консолидации — на нём gonba(:3000)/karman(:3002)/vmalmyzhe(:3004)/dkmalmyzh(:3005)/kalinino(:3006), trener — **:3007**. RAM ~2 ГБ (used ~1.1), trener-рантайм ~140 MB.
+- **Домен:** `интер.вмалмыже.рф` → punycode **`xn--e1afpni.xn--80adkdyec4j.xn--p1ai`** (wildcard `*.вмалмыже.рф` уже резолвится на бокс — 0 DNS-правок). nginx-vhost `trener` → 127.0.0.1:3007, TLS certbot `--cert-name trener` (auto-renew, до 24 сен). Тех-хостнейм VPS занят KARMAN'ом и поддомены на нём НЕ резолвятся (зона myjino).
+- **Postgres (на боксе):** БД `trener` + роль `trener_app` (изоляция `REVOKE CONNECT FROM PUBLIC`), **`CONNECTION LIMIT 20`** (поднял с 10 — утёкшие через туннель коннекты добивали лимит при pre-push, само приложение держит ~1). Пароль — в `/etc/trener/trener.env` (root:valstan 0640).
+- **Секреты:** `/etc/trener/trener.env` (#008): DATABASE_URL, PAYLOAD_SECRET, NEXT_PUBLIC_* (punycode-URL + прод VAPID public), VAPID_PRIVATE_KEY, CRON_SECRET. **Нет SMTP_*** (go-live). Прод VAPID-пара ОТДЕЛЬНАЯ от dev.
+- **Деплой:** авто при мерже в main (`deploy-prod.yml`, workflow_run после CI). Секрет репо `SSH_PRIVATE_KEY` = выделенный deploy-ключ (pub в `authorized_keys` бокса). `NEXT_PUBLIC_VAPID_PUBLIC_KEY` + URL зашиты в workflow (публичны). Релизы: `/home/valstan/trener/releases/<sha>` + симлинк `current`, держим 3.
+- **⚠️ Долив прод-схемы (до PR12):** новая коллекция → схема в прод не появится сама (push off). Лить так: взять пароль `ssh GONBA "grep DATABASE_URL /etc/trener/trener.env" | tr -d '\r'`, открыть туннель `ssh -fNL 15432:127.0.0.1:5432 GONBA`, `DATABASE_URL=...@127.0.0.1:15432/trener NODE_ENV=development payload run <init-script>` (getPayload → push), **закрыть туннель по win-PID** (`netstat -ano | grep 15432` → `taskkill //F //PID`). pre-push ДО мержа (таблица без кода безопасна).
+
+## Контекст — DEV (rmz4val, эта машина)
+
+- Профиль сверен: [`docs/machines/rmz4val.md`](machines/README.md). Postgres 17 `postgresql-x64-17` (Manual, **порт 5432** — НЕ 5433 как на PC40), БД `trener_dev`, pnpm только `corepack pnpm` (10.15). `web/.env` (gitignored) с dev VAPID + `CRON_SECRET`.
+- **node на rmz4val = v24** → standalone собирать локально нельзя (бокс node20) — только CI.
+- Каркас: Payload 3.75 / Next 15.4. Коллекции: Users/Groups/Players/TrainingSessions/Consents/LoginTokens/Devices/Notifications/Rsvps/**Announcements/Questions**. **75 юнит-тестов** зелёные. Авто-мерж отключён (#027) — мержим вручную `gh pr merge --squash --delete-branch` по зелёному CI.
+
+## Хвосты (не блокеры)
+
+- DB partial-unique индексы (C4 с M2): `(session,player)` на Rsvps + dedup на фан-ауте — в PR12-миграции.
+- Каскады delete Player/User (FK `SET NULL` ⨯ `NOT NULL`) — beforeDelete-чистка, редкое admin-действие.
+- deprecation-warning `pnpm/action-setup@v4` на node20-раннере (GitHub) — косметика.
