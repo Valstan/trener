@@ -45,7 +45,8 @@ export const CoverageView = ({
     try {
       const res = await fetch(`/coach/coverage?sessionId=${sessionId}`)
       const data = (await res.json()) as { ok?: boolean } & CoverageResult
-      if (res.ok && data.ok) setCov({ wave: data.wave, summary: data.summary, unreachable: data.unreachable })
+      if (res.ok && data.ok)
+        setCov({ wave: data.wave, summary: data.summary, unreachable: data.unreachable, rsvp: data.rsvp })
     } catch {
       // молча — оставляем прежние данные
     }
@@ -68,7 +69,7 @@ export const CoverageView = ({
     )
   }
 
-  const { summary, unreachable } = cov
+  const { summary, unreachable, rsvp } = cov
   const pct = summary.total ? Math.round((100 * summary.acked) / summary.total) : 0
   const allDone = summary.total > 0 && summary.acked === summary.total
 
@@ -106,6 +107,15 @@ export const CoverageView = ({
           >
             {refreshing ? 'обновляю…' : '↻ обновить'}
           </button>
+        </div>
+      </div>
+
+      <div style={box}>
+        <strong>Придут на тренировку</strong>
+        <div style={{ display: 'flex', gap: '1.25rem', fontSize: '0.95rem' }}>
+          <span>✅ придут: <strong>{rsvp.going}</strong></span>
+          <span>❌ не придут: <strong>{rsvp.notGoing}</strong></span>
+          <span style={{ color: 'var(--muted)' }}>не ответили: {rsvp.noResponse}</span>
         </div>
       </div>
 

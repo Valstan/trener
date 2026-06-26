@@ -9,3 +9,10 @@ export const buildPushMessage = (type: 'changed' | 'cancelled'): PushMessage => 
   body: 'Откройте приложение и подтвердите, что видите изменение.',
   url: '/parent',
 })
+
+// Напоминание RSVP-нереспондентам (cron, PR9). Тоже без ПДн (R4).
+export const buildRsvpReminderMessage = (): PushMessage => ({
+  title: 'Скоро тренировка',
+  body: 'Подтвердите в приложении, придёт ли ребёнок.',
+  url: '/parent',
+})

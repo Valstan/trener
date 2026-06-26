@@ -3,6 +3,7 @@ import type { Payload, PayloadRequest } from 'payload'
 import type { Player, TrainingSession, User } from '@/payload-types'
 import { coachGroupIds, isAdmin } from '@/access/roles'
 import { relId } from '@/lib/relId'
+import { summarizeRsvp, type RsvpSummary } from '@/lib/rsvp'
 
 // Может ли пользователь видеть coverage этой сессии: админ — любую; тренер — только
 // сессии своих групп (#015). Гейт владения для coverage-эндпоинта и /coach-страниц.
@@ -63,6 +64,7 @@ export type CoverageResult = {
   wave: string | null // changedAt текущей волны; null → изменений нет, нечего подтверждать
   summary: CoverageSummary
   unreachable: number // дети группы без родителя — до них канал не дошёл (#059)
+  rsvp: RsvpSummary // кто придёт на тренировку (по ответам родителей)
 }
 
 // Серверная сборка coverage по сессии (queries + агрегация). overrideAccess —
@@ -71,20 +73,36 @@ export const loadCoverage = async (payload: Payload, session: TrainingSession): 
   const groupId = relId(session.group)
   const wave = session.changedAt ?? null
 
-  const unreachable =
+  const groupPlayers =
     groupId == null
-      ? 0
+      ? []
       : (
           await payload.find({
             collection: 'players',
-            where: { and: [{ group: { equals: groupId } }, { parent: { exists: false } }] },
+            where: { group: { equals: groupId } },
             depth: 0,
             pagination: false,
             overrideAccess: true,
           })
-        ).docs.length
+        ).docs
+  const unreachable = groupPlayers.filter((p) => relId(p.parent) == null).length
 
-  if (!wave) return { wave: null, summary: buildCoverage([]), unreachable }
+  // RSVP-сводка (независимо от волны): сколько детей группы придёт/не придёт/молчит.
+  const rsvpDocs = (
+    await payload.find({
+      collection: 'rsvps',
+      where: { session: { equals: session.id } },
+      depth: 0,
+      pagination: false,
+      overrideAccess: true,
+    })
+  ).docs
+  const rsvp = summarizeRsvp(
+    groupPlayers.length,
+    rsvpDocs.map((r) => r.response),
+  )
+
+  if (!wave) return { wave: null, summary: buildCoverage([]), unreachable, rsvp }
 
   const notifs = await payload.find({
     collection: 'notifications',
@@ -129,5 +147,5 @@ export const loadCoverage = async (payload: Payload, session: TrainingSession): 
     })
     .filter((e): e is CoverageEntry => e !== null)
 
-  return { wave, summary: buildCoverage(entries), unreachable }
+  return { wave, summary: buildCoverage(entries), unreachable, rsvp }
 }
