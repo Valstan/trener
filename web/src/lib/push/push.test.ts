@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { buildAnnouncementMessage, buildPushMessage } from './message'
+import { buildAnnouncementMessage, buildPushMessage, buildQuestionMessage } from './message'
 import { isDeadSubscription } from './send'
 
 // R4: payload пуша не несёт ПДн ребёнка — только неидентифицирующий текст + /parent.
@@ -32,6 +32,17 @@ describe('buildAnnouncementMessage', () => {
     expect(m.url).toBe('/parent')
     const blob = `${m.title} ${m.body} ${m.url}`
     expect(blob).not.toMatch(/\d{2,}/) // никаких id/телефонов
+  })
+})
+
+// R4: вопрос пушит тренеру только зов открыть инбокс — текст вопроса и имя родителя
+// НЕ в payload; тренер читает из РФ-БД.
+describe('buildQuestionMessage', () => {
+  it('ссылка на инбокс тренера /coach/questions, без ПДн', () => {
+    const m = buildQuestionMessage()
+    expect(m.url).toBe('/coach/questions')
+    const blob = `${m.title} ${m.body} ${m.url}`
+    expect(blob).not.toMatch(/\d{2,}/)
   })
 })
 

@@ -13,6 +13,7 @@ import { rsvpKey } from '@/lib/rsvp'
 import { AnnouncementsFeed, type FeedItem } from './AnnouncementsFeed'
 import { ParentInbox, type InboxItem } from './ParentInbox'
 import { PushSubscribe } from './PushSubscribe'
+import { QuestionForm } from './QuestionForm'
 
 // Экран родителя: очередь непринятых изменений расписания + подтверждение «вижу».
 // Первичный in-app гарант доведения (kickoff §6) — не зависит от пуша.
@@ -148,6 +149,29 @@ const ParentPage = async () => {
     publishedAt: a.publishedAt ?? null,
   }))
 
+  // Группы родителя (где есть дети) — для формы «вопрос тренеру».
+  const myPlayers = await payload.find({
+    collection: 'players',
+    where: { parent: { equals: user.id } },
+    depth: 0,
+    limit: 200,
+    pagination: false,
+    overrideAccess: true,
+  })
+  const myGroupIds = [...new Set(myPlayers.docs.map((p) => relId(p.group)).filter((v): v is number => v != null))]
+  const myGroups = myGroupIds.length
+    ? (
+        await payload.find({
+          collection: 'groups',
+          where: { id: { in: myGroupIds } },
+          sort: 'name',
+          depth: 0,
+          pagination: false,
+          overrideAccess: true,
+        })
+      ).docs.map((g) => ({ id: g.id, name: g.name }))
+    : []
+
   return (
     <main style={container}>
       <h1 style={{ fontSize: '1.4rem', margin: '0 0 0.25rem' }}>Изменения в расписании</h1>
@@ -159,6 +183,7 @@ const ParentPage = async () => {
       </div>
       <ParentInbox items={items} />
       <AnnouncementsFeed items={feedItems} />
+      <QuestionForm groups={myGroups} />
     </main>
   )
 }

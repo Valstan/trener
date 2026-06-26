@@ -26,3 +26,12 @@ export const buildAnnouncementMessage = (): PushMessage => ({
   body: 'Откройте приложение — тренер оставил сообщение.',
   url: '/parent',
 })
+
+// Вопрос родителя тренеру (M3-PR11, суррогат чата). Адресат — ТРЕНЕР, ссылка на его
+// инбокс /coach/questions. 152-ФЗ R4: текст вопроса и имя родителя НЕ в payload (он
+// проходит через Apple/Google) — тренер читает вопрос из РФ-БД. Без ПДн.
+export const buildQuestionMessage = (): PushMessage => ({
+  title: 'Новый вопрос от родителя',
+  body: 'Откройте приложение, чтобы прочитать и ответить.',
+  url: '/coach/questions',
+})

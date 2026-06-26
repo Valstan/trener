@@ -16,6 +16,7 @@ import { Devices } from './collections/Devices'
 import { Notifications } from './collections/Notifications'
 import { Rsvps } from './collections/Rsvps'
 import { Announcements } from './collections/Announcements'
+import { Questions } from './collections/Questions'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -52,6 +53,7 @@ export default buildConfig({
     Notifications,
     Rsvps,
     Announcements,
+    Questions,
   ],
   // Email — magic-link онбординг (PR2) + уведомления. Провайдеро-независимо через
   // внешний SMTP-relay (env). Пока SMTP_HOST не задан, адаптер не подключаем →

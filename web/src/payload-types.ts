@@ -77,6 +77,7 @@ export interface Config {
     notifications: Notification;
     rsvps: Rsvp;
     announcements: Announcement;
+    questions: Question;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -94,6 +95,7 @@ export interface Config {
     notifications: NotificationsSelect<false> | NotificationsSelect<true>;
     rsvps: RsvpsSelect<false> | RsvpsSelect<true>;
     announcements: AnnouncementsSelect<false> | AnnouncementsSelect<true>;
+    questions: QuestionsSelect<false> | QuestionsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -368,6 +370,27 @@ export interface Announcement {
   createdAt: string;
 }
 /**
+ * Суррогат чата (M4 — полный чат). Односторонне: родитель спросил → тренер прочитал/ответил. Вне coverage.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "questions".
+ */
+export interface Question {
+  id: number;
+  parent: number | User;
+  group: number | Group;
+  session?: (number | null) | TrainingSession;
+  body: string;
+  /**
+   * new→read→answered. Двигает тренер через инбокс.
+   */
+  status: 'new' | 'read' | 'answered';
+  readAt?: string | null;
+  answeredAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -430,6 +453,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'announcements';
         value: number | Announcement;
+      } | null)
+    | ({
+        relationTo: 'questions';
+        value: number | Question;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -624,6 +651,21 @@ export interface AnnouncementsSelect<T extends boolean = true> {
   body?: T;
   triggersPush?: T;
   publishedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "questions_select".
+ */
+export interface QuestionsSelect<T extends boolean = true> {
+  parent?: T;
+  group?: T;
+  session?: T;
+  body?: T;
+  status?: T;
+  readAt?: T;
+  answeredAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
