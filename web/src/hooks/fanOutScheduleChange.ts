@@ -1,6 +1,8 @@
 import type { CollectionAfterChangeHook } from 'payload'
 
 import type { TrainingSession } from '../payload-types'
+import { buildPushMessage } from '../lib/push/message'
+import { sendPushToUser } from '../lib/push/send'
 import { relId } from '../lib/relId'
 import { SCHEDULE_WAVE_CONTEXT_KEY, type ScheduleChangeWave } from './trackSessionChange'
 
@@ -67,10 +69,11 @@ export const fanOutScheduleChange: CollectionAfterChangeHook<TrainingSession> = 
       overrideAccess: true,
     })
 
+    const pushMessage = buildPushMessage(wave.type)
     let created = 0
     for (const [parentId, playerIds] of byParent) {
       try {
-        await payload.create({
+        const notif = await payload.create({
           collection: 'notifications',
           data: {
             session: sessionId,
@@ -83,6 +86,20 @@ export const fanOutScheduleChange: CollectionAfterChangeHook<TrainingSession> = 
           overrideAccess: true,
         })
         created++
+
+        // best-effort пуш поверх in-app очереди (R5). Не источник корректности —
+        // ошибка/отсутствие подписки не валит фан-аут; результат пишем для диагностики.
+        try {
+          const pushResult = await sendPushToUser(payload, parentId, pushMessage)
+          await payload.update({
+            collection: 'notifications',
+            id: notif.id,
+            data: { pushSentAt: new Date().toISOString(), pushResult },
+            overrideAccess: true,
+          })
+        } catch (pushErr) {
+          payload.logger.error({ pushErr, sessionId, parentId }, '[fanout] пуш не отправлен (in-app очередь не затронута)')
+        }
       } catch (err) {
         payload.logger.error({ err, sessionId, parentId }, '[fanout] не удалось создать уведомление родителю')
       }

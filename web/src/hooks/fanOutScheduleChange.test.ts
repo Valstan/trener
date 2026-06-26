@@ -43,8 +43,8 @@ describe('fanOutScheduleChange', () => {
     expect((find.mock.calls[0][0] as AnyArgs).where).toEqual({ group: { equals: 77 } })
     expect((find.mock.calls[0][0] as AnyArgs).overrideAccess).toBe(true)
 
-    // supersede прошлых волн (C2): один bulk-update, overrideAccess
-    expect(update).toHaveBeenCalledOnce()
+    // supersede прошлых волн (C2): ПЕРВЫЙ update (до создания новых), overrideAccess.
+    // Дальше идут update'ы pushSentAt/pushResult по каждому уведомлению — их не считаем.
     const upd = update.mock.calls[0][0] as AnyArgs
     expect((upd.data as AnyArgs).status).toBe('superseded')
     expect(upd.overrideAccess).toBe(true)

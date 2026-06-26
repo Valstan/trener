@@ -13,7 +13,7 @@
  *
  * Версионируем имя кэша: при изменении логики SW поднять VERSION → activate подчистит старые.
  */
-const VERSION = 'v1'
+const VERSION = 'v2'
 const CACHE = `trener-${VERSION}`
 const OFFLINE_URL = '/offline'
 // Минимальный предкэш: офлайн-страница + манифест. Остальное кэшируется на лету.
@@ -107,4 +107,75 @@ self.addEventListener('fetch', (event) => {
       })(),
     )
   }
+})
+
+/* ─── Web-push (PR8) ─────────────────────────────────────────────────────────
+ * best-effort пуш об изменении/отмене. Payload без ПДн (152-ФЗ R4): только
+ * неидентифицирующий текст + data.url на /parent — детали клиент тянет из РФ-БД.
+ */
+self.addEventListener('push', (event) => {
+  let data = {}
+  try {
+    data = event.data ? event.data.json() : {}
+  } catch {
+    data = {}
+  }
+  const title = data.title || 'Футбольная школа'
+  const options = {
+    body: data.body || 'Откройте приложение.',
+    icon: '/icons/icon-192.png',
+    badge: '/icons/icon-192.png',
+    data: { url: data.url || '/parent' },
+    // одно изменение = одно уведомление (новая волна вытесняет прошлую на экране)
+    tag: 'trener-schedule',
+    renotify: true,
+  }
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+// Тап по уведомлению → фокус на уже открытой вкладке приложения или новая на data.url.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const target = (event.notification.data && event.notification.data.url) || '/parent'
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      for (const client of all) {
+        if (client.url.includes(target) && 'focus' in client) return client.focus()
+      }
+      const existing = all.find((c) => 'focus' in c)
+      if (existing) {
+        await existing.focus()
+        if ('navigate' in existing) await existing.navigate(target).catch(() => {})
+        return
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(target)
+    })(),
+  )
+})
+
+// Подписка протухла/ротация ключей → пересоздаём её тем же applicationServerKey и
+// отдаём серверу. Best-effort: без oldSubscription.options нечем пересоздать — молчим
+// (клиент переподпишется при следующем заходе на /parent).
+self.addEventListener('pushsubscriptionchange', (event) => {
+  const old = event.oldSubscription
+  const appServerKey = old && old.options && old.options.applicationServerKey
+  if (!appServerKey) return
+  event.waitUntil(
+    (async () => {
+      try {
+        const sub = await self.registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: appServerKey,
+        })
+        await fetch('/push/subscribe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription: sub.toJSON() }),
+        })
+      } catch {
+        /* переподпишется клиент при следующем заходе */
+      }
+    })(),
+  )
 })

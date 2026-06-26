@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 
+import { isIos, isStandalone } from '@/lib/pwa'
+
 /**
  * Промпт установки PWA «на экран» (веха PR3). Клиентский, рендерит баннер.
  *
@@ -33,22 +35,6 @@ function dismissedRecently(): boolean {
   } catch {
     return false
   }
-}
-
-function isStandalone(): boolean {
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    // iOS Safari выставляет navigator.standalone в standalone-режиме.
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  )
-}
-
-function isIos(): boolean {
-  return (
-    /iphone|ipad|ipod/i.test(window.navigator.userAgent) &&
-    // исключаем in-app webview-браузеры, где «на экран» недоступно
-    !/crios|fxios/i.test(window.navigator.userAgent)
-  )
 }
 
 export function InstallPrompt() {
