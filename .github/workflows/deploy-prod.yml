@@ -145,7 +145,8 @@ jobs:
         run: |
           set -e
           SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
-          scp -q web/trener-app.tgz TRENERBOX:/tmp/trener-app.tgz
+          # tgz собирается в корень репо (tar ../trener-app.tgz из web/); шаг с working-directory '.'
+          scp -q trener-app.tgz TRENERBOX:/tmp/trener-app.tgz
           scp -q deploy/systemd/trener.service TRENERBOX:/tmp/trener.service
           ssh TRENERBOX 'bash -s' "$SHA" <<'REMOTE'
           set -e
