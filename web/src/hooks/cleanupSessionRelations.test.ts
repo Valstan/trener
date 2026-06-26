@@ -4,7 +4,8 @@ import type { PayloadRequest } from 'payload'
 import { cleanupSessionRelations } from './cleanupSessionRelations'
 
 // C3: удаление сессии каскадно чистит её notifications и rsvps (overrideAccess),
-// чтобы inbox/coverage не натыкались на «мёртвую» ссылку session.
+// чтобы inbox/coverage не натыкались на «мёртвую» ссылку session. beforeDelete —
+// до удаления родителя (FK ON DELETE SET NULL ⨯ NOT NULL session заблокировал бы DELETE).
 
 type AnyArgs = Record<string, unknown>
 

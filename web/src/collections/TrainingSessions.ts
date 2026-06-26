@@ -61,7 +61,9 @@ export const TrainingSessions: CollectionConfig = {
   hooks: {
     beforeChange: [trackSessionChange],
     afterChange: [fanOutScheduleChange, revalidateSchedule],
-    afterDelete: [cleanupSessionRelations, revalidateScheduleDelete],
+    // cleanup — beforeDelete (FK SET NULL ⨯ NOT NULL: чистим детей до удаления родителя).
+    beforeDelete: [cleanupSessionRelations],
+    afterDelete: [revalidateScheduleDelete],
   },
   fields: [
     {
