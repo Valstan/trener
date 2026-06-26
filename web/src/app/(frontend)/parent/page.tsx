@@ -10,6 +10,7 @@ import { describeChange } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 
 import { ParentInbox, type InboxItem } from './ParentInbox'
+import { PushSubscribe } from './PushSubscribe'
 
 // Экран родителя: очередь непринятых изменений расписания + подтверждение «вижу».
 // Первичный in-app гарант доведения (kickoff §6) — не зависит от пуша.
@@ -96,9 +97,12 @@ const ParentPage = async () => {
   return (
     <main style={container}>
       <h1 style={{ fontSize: '1.4rem', margin: '0 0 0.25rem' }}>Изменения в расписании</h1>
-      <p style={{ color: 'var(--muted)', margin: '0 0 1.5rem' }}>
+      <p style={{ color: 'var(--muted)', margin: '0 0 1.25rem' }}>
         Отметьте «Вижу», чтобы тренер знал, что вы в курсе.
       </p>
+      <div style={{ marginBottom: '1.25rem' }}>
+        <PushSubscribe />
+      </div>
       <ParentInbox items={items} />
     </main>
   )
