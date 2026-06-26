@@ -4,10 +4,11 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import type { Player, TrainingSession } from '@/payload-types'
+import type { Player, Rsvp, TrainingSession } from '@/payload-types'
 import { isParent } from '@/access/roles'
 import { describeChange } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
+import { rsvpKey } from '@/lib/rsvp'
 
 import { ParentInbox, type InboxItem } from './ParentInbox'
 import { PushSubscribe } from './PushSubscribe'
@@ -75,11 +76,27 @@ const ParentPage = async () => {
       : Promise.resolve<Player[]>([]),
   ])
 
+  // Существующие RSVP по (session × player) — чтобы подсветить текущий выбор.
+  const rsvps: Rsvp[] =
+    sessionIds.length && playerIds.length
+      ? (
+          await payload.find({
+            collection: 'rsvps',
+            where: { and: [{ session: { in: sessionIds } }, { player: { in: playerIds } }] },
+            depth: 0,
+            pagination: false,
+            overrideAccess: true,
+          })
+        ).docs
+      : []
+  const rsvpByKey = new Map(rsvps.map((r) => [rsvpKey(relId(r.session) ?? -1, relId(r.player) ?? -1), r.response]))
+
   const sessionById = new Map(sessions.map((s) => [s.id, s]))
   const playerNameById = new Map(players.map((p) => [p.id, p.name]))
 
   const items: InboxItem[] = notifs.docs.map((n) => {
-    const s = sessionById.get(relId(n.session) ?? -1)
+    const sessionId = relId(n.session) ?? -1
+    const s = sessionById.get(sessionId)
     const desc = describeChange({
       type: n.type,
       startDate: s?.startDate ?? null,
@@ -88,10 +105,15 @@ const ParentPage = async () => {
       prevLocation: s?.prevLocation ?? null,
       changedFields: Array.isArray(s?.changedFields) ? (s.changedFields as string[]) : [],
     })
-    const childNames = ((n.players as (number | { id: number })[]) ?? [])
-      .map((p) => playerNameById.get(relId(p) ?? -1))
-      .filter((name): name is string => Boolean(name))
-    return { id: n.id, status: n.status, title: desc.title, lines: desc.lines, childNames }
+    const children = ((n.players as (number | { id: number })[]) ?? [])
+      .map((p) => relId(p))
+      .filter((id): id is number => id != null)
+      .map((id) => ({
+        id,
+        name: playerNameById.get(id) ?? `#${id}`,
+        rsvp: rsvpByKey.get(rsvpKey(sessionId, id)) ?? null,
+      }))
+    return { id: n.id, sessionId, type: n.type, status: n.status, title: desc.title, lines: desc.lines, children }
   })
 
   return (
