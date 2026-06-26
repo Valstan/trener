@@ -1,17 +1,8 @@
 import type { CollectionAfterChangeHook } from 'payload'
 
 import type { TrainingSession } from '../payload-types'
+import { relId } from '../lib/relId'
 import { SCHEDULE_WAVE_CONTEXT_KEY, type ScheduleChangeWave } from './trackSessionChange'
-
-// id из relationship-поля при depth:0 — это число; объект — на случай заполненной связи.
-const relId = (v: unknown): number | null => {
-  if (v == null) return null
-  if (typeof v === 'number') return v
-  if (typeof v === 'object' && 'id' in v && typeof (v as { id: unknown }).id === 'number') {
-    return (v as { id: number }).id
-  }
-  return null
-}
 
 // Фан-аут уведомлений (afterChange). ЯДРО КОРРЕКТНОСТИ M2: при значимой правке
 // (волна поднята trackSessionChange) создаёт по одному Notification на каждого
