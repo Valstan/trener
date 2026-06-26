@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { buildPushMessage } from './message'
+import { buildAnnouncementMessage, buildPushMessage } from './message'
 import { isDeadSubscription } from './send'
 
 // R4: payload пуша не несёт ПДн ребёнка — только неидентифицирующий текст + /parent.
@@ -21,6 +21,17 @@ describe('buildPushMessage', () => {
       expect(m.url).toBe('/parent')
       expect(blob).not.toMatch(/\d{2,}/) // никаких id/телефонов
     }
+  })
+})
+
+// R4: объявление пушит только зов открыть приложение — текст объявления НЕ в payload
+// (он проходит через Apple/Google); родитель читает его из РФ-БД в ленте.
+describe('buildAnnouncementMessage', () => {
+  it('ссылка на нейтральный /parent, без ПДн и без текста объявления', () => {
+    const m = buildAnnouncementMessage()
+    expect(m.url).toBe('/parent')
+    const blob = `${m.title} ${m.body} ${m.url}`
+    expect(blob).not.toMatch(/\d{2,}/) // никаких id/телефонов
   })
 })
 

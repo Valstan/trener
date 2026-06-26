@@ -70,7 +70,12 @@ const CoachSchedulePage = async () => {
 
   return (
     <main style={container}>
-      <h1 style={{ fontSize: '1.4rem', margin: '0 0 1.25rem' }}>Расписание</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem' }}>
+        <h1 style={{ fontSize: '1.4rem', margin: '0 0 1.25rem' }}>Расписание</h1>
+        <Link href="/coach/announcements" style={{ fontSize: '0.9rem' }}>
+          Объявления →
+        </Link>
+      </div>
       {sessions.docs.length === 0 ? (
         <p style={{ color: 'var(--muted)' }}>Тренировок пока нет.</p>
       ) : (

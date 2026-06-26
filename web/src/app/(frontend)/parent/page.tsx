@@ -4,12 +4,13 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import type { Player, Rsvp, TrainingSession } from '@/payload-types'
+import type { Group, Player, Rsvp, TrainingSession } from '@/payload-types'
 import { isParent } from '@/access/roles'
 import { describeChange } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 import { rsvpKey } from '@/lib/rsvp'
 
+import { AnnouncementsFeed, type FeedItem } from './AnnouncementsFeed'
 import { ParentInbox, type InboxItem } from './ParentInbox'
 import { PushSubscribe } from './PushSubscribe'
 
@@ -116,6 +117,37 @@ const ParentPage = async () => {
     return { id: n.id, sessionId, type: n.type, status: n.status, title: desc.title, lines: desc.lines, children }
   })
 
+  // Лента объявлений (scoped read — родитель видит группы своих детей; F1: вне coverage).
+  const announcements = await payload.find({
+    collection: 'announcements',
+    sort: '-publishedAt',
+    limit: 20,
+    depth: 0,
+    pagination: false,
+    user,
+    overrideAccess: false,
+  })
+  const annGroupIds = [...new Set(announcements.docs.map((a) => relId(a.group)).filter((v): v is number => v != null))]
+  const annGroups: Group[] = annGroupIds.length
+    ? (
+        await payload.find({
+          collection: 'groups',
+          where: { id: { in: annGroupIds } },
+          depth: 0,
+          pagination: false,
+          overrideAccess: true,
+        })
+      ).docs
+    : []
+  const annGroupNameById = new Map(annGroups.map((g) => [g.id, g.name]))
+  const feedItems: FeedItem[] = announcements.docs.map((a) => ({
+    id: a.id,
+    title: a.title,
+    body: a.body,
+    groupName: annGroupNameById.get(relId(a.group) ?? -1) ?? null,
+    publishedAt: a.publishedAt ?? null,
+  }))
+
   return (
     <main style={container}>
       <h1 style={{ fontSize: '1.4rem', margin: '0 0 0.25rem' }}>Изменения в расписании</h1>
@@ -126,6 +158,7 @@ const ParentPage = async () => {
         <PushSubscribe />
       </div>
       <ParentInbox items={items} />
+      <AnnouncementsFeed items={feedItems} />
     </main>
   )
 }
