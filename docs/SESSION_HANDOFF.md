@@ -3,7 +3,7 @@
 > Sticky-note для непрерывности сессий. Перезаписывается `/close_session`. История через `git log -- docs/SESSION_HANDOFF.md`.
 
 **Status:** ACTIVE
-**Updated:** 2026-06-26 (M2 «Ядро» ЗАВЕРШЁН — PR5–PR9 + magic-link фикс смержены и верифицированы на живой dev-БД)
+**Updated:** 2026-06-26 (M2 «Ядро» ЗАВЕРШЁН — PR5–PR9 + magic-link фикс смержены и верифицированы на живой dev-БД; заведены профили машин #050)
 **Branch:** main
 
 ## Текущая нитка
@@ -29,7 +29,8 @@
 
 ## Контекст
 
-- **⚠️ dev-БД — ПОПРАВКА к прошлому handoff (06-26):** на этой машине **один** Postgres — `postgresql-x64-17` на порту **5433** (НЕ 5432), `scram-sha-256`. Пароль суперюзера `postgres` = тот же, что у GONBA/Sabantuy (`web/.env` соседних репо: `381b70ae…`, не «postgres»). БД `trener_dev` **создана заново** на 5433; `web/.env` поправлен (`@127.0.0.1:5433/trener_dev`). Прошлый handoff (5432 / `postgres`) описывал исчезнувший инстанс — не доверять. `corepack pnpm` (голого pnpm в PATH нет). Прогон скриптов: `./node_modules/.bin/payload run ./script.ts` (нужен **top-level await**, иначе процесс выходит до завершения).
+- **🖥️ Профили машин (#050) — локальное окружение теперь живёт здесь:** [`docs/machines/<hostname>.md`](machines/README.md), `/start` читает по hostname. Разработка с двух машин: **PC40** (работа, `D:\GitHubReps\`) — профиль сверен; **rmz4val** (дом, `D:\PROGRAMMING\`) — сид, уточнить на месте. Не дублировать сюда машинные факты — они в профиле.
+- **⚠️ dev-БД (ключевое, детали — в [`PC40.md`](machines/PC40.md)):** на PC40 Postgres `postgresql-x64-17` на порту **5433** (НЕ 5432!), БД `trener_dev`, пароль `postgres` = как у GONBA (в `web/.env`, gitignored). Прошлый handoff (5432/«postgres») описывал исчезнувший инстанс. **pnpm 11 в PATH, но проект пинит 10.15 → только `corepack pnpm`.** Скрипты: `./node_modules/.bin/payload run ./script.ts` (нужен **top-level await**).
 - **dev-секреты в `web/.env` (gitignored):** добавлены VAPID-пара (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`) и `CRON_SECRET=dev-cron-secret-pr9`. Шаблоны — в `web/.env.example`.
 - **Namespace кастомных эндпоинтов:** под `/parent/*`, `/coach/*`, `/push/*`, `/cron/*` — НЕ под `/api/*` (там Payload REST по слагам коллекций). Дизайн писал `/api/...` — отклонились осознанно.
 - **vitest:** добавлен алиас `@/`→`src` (`vitest.config.mts`) — тестируемые модули теперь могут импортировать через `@/`.
