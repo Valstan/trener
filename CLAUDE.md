@@ -83,6 +83,7 @@ ref:
 - **Пуш — best-effort.** Корректность держится на **in-app очереди «непринятых» + coverage-экране тренера**, не на пуше. iOS APNs web-push (16.4+, Declarative Web Push 18.4+) / Android FCM HTTP v1 + VAPID, изменения слать high-priority. Legacy FCM server-key API не использовать (мёртв с сер. 2024).
 - **152-ФЗ детских данных — day-1 floor** (kickoff §5): согласие отдельной бумагой (не чекбокс), уведомление РКН до go-live, РФ-локализация первой записи, минимизация (только имя+группа+контакт родителя). Authz по ролям (#015) day-1.
 - **Flow:** PR-only на main (ADR-0002), ветки `feat/`/`fix/`/`chore/`/`docs/`. Секреты вне репо `/etc/trener/trener.env` (#008). Deploy-smoke (#011).
+- **Две машины разработки (#050):** работа (`PC40`, `D:\GitHubReps\`) и дом (`rmz4val`, `D:\PROGRAMMING\`) поочерёдно; GitHub — источник истины (#010). Локальное окружение машины (порт/доступ dev-БД, нюанс pnpm, грабли) — в [`docs/machines/<hostname>.md`](docs/machines/README.md); `/start` читает по hostname. Незапушенную работу между машинами не оставлять.
 
 ## Вехи (kickoff §8)
 
