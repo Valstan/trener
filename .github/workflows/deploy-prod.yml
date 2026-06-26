@@ -1,0 +1,187 @@
+name: Deploy to production
+
+# Сборка едет в CI (мандат «Бокс 1»): прод-бокс общий с GONBA/KARMAN/малмыж-сайтами,
+# on-box `next build` недопустим (build-спайк бьёт соседей — G20/G24). На сервер по SSH
+# кладём готовый standalone-артефакт и рестартим systemd-сервис; бокс — runtime-only.
+#
+# Сборка на Node 20 = версия рантайма на боксе (/usr/bin/node v20.x). У trener страницы
+# динамические (нет [slug]-prerender из БД, как у GONBA) → build'у нужен лишь досягаемый
+# Postgres для payload.init: поднимаем service-контейнер, БЕЗ туннеля к проду.
+# NEXT_PUBLIC_* — публичные значения (VAPID public по дизайну публичный) → в env job,
+# запекаются в клиентский бандл здесь. Единственный секрет — SSH_PRIVATE_KEY (деплой-ключ).
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    branches: [main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      build_only:
+        description: 'Только собрать артефакт (без деплоя на бокс)'
+        type: boolean
+        default: false
+
+concurrency:
+  # Не параллелим деплои trener; если идёт — новый ждёт (G24)
+  group: deploy-prod-trener
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: trener_build
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Build-init Payload (схема не пушится — NODE_ENV=production гейтит push). Не запекается.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/trener_build
+      PAYLOAD_SECRET: build-time-only-not-baked
+      # Запекаются в клиентский бандл. Должны совпадать с прод (VAPID public ↔ private в
+      # /etc/trener/trener.env; URL — публичный поддомен интер.вмалмыже.рф в punycode).
+      NEXT_PUBLIC_SERVER_URL: https://xn--e1afpni.xn--80adkdyec4j.xn--p1ai
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: BE1dKsXA73xiTfRTUY3QHQ5PQsu8JEVUEDI9sYYlr64PD5OidYU9KxfmVOEAAZuZ63VvxBGXYCOrMC0aKDs49uk
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup SSH
+        working-directory: .
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -e
+          if [ -z "${SSH_PRIVATE_KEY}" ]; then
+            echo "::error::Secret SSH_PRIVATE_KEY не задан."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 831d0ce99bdf.vps.myjino.ru >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<'EOF'
+          Host TRENERBOX
+            HostName 831d0ce99bdf.vps.myjino.ru
+            Port 22
+            User valstan
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Payload import map
+        run: pnpm generate:importmap
+
+      - name: Build (standalone)
+        env:
+          NODE_ENV: production
+          # Включает output:'standalone' в next.config.js (G41: локально флаг не ставят —
+          # standalone-сборка мутирует node_modules; в CI свежий install + одна сборка).
+          STANDALONE_BUILD: '1'
+        run: pnpm build
+
+      - name: Assemble standalone bundle
+        run: |
+          set -e
+          if [ ! -f .next/standalone/server.js ]; then
+            echo "::error::server.js не в корне .next/standalone — проверь outputFileTracingRoot/STANDALONE_BUILD"
+            find .next/standalone -maxdepth 3 -name server.js || true
+            exit 1
+          fi
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          # runtime берёт env из /etc/trener/trener.env (systemd EnvironmentFile);
+          # NEXT_PUBLIC_* уже запечены — секреты в артефакт не кладём.
+          rm -f .next/standalone/.env
+          tar czf ../trener-app.tgz -C .next/standalone .
+          echo "bundle: $(du -h ../trener-app.tgz | cut -f1)"
+
+      - name: Stop here if build_only
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_only }}
+        run: echo "build_only=true — артефакт собран, деплой пропущен."
+
+      - name: Ship artifact + systemd unit + restart
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.build_only) }}
+        working-directory: .
+        run: |
+          set -e
+          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          scp -q web/trener-app.tgz TRENERBOX:/tmp/trener-app.tgz
+          scp -q deploy/systemd/trener.service TRENERBOX:/tmp/trener.service
+          ssh TRENERBOX 'bash -s' "$SHA" <<'REMOTE'
+          set -e
+          SHA="$1"
+          BASE=/home/valstan/trener
+          REL="$BASE/releases/$SHA"
+          rm -rf "$REL"; mkdir -p "$REL"
+          tar xzf /tmp/trener-app.tgz -C "$REL"
+          rm -f /tmp/trener-app.tgz
+          ln -sfn "$REL" "$BASE/releases/current"
+          # Юнит ставится идемпотентно из артефакта-деплоя ПЕРЕД restart (sudo cp + reload).
+          if ! cmp -s /tmp/trener.service /etc/systemd/system/trener.service 2>/dev/null; then
+            sudo cp /tmp/trener.service /etc/systemd/system/trener.service
+            sudo systemctl daemon-reload
+            echo "unit обновлён"
+          fi
+          rm -f /tmp/trener.service
+          sudo systemctl enable trener >/dev/null 2>&1 || true
+          sudo systemctl restart trener
+          ls -1dt "$BASE"/releases/*/ 2>/dev/null | grep -v '/current/$' | tail -n +4 | xargs -r rm -rf
+          echo "deployed $SHA"
+          REMOTE
+
+      - name: Smoke — local /health
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.build_only) }}
+        working-directory: .
+        run: |
+          set -e
+          sleep 6
+          STATUS=$(ssh TRENERBOX "curl -s -o /dev/null -w '%{http_code}' --max-time 15 http://127.0.0.1:3007/health")
+          echo "local /health: ${STATUS}"
+          [ "${STATUS}" = "200" ] || { echo "::error::local /health = ${STATUS}, ожидался 200"; exit 1; }
+
+      - name: On failure — дамп журналов
+        if: failure()
+        working-directory: .
+        run: |
+          ssh TRENERBOX "sudo journalctl -u trener -n 80 --no-pager" 2>&1 || true
+          ssh TRENERBOX "sudo systemctl status trener --no-pager -l" 2>&1 || true
