@@ -60,8 +60,21 @@ ssh GONBA "sudo -u postgres psql -d trener -c \
 После засева `payload migrate:status` на проде покажет baseline как applied, а будущие дельты
 (их таблиц на проде ещё нет) накатятся `payload migrate` начисто.
 
-> Примечание: на проде в `payload_migrations` может лежать сентинел `(dev, -1)` — остаток
-> первого dev-push'а через туннель. На `payload migrate` он не влияет (это не имя миграции).
+> ⚠️ **Сентинел `(dev, -1)` ОБЯЗАТЕЛЬНО удалить из прод-`payload_migrations` при засеве baseline.**
+> Это остаток первого dev-push'а через туннель (M3). На `migrate:status` он и правда не влияет, НО
+> сам `payload migrate` (apply) видит строку с `name='dev'` и **интерактивно спрашивает**
+> «It looks like you've run Payload in dev mode… data loss will occur. Proceed? (y/N)» — даже при
+> `NODE_ENV=production` (это НЕ drizzle-push-промпт, его production гасит, а отдельная проверка
+> команды `migrate`). В CI стдин пустой → промпт висит до таймаута job'а и `apply-migration.yml`
+> падает с `The operation was canceled` (проявилось на ПЕРВОМ реальном `payload migrate` 2026-06-27;
+> baseline засевался прямым INSERT, поэтому раньше не всплывало). Лечение — один раз снести сентинел:
+>
+> ```bash
+> ssh GONBA "sudo -u postgres psql -d trener -c \"DELETE FROM payload_migrations WHERE name='dev' AND batch=-1;\""
+> ```
+>
+> Прод на формальных миграциях — dev-режима там нет, строка лишняя. После удаления `payload migrate`
+> применяет дельты без промпта.
 
 ## Верификация новой миграции (перед PR)
 
@@ -93,6 +106,12 @@ diff <(grep -vE '^\s*(--|\\restrict|\\unrestrict|$)' /tmp/dev.sql) \
   может выдать мусорный дифф (снапшот `*.json` отстал). Тогда — push-inspect-handwrite по #017.
 - **apply-before-merge → всегда `--ref <feature-branch>`** (G28): `workflow_dispatch` без `--ref`
   чекаутит `main`, где файла миграции ещё нет.
+- **`apply-migration.yml` падает `The operation was canceled` (висит до таймаута на шаге migrate).**
+  Симптом: `migrate:status` (до) проходит, а `migrate` (apply) виснет ~15 мин и job убивается.
+  Причина: сентинел `(dev, -1)` в прод-`payload_migrations` → `payload migrate` ждёт ответа на
+  интерактивный «run in dev mode… proceed? (y/N)» (стдин в CI пуст). Лечение — снести сентинел
+  один раз (см. блок ⚠️ в «Разовый засев прода»). НЕ путать с drizzle-push-промптом (тот гасится
+  `NODE_ENV=production`).
 - **Локальный фолбэк (если CI/раннер недоступен):** с rmz4val открыть туннель
   `ssh -fNL 15432:127.0.0.1:5432 GONBA`, затем
   `DATABASE_URL=<прод-url с :15432> NODE_ENV=production corepack pnpm -C web migrate`,
