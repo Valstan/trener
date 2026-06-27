@@ -3,47 +3,57 @@
 > Sticky-note для непрерывности сессий. Перезаписывается `/close_session`. История через `git log -- docs/SESSION_HANDOFF.md`.
 
 **Status:** ACTIVE
-**Updated:** 2026-06-27 (C4 dedup-UNIQUE-индексы сданы в прод по #017-потоку; грабля dev-сентинела `payload migrate` найдена и вылечена. Прод полностью синхронизирован, лага нет.)
+**Updated:** 2026-06-27 (Мобильное PWA-оформление раскатано в прод; go-live гейт **SMTP закрыт** — вход для родителей реально работает. Прод синхронизирован, `releases/current` = main HEAD.)
 **Branch:** main
 
 ## Текущая нитка
 
-Сессия закрыла кодовый хвост **C4** (DB-dedup индексы) полным циклом до прода. Всё смержено и проверено вживую:
+Сессия — продуктовая развилка + два полных цикла до прода. Владелец увидел, что фронтенд был невидим (заглушка «M1» на главной, всё за логином, инженерные inline-стили) и захотел «нормальное мобильное приложение» + новые функции (чат, результаты матчей, фото/видео-галереи, создание расписания тренером). Решили: **сначала оформить существующее**, новые функции — следующим этапом.
 
-- **C4 UNIQUE-индексы ([#41](https://github.com/Valstan/trener/pull/41)).** `UNIQUE(session, player)` на rsvps + `UNIQUE(session, parent, changedAt)` на notifications — заданы через `indexes` коллекций, `migrate:create` сгенерил DDL. **Обычный compound-UNIQUE, не partial** (все колонки NOT NULL; partial непредставим в Payload-конфиге → провалил бы верификацию 1:1). Верифицировано: `migrate` на чистой БД + `pg_dump` diff push==migrate **byte-identical**; typecheck/lint/test **75/75**. На проде: миграция `dedup_unique_indexes` batch 2, оба индекса на боксе.
-- **Грабля dev-сентинела + фикс ([#42](https://github.com/Valstan/trener/pull/42)).** Поправлен `docs/migrations.md` (ошибочно «сентинел не влияет») + письмо brain (GOTCHAS-кандидат, родня G20). См. «Заметки» ниже.
+- **UI-редизайн в мобильное PWA ([#44](https://github.com/Valstan/trener/pull/44)), в проде.** Дизайн-система (токены + классы `.card/.btn/.badge/.field/.seg/.progress` + `app-header/tab-bar`, iOS safe-area) вместо россыпи inline-стилей; общий `AppShell` (шапка + нижние табы). Главная = лендинг вместо заглушки; вход/приглашение/верификация/согласие/офлайн/политика — убраны светлые артефакты. Тренер (расписание/coverage/объявления/вопросы) и родитель под нижнюю навигацию. **Родитель разбит на 3 маршрута-вкладки:** `/parent` (Изменения), `/parent/announcements`, `/parent/ask`. Только presentation — данные/доступ/хуки не тронуты, тесты **75/75**.
+- **SMTP-гейт закрыт ([#45](https://github.com/Valstan/trener/pull/45) — docs).** Код был готов (`nodemailerAdapter` по `SMTP_HOST`); прописал секреты в прод-`/etc/trener/trener.env` (Yandex, `valstan@valstan.ru` + пароль приложения), проверил доставку end-to-end — письмо приходит, ссылка рабочая. Runbook — [`docs/smtp.md`](smtp.md).
 
 ## Следующий шаг
 
-Кодовый хвост C4 закрыт. Остаются **go-live гейты (действия владельца, вне кода):**
-1. **Активировать offsite-бэкапы** (главный гейт): gpg-ключ (приватный — вне бокса!) → `/etc/trener/backup-pubkey.asc`; выбрать хранилище push/pull → `/etc/trener/trener-backup.env` (шаблон `deploy/trener-backup.env.example`); `sudo systemctl enable --now trener-backup.timer` + прогон. Runbook — [`docs/backups.md`](backups.md).
-2. **SMTP-relay** в `/etc/trener/trener.env` (сейчас magic-link в консоль → реальный родитель не залогинится).
-3. **РКН-уведомление** до приёма реальных ПДн; реквизиты оператора в `web/src/lib/operator.ts` + `OPERATOR_FINALIZED=true`.
+Развилка — выбор владельца:
 
-**Кодовые хвосты (если возьмёшься вместо гейтов):** каскады delete Player/User (FK `SET NULL` ⨯ `NOT NULL` → beforeDelete-чистка); deprecation `pnpm/action-setup@v4` (косметика).
+**A. Завершить go-live (действия владельца, вне кода):**
+1. **Offsite-бэкапы** (последний технический гейт): gpg-ключ (приватный — вне бокса!) → `/etc/trener/backup-pubkey.asc`; хранилище → `/etc/trener/trener-backup.env` (шаблон `deploy/trener-backup.env.example`); `sudo systemctl enable --now trener-backup.timer` + прогон. Runbook — [`docs/backups.md`](backups.md).
+2. **РКН-уведомление** до приёма реальных ПДн + реквизиты оператора в `web/src/lib/operator.ts` + `OPERATOR_FINALIZED=true`.
+
+**B. Новые функции (дорожная карта владельца, бóльший объём):**
+- Двусторонний **чат** родитель↔тренер (сейчас односторонний «вопрос тренеру»; это M4).
+- **Результаты матчей** — новая коллекция Matches + экраны (вне исходного kickoff).
+- **Создание расписания тренером** во фронтенде (сейчас только координатор в админке).
+- ⚠️ **Фото/видео-галереи** — фото/видео детей = чувствительные ПДн (152-ФЗ); требует отдельного согласия, хранилища медиа и пересмотра минимизации данных. Юридически самое тяжёлое — браться осознанно.
+
+**Кодовые хвосты (мелочь):** каскады delete Player/User (FK `SET NULL` ⨯ `NOT NULL` → beforeDelete-чистка); deprecation `pnpm/action-setup@v4` (косметика).
 
 ## ⚠️ Заметки этой сессии (не потерять)
 
-- **Грабля: `payload migrate` (apply) виснет на сентинеле `(dev,-1)`.** Первый реальный накат на прод завис на интерактивном «run in dev mode… proceed? (y/N)» — job убит таймауту (`The operation was canceled`). Это **отдельный** от drizzle-push/G20 промпт самой команды `migrate`, и **`NODE_ENV=production` его НЕ гасит**. Лечение: один раз снести строку `name='dev'` из прод-`payload_migrations` (сделано). Задокументировано в `docs/migrations.md` (блок ⚠️ + «Грабли») и в письме brain.
-- **Косметический лаг из прошлого handoff РЕШЁН.** `releases/current` = `b1ead87` = main HEAD. (#41 авто-деплой упал на migration-guard как надо → задеплоен вручную `workflow_dispatch`; #42 docs-merge авто-деплой прошёл успешно, **не** завис на edge → дотянул current до HEAD.)
-- **RSVP race edge (задумано, не баг):** UNIQUE на rsvps → при гонке двух одновременных тапов проигравший `create` словит violation → 500; родитель ретраит → попадёт в update-ветку. Это и есть страховка C4. Граничную обработку (catch violation → молча update) можно добавить, но при одном тапе на ребёнка ценность ≈0.
-- **Поток миграций (#017) живой и обкатан:** новая схема → `migrate:create` → верификация на чистой БД (diff push==migrate) → PR → `apply-migration.yml --ref <ветка>` → merge (авто-деплой падает на guard) → деплой `workflow_dispatch`. Детали — `docs/migrations.md`.
+- **SMTP живой (Yandex).** `/etc/trener/trener.env` теперь содержит `SMTP_HOST=smtp.yandex.ru / PORT=465 / SECURE=true / USER=valstan@valstan.ru / PASS=<пароль приложения> / FROM_ADDRESS=valstan@valstan.ru / FROM_NAME="Футбольная школа"`. Пароль приложения отзываемый (id.yandex.ru). Позже при желании — выделенный `school@…`-адрес вместо личного.
+- **Грабля env-файла: значение с пробелом БЕЗ кавычек ломает `source`** (`SMTP_FROM_NAME=Футбольная школа` → `школа: command not found`), хотя systemd `EnvironmentFile=` его терпит (берёт всю строку). Лечение — кавычки: `="Футбольная школа"`. Поправлено на проде + в `.env.example`/`docs/smtp.md`; письмо brain (родня G39). Симптом-знание для любого `/etc/<proj>/<proj>.env`.
+- **⚠️ Грабля харнесса: `preview_screenshot` виснет** (30s timeout) и на dev, и на прод-сборке — на чистой странице без ошибок, при живом рендере (`preview_eval` отвечает). Похоже на ожидание networkidle, но прод тоже висит → это сам скриншот-бэкенд среды, не код. **Верифицировать UI через `preview_eval` (вычисленные стили) или мокапы `show_widget`**, не через скриншот. Потеряно ~10 вызовов, прежде чем понял.
+- **Деплой стабилен.** Оба деплоя сессии (#44 код, #45 docs) прошли, G8-edge (Ship-hang) НЕ воспроизвёлся. SMTP-секреты в `/etc` пережили редеплой #45 (env вне репо, деплой его не трогает — проверено по `/proc/<MainPID>/environ`).
 
 ## Контекст — ПРОД (Бокс 1)
 
-- **Бокс:** myjino VPS `831d0ce99bdf.vps.myjino.ru` (SSH-алиас `GONBA`/`TRENERBOX`, user `valstan`, ключ `~/.ssh/id_ed25519`). trener — **:3007**. **Postgres сервер 16.14** (НЕ 17 — это только dev). Домен `интер.вмалмыже.рф` (punycode `xn--e1afpni.xn--80adkdyec4j.xn--p1ai`).
-- **БД `trener`** + роль `trener_app`. `payload_migrations`: `(20260627_055816_baseline, 1)` + `(20260627_140438_dedup_unique_indexes, 2)`. **Сентинел `dev` удалён** (см. заметку выше). `releases/current` = `b1ead87`.
+- **Бокс:** myjino VPS `831d0ce99bdf.vps.myjino.ru` (SSH-алиас `GONBA`/`TRENERBOX`, user `valstan`, ключ `~/.ssh/id_ed25519`, **passwordless sudo** — с rmz4val можно править `/etc` и читать логи/БД). trener — **:3007**. **Postgres сервер 16.14** (НЕ 17 — это только dev). Домен `интер.вмалмыже.рф` (punycode `xn--e1afpni.xn--80adkdyec4j.xn--p1ai`).
+- **БД `trener`** + роль `trener_app`. `payload_migrations`: `(20260627_055816_baseline, 1)` + `(20260627_140438_dedup_unique_indexes, 2)`. Сентинел `dev` удалён. В проде один пользователь — `valstan@valstan.ru` (админ). `releases/current` = `5158f9e` (= main HEAD).
+- **Секреты:** `/etc/trener/trener.env` (#008): DATABASE_URL, PAYLOAD_SECRET, NEXT_PUBLIC_* (VAPID public), VAPID_PRIVATE_KEY, CRON_SECRET, **+ SMTP_* (7 ключей, новое)**. Бэкап-конфиг будет в отдельном `/etc/trener/trener-backup.env`.
 - **systemd:** `trener.service` (:3007) + `trener-rsvp-reminders.timer` (active) + `trener-backup.timer` (disabled, ждёт активации). Юниты в `/etc/systemd/system`, ставятся деплоем идемпотентно; backup-скрипт — `/home/valstan/trener/bin/trener-backup.sh`.
-- **Секреты:** `/etc/trener/trener.env` (#008): DATABASE_URL, PAYLOAD_SECRET, NEXT_PUBLIC_* (VAPID public), VAPID_PRIVATE_KEY, CRON_SECRET. **Нет SMTP_*** (go-live). Бэкап-конфиг будет в отдельном `/etc/trener/trener-backup.env`.
-- **Деплой:** авто при мерже (`deploy-prod.yml` workflow_run) ИЛИ `workflow_dispatch` (обходит migration-guard). Секрет репо `SSH_PRIVATE_KEY`. Релизы `/home/valstan/trener/releases/<sha>` + симлинк `current`, держим 3.
-- **G8-edge (может вернуться):** деплой иногда виснет на Ship — myjino-edge фильтрует IP GitHub-раннера. В эту сессию НЕ воспроизвёлся (оба деплоя прошли). Если зависнет на Ship — ретрай/подождать, либо фикс вручную через SSH с rmz4val (не фильтруется).
+- **Деплой:** авто при мерже (`deploy-prod.yml` workflow_run после CI) ИЛИ `workflow_dispatch` (обходит migration-guard). Секрет репо `SSH_PRIVATE_KEY`. Релизы `/home/valstan/trener/releases/<sha>` + симлинк `current`, держим 3.
+- **G8-edge (может вернуться):** деплой иногда виснет на Ship — myjino-edge фильтрует IP GitHub-раннера. В эту сессию НЕ воспроизвёлся. Если зависнет — ретрай/подождать, либо фикс вручную через SSH с rmz4val.
 
 ## Контекст — DEV (rmz4val, эта машина)
 
-- Профиль: [`docs/machines/rmz4val.md`](machines/README.md). Postgres **17** `postgresql-x64-17` (порт 5432), БД `trener_dev`, pnpm только `corepack pnpm` (10.15). `web/.env` (gitignored). **node v24** → standalone только в CI. gpg на dev есть, но gpg-агент капризен на кастомном GNUPGHOME (MSYS) — backup-roundtrip гонять на боксе.
-- Каркас: Payload 3.75 / Next 15.4, 11 коллекций, **75 юнит-тестов** зелёные. Миграции — `web/src/migrations/` (baseline + dedup_unique_indexes). Мержим вручную `gh pr merge --squash --delete-branch` по зелёному CI (#027).
+- Профиль: [`docs/machines/rmz4val.md`](machines/README.md). Postgres **17** `postgresql-x64-17` (порт 5432; стартовать `Start-Service`, иногда со 2-го раза), БД `trener_dev`, pnpm только `corepack pnpm` (10.15). `web/.env` (gitignored). **node v24** → standalone только в CI.
+- **Грабля cwd Bash-тула:** рабочая директория «залипает» между вызовами; `cd web && …` молча падает, если уже в `web`. Использовать `corepack pnpm -C web …` или проверять `pwd`.
+- **Скриншот превью сломан** (см. Заметки) — UI смотреть через `preview_eval`/`show_widget`.
+- Каркас: Payload 3.75 / Next 15.4, 11 коллекций, **75 юнит-тестов** зелёные. Мержим вручную `gh pr merge --squash --delete-branch` по зелёному CI (#027).
 
 ## Хвосты (не блокеры)
 
 - Каскады delete Player/User (FK `SET NULL` ⨯ `NOT NULL`) — beforeDelete-чистка, редкое admin-действие.
 - deprecation-warning `pnpm/action-setup@v4` на node20-раннере — косметика.
+- Залогиненный пользователь на `/` видит лендинг, не свой экран (роль-роутинг главной не сделан — требует БД на главной, сейчас она статична).
