@@ -11,9 +11,10 @@ import { coachSessionIds, isAdmin, isCoach, isParent } from '../access/roles'
 //
 // Уникальность (session × player): обеспечивается upsert'ом в эндпоинте /api/rsvp
 // (PR9: find existing → update|create), повторный тап меняет ответ, не плодит
-// записи. DB-уровневый partial-unique index на (session, player) — в hand-authored
-// миграции на M3 (критик C4: страховка от гонки; для MVP-масштаба одной школы
-// endpoint-upsert достаточен).
+// записи. DB-уровневый UNIQUE index на (session, player) (`indexes` ниже, C4) —
+// страховка от гонки двух параллельных тапов. Обычный compound-UNIQUE, не partial:
+// обе колонки NOT NULL, и Payload-конфиг partial не выражает (поток #017 требует
+// верификации схемы 1:1 с dev-push — см. docs/migrations.md).
 //
 // #015 / G90: write — server-mediated через эндпоинт (PR9), который проверяет
 // `player.parent == user.id` (родитель отвечает ТОЛЬКО за своих детей) и пишет
@@ -42,6 +43,9 @@ export const Rsvps: CollectionConfig = {
     singular: 'Ответ об участии',
     plural: 'Ответы об участии',
   },
+  // C4: один ответ на (тренировка × ребёнок). Страховка от гонки двух параллельных
+  // тапов поверх endpoint-upsert (/api/rsvp). Обе колонки NOT NULL → обычный UNIQUE.
+  indexes: [{ fields: ['session', 'player'], unique: true }],
   access: {
     create: () => false, // только эндпоинт /api/rsvp (overrideAccess после проверки player.parent)
     read: readRsvps,
