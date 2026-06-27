@@ -1,0 +1,13 @@
+[Unit]
+Description=trener — offsite-бэкап БД (pg_dump → gpg → [rclone])
+After=network.target
+# НЕ enable'ится деплоем: требует одноразовой настройки (trener-backup.env + public-ключ;
+# при push-модели — ещё rclone + remote). Включить ПОСЛЕ настройки (см. docs/backups.md):
+#   sudo systemctl enable --now trener-backup.timer
+
+[Service]
+Type=oneshot
+User=valstan
+# Конфиг бэкапа (отдельный от рантайм-env приложения). Обязателен → без него сервис падает.
+EnvironmentFile=/etc/trener/trener-backup.env
+ExecStart=/home/valstan/trener/bin/trener-backup.sh
