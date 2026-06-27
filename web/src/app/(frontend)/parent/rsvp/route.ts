@@ -8,7 +8,9 @@ import { relId } from '@/lib/relId'
 // POST { sessionId, playerId, response: 'going'|'not_going' } → ответ родителя об
 // участии ребёнка. #015: родитель отвечает ТОЛЬКО за своих детей (проверяем
 // player.parent == сессия). Upsert по (session × player): повторный тап меняет ответ,
-// не плодит записи (DB partial-unique придёт миграцией на M3, C4). server-mediated.
+// не плодит записи. DB-UNIQUE (session, player) (C4, миграция dedup_unique_indexes)
+// добивает гонку двух параллельных тапов: проигравший create словит violation → 500,
+// родитель ретраит → попадёт в update-ветку. server-mediated.
 export const dynamic = 'force-dynamic'
 
 export const POST = async (req: Request): Promise<Response> => {

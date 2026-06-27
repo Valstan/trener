@@ -51,6 +51,12 @@ export const Notifications: CollectionConfig = {
     singular: 'Уведомление',
     plural: 'Уведомления',
   },
+  // C4: одно уведомление = (session × parent) за волну. `changedAt` в ключе → dedup
+  // ровно по волне (новая волна = новый changedAt = новое уведомление; повторный
+  // фан-аут той же волны при гонке отбивается). Все три колонки NOT NULL → обычный
+  // UNIQUE (Payload-конфиг partial не выражает — поток #017 требует схему 1:1, см.
+  // docs/migrations.md). Фан-аут supersede'ит прошлые волны, их changedAt отличается.
+  indexes: [{ fields: ['session', 'parent', 'changedAt'], unique: true }],
   access: {
     create: () => false, // только фан-аут-хук (PR5, overrideAccess)
     read: readNotifications,
