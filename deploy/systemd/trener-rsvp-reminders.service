@@ -1,0 +1,16 @@
+[Unit]
+Description=trener — RSVP-напоминания нереспондентам (oneshot, дёргается таймером)
+# Эндпоинт локальный (127.0.0.1:3007) → нужен поднятый основной сервис.
+After=network.target trener.service
+Wants=trener.service
+
+[Service]
+Type=oneshot
+User=valstan
+# CRON_SECRET и пр. — из общего env-файла проекта (#008, root:valstan 0640).
+EnvironmentFile=/etc/trener/trener.env
+# Секрет шлём ЗАГОЛОВКОМ x-cron-secret (не ?secret= → не оседает в логах приложения).
+# /bin/sh -c нужен для env-expansion $CRON_SECRET в аргумент; --fail → ненулевой код на
+# HTTP>=400 (journal/таймер увидят сбой), --max-time страхует от зависа. Тело-JSON curl
+# печатает в stdout → попадает в journal (видно sessions/targets/sent при ручном прогоне).
+ExecStart=/bin/sh -c 'exec curl -sS --fail --max-time 60 -H "x-cron-secret: $CRON_SECRET" http://127.0.0.1:3007/cron/rsvp-reminders'
