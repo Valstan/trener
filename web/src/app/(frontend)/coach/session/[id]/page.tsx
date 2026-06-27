@@ -1,6 +1,5 @@
 import config from '@payload-config'
 import { headers as nextHeaders } from 'next/headers'
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
@@ -9,19 +8,13 @@ import { isAdmin, isCoach } from '@/access/roles'
 import { coachCanSeeSession, loadCoverage } from '@/lib/coverage'
 import { describeChange } from '@/lib/notifications/describe'
 
+import { AppShell } from '../../../components/AppShell'
 import { CoverageView } from './CoverageView'
 
 // Coverage-экран тренера по одной сессии: «приняли N из M» + список непринявших
 // (кому напомнить — H3: эскалация = тренер сам) + недостижимые (дети без родителя,
 // #059). Доступ: персонал, и только свои сессии (#015).
 export const dynamic = 'force-dynamic'
-
-const container: React.CSSProperties = {
-  maxWidth: 600,
-  margin: '0 auto',
-  padding: '2.5rem 1.25rem 4rem',
-  minHeight: '100vh',
-}
 
 const CoachSessionPage = async ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
@@ -52,12 +45,9 @@ const CoachSessionPage = async ({ params }: { params: Promise<{ id: string }> })
     : null
 
   return (
-    <main style={container}>
-      <p style={{ margin: '0 0 1rem' }}>
-        <Link href="/coach/schedule">← Расписание</Link>
-      </p>
+    <AppShell title="Тренировка" back={{ href: '/coach/schedule', label: 'Расписание' }}>
       <CoverageView sessionId={session.id} status={session.status} change={change} initial={coverage} />
-    </main>
+    </AppShell>
   )
 }
 

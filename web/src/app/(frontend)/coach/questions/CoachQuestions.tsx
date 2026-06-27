@@ -12,25 +12,8 @@ export type QuestionItem = {
   createdAt: string | null
 }
 
-const card = (status: QuestionItem['status']): React.CSSProperties => ({
-  padding: '0.9rem 1.05rem',
-  borderRadius: 10,
-  border: `1px solid ${status === 'new' ? '#2c7a4b' : '#1f3a2c'}`,
-  background: status === 'answered' ? '#0e2218' : '#11261c',
-  display: 'grid',
-  gap: '0.35rem',
-})
-
-const btn = (busy: boolean): React.CSSProperties => ({
-  padding: '0.45rem 0.9rem',
-  fontSize: '0.9rem',
-  cursor: busy ? 'default' : 'pointer',
-  borderRadius: 8,
-  border: 'none',
-  background: busy ? '#9aa6a0' : 'var(--accent)',
-  color: '#fff',
-  justifySelf: 'start',
-})
+const cardClass = (status: QuestionItem['status']): string =>
+  status === 'new' ? 'card card-accent stack-sm' : status === 'answered' ? 'card card-muted stack-sm' : 'card stack-sm'
 
 const fmt = (iso: string | null): string => {
   if (!iso) return ''
@@ -77,30 +60,44 @@ export const CoachQuestions = ({ items: initial }: { items: QuestionItem[] }) =>
     setBusy(null)
   }
 
-  if (items.length === 0) return <p style={{ color: 'var(--muted)' }}>Вопросов пока нет.</p>
+  if (items.length === 0)
+    return (
+      <div className="empty-state">
+        <span className="ic" aria-hidden>
+          💬
+        </span>
+        Вопросов пока нет.
+      </div>
+    )
 
   const sorted = [...items].sort((a, b) => order[a.status] - order[b.status] || (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
 
   return (
-    <div style={{ display: 'grid', gap: '0.6rem' }}>
+    <div className="stack-sm">
       {sorted.map((q) => (
-        <article key={q.id} style={card(q.status)}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'baseline' }}>
+        <article key={q.id} className={cardClass(q.status)}>
+          <div className="row-between" style={{ alignItems: 'baseline' }}>
             <strong>
-              {q.status === 'new' && <span style={{ color: 'var(--accent)', marginRight: '0.4rem' }}>•</span>}
+              {q.status === 'new' && <span className="dot" aria-hidden />}
               {q.parentName}
             </strong>
-            <span style={{ color: 'var(--muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{fmt(q.createdAt)}</span>
+            <span className="muted small" style={{ whiteSpace: 'nowrap' }}>{fmt(q.createdAt)}</span>
           </div>
-          <div style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>
+          <div className="muted small">
             {q.groupName ?? 'Группа'}
             {q.parentPhone ? ` · ${q.parentPhone}` : ''}
           </div>
-          <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{q.body}</p>
+          <p className="pre">{q.body}</p>
           {q.status === 'answered' ? (
-            <span style={{ color: 'var(--accent)', fontWeight: 600 }}>✓ Отвечено</span>
+            <span className="success-text">✓ Отвечено</span>
           ) : (
-            <button type="button" style={btn(busy === q.id)} disabled={busy === q.id} onClick={() => markAnswered(q.id)}>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              style={{ justifySelf: 'start' }}
+              disabled={busy === q.id}
+              onClick={() => markAnswered(q.id)}
+            >
               {busy === q.id ? 'Отмечаем…' : 'Ответил'}
             </button>
           )}

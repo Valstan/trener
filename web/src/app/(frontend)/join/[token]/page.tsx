@@ -12,13 +12,6 @@ import { JoinForm } from './JoinForm'
 // письму (доказанное владение email). Токен не гасим (peek без мутации).
 export const dynamic = 'force-dynamic'
 
-const container: React.CSSProperties = {
-  maxWidth: 480,
-  margin: '0 auto',
-  padding: '4rem 1.5rem',
-  minHeight: '100vh',
-}
-
 const JoinPage = async ({ params }: { params: Promise<{ token: string }> }) => {
   const { token } = await params
 
@@ -32,12 +25,17 @@ const JoinPage = async ({ params }: { params: Promise<{ token: string }> }) => {
 
   if (!preview.ok) {
     return (
-      <main style={container}>
-        <h1 style={{ fontSize: '1.5rem' }}>Приглашение недействительно</h1>
-        <p style={{ color: 'var(--muted)' }}>
+      <main className="page" style={{ maxWidth: 460 }}>
+        <div style={{ textAlign: 'center', padding: '2rem 0 0.5rem' }}>
+          <div aria-hidden style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>
+            ⚽
+          </div>
+          <h1 className="page-title">Приглашение недействительно</h1>
+        </div>
+        <p className="muted">
           Ссылка-приглашение истекла или уже использована. Попросите тренера прислать новую.
         </p>
-        <p>
+        <p className="note" style={{ textAlign: 'center', marginTop: '1.5rem' }}>
           <Link href="/">← На главную</Link>
         </p>
       </main>
@@ -45,8 +43,15 @@ const JoinPage = async ({ params }: { params: Promise<{ token: string }> }) => {
   }
 
   return (
-    <main style={container}>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Приглашение в Футбольную школу</h1>
+    <main className="page" style={{ maxWidth: 460 }}>
+      <div style={{ textAlign: 'center', padding: '2rem 0 1rem' }}>
+        <div aria-hidden style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>
+          ⚽
+        </div>
+        <h1 className="page-title" style={{ marginBottom: '0.5rem' }}>
+          Приглашение в школу
+        </h1>
+      </div>
       <p style={{ marginTop: 0 }}>
         Вас приглашают как родителя ребёнка <strong>{preview.playerName}</strong>
         {preview.groupName ? (
@@ -57,7 +62,7 @@ const JoinPage = async ({ params }: { params: Promise<{ token: string }> }) => {
         ) : null}
         .
       </p>
-      <p style={{ color: 'var(--muted)' }}>
+      <p className="muted">
         Введите свой email — пришлём ссылку для подтверждения и входа. Пароль не нужен.
       </p>
       <JoinForm token={token} />

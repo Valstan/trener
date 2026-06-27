@@ -34,26 +34,24 @@ export const CompleteLogin = ({ token }: { token: string }) => {
   }
 
   return (
-    <>
-      <h1 style={{ fontSize: '1.5rem' }}>Вход в Футбольную школу</h1>
-      <p style={{ color: 'var(--muted)' }}>Нажмите кнопку, чтобы завершить вход.</p>
+    <div style={{ textAlign: 'center', paddingTop: '2rem' }}>
+      <div aria-hidden style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>
+        ⚽
+      </div>
+      <h1 className="page-title">Вход в Футбольную школу</h1>
+      <p className="muted" style={{ marginBottom: '1.5rem' }}>
+        Нажмите кнопку, чтобы завершить вход.
+      </p>
       <button
         type="button"
         onClick={onLogin}
         disabled={loading}
-        style={{
-          padding: '0.7rem 1.25rem',
-          fontSize: '1rem',
-          cursor: loading ? 'default' : 'pointer',
-          borderRadius: 8,
-          border: 'none',
-          background: '#0b1f17',
-          color: '#fff',
-        }}
+        className="btn btn-primary btn-block"
+        style={{ maxWidth: 320, margin: '0 auto' }}
       >
         {loading ? 'Входим…' : 'Войти в приложение'}
       </button>
-      {error && <p style={{ color: '#c0392b', marginTop: '1rem' }}>{error}</p>}
-    </>
+      {error && <p className="error-text" style={{ marginTop: '1rem' }}>{error}</p>}
+    </div>
   )
 }

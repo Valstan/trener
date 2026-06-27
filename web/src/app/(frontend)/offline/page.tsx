@@ -12,26 +12,20 @@ export const metadata: Metadata = {
 }
 
 const OfflinePage = () => (
-  <main
-    style={{
-      maxWidth: 640,
-      margin: '0 auto',
-      padding: '4rem 1.5rem',
-      minHeight: '100vh',
-      textAlign: 'center',
-    }}
-  >
-    <div style={{ fontSize: '3rem', marginBottom: '1rem' }} aria-hidden>
-      ⚽
+  <main className="page" style={{ textAlign: 'center', maxWidth: 480 }}>
+    <div style={{ paddingTop: '3rem' }}>
+      <div style={{ fontSize: '3rem', marginBottom: '1rem' }} aria-hidden>
+        📡
+      </div>
+      <h1 className="page-title">Нет соединения</h1>
+      <p className="muted">
+        Интернет сейчас недоступен. Уже открытые страницы остаются под рукой, а как только связь
+        вернётся — расписание и уведомления обновятся сами.
+      </p>
+      <p className="note" style={{ marginTop: '1.5rem' }}>
+        <Link href="/">На главную →</Link>
+      </p>
     </div>
-    <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Нет соединения</h1>
-    <p style={{ color: 'var(--muted)' }}>
-      Интернет сейчас недоступен. Уже открытые страницы остаются под рукой, а как только связь
-      вернётся — расписание и уведомления обновятся сами.
-    </p>
-    <p>
-      <Link href="/">На главную →</Link>
-    </p>
   </main>
 )
 

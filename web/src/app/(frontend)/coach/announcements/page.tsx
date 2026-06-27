@@ -1,6 +1,5 @@
 import config from '@payload-config'
 import { headers as nextHeaders } from 'next/headers'
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
@@ -9,18 +8,12 @@ import { isAdmin, isCoach } from '@/access/roles'
 import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 
+import { AppShell, COACH_TABS } from '../../components/AppShell'
 import { AnnouncementComposer } from './AnnouncementComposer'
 
 // Объявления тренера: компоновщик (выбор группы + текст + флаг пуша) + список своих
 // прошлых объявлений. Доступ: персонал; всё читается scoped (тренер — свои группы, #015).
 export const dynamic = 'force-dynamic'
-
-const container: React.CSSProperties = {
-  maxWidth: 640,
-  margin: '0 auto',
-  padding: '2.5rem 1.25rem 4rem',
-  minHeight: '100vh',
-}
 
 const CoachAnnouncementsPage = async () => {
   const payload = await getPayload({ config })
@@ -52,53 +45,41 @@ const CoachAnnouncementsPage = async () => {
   const groupNameById = new Map(groupOptions.map((g) => [g.id, g.name]))
 
   return (
-    <main style={container}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem' }}>
-        <h1 style={{ fontSize: '1.4rem', margin: '0 0 1.25rem' }}>Объявления</h1>
-        <Link href="/coach/schedule" style={{ fontSize: '0.9rem' }}>
-          ← Расписание
-        </Link>
-      </div>
-
+    <AppShell title="Объявления" tabs={COACH_TABS} active="announcements">
       {groupOptions.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>У вас пока нет групп — объявление отправить некому.</p>
+        <div className="empty-state">
+          <span className="ic" aria-hidden>
+            📣
+          </span>
+          У вас пока нет групп — объявление отправить некому.
+        </div>
       ) : (
         <AnnouncementComposer groups={groupOptions} />
       )}
 
-      <h2 style={{ fontSize: '1.05rem', margin: '2rem 0 0.75rem' }}>Отправленные</h2>
+      <h2 className="section-title">Отправленные</h2>
       {announcements.docs.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>Объявлений пока нет.</p>
+        <p className="muted">Объявлений пока нет.</p>
       ) : (
-        <div style={{ display: 'grid', gap: '0.6rem' }}>
+        <div className="stack-sm">
           {announcements.docs.map((a) => (
-            <article
-              key={a.id}
-              style={{
-                padding: '0.85rem 1rem',
-                borderRadius: 10,
-                border: '1px solid #1f3a2c',
-                background: '#11261c',
-                display: 'grid',
-                gap: '0.3rem',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+            <article key={a.id} className="card stack-sm">
+              <div className="row-between" style={{ alignItems: 'baseline' }}>
                 <strong>{a.title}</strong>
-                <span style={{ color: 'var(--muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                <span className="muted small" style={{ whiteSpace: 'nowrap' }}>
                   {a.publishedAt ? formatDateTime(a.publishedAt) : ''}
                 </span>
               </div>
-              <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
+              <div className="muted small">
                 {groupNameById.get(relId(a.group) ?? -1) ?? 'Группа'}
                 {a.triggersPush ? ' · 🔔 с пушем' : ''}
               </div>
-              <p style={{ margin: 0, whiteSpace: 'pre-wrap' }}>{a.body}</p>
+              <p className="pre">{a.body}</p>
             </article>
           ))}
         </div>
       )}
-    </main>
+    </AppShell>
   )
 }
 

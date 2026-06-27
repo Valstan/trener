@@ -4,32 +4,24 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import type { Group, Player, Rsvp, TrainingSession } from '@/payload-types'
+import type { Player, Rsvp, TrainingSession } from '@/payload-types'
 import { isParent } from '@/access/roles'
 import { describeChange } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 import { rsvpKey } from '@/lib/rsvp'
 
-import { AnnouncementsFeed, type FeedItem } from './AnnouncementsFeed'
+import { AppShell, PARENT_TABS } from '../components/AppShell'
 import { ParentInbox, type InboxItem } from './ParentInbox'
 import { PushSubscribe } from './PushSubscribe'
-import { QuestionForm } from './QuestionForm'
 
-// Экран родителя: очередь непринятых изменений расписания + подтверждение «вижу».
-// Первичный in-app гарант доведения (kickoff §6) — не зависит от пуша.
+// Вкладка «Изменения» родителя: очередь непринятых изменений расписания + подтверждение
+// «вижу». Первичный in-app гарант доведения (kickoff §6) — не зависит от пуша.
 //
 // Доступ: только залогиненный родитель. Уведомления читаются СВОИ (scoped read,
 // overrideAccess:false). Детали сессии (время/место + что изменилось) дотягиваются
 // server-trusted (overrideAccess:true), т.к. служебные поля сессии field-locked на
 // родителя (152-ФЗ); наружу уходит уже готовый текст (describeChange), не сырые поля.
 export const dynamic = 'force-dynamic'
-
-const container: React.CSSProperties = {
-  maxWidth: 560,
-  margin: '0 auto',
-  padding: '2.5rem 1.25rem 4rem',
-  minHeight: '100vh',
-}
 
 const ParentPage = async () => {
   const payload = await getPayload({ config })
@@ -118,73 +110,16 @@ const ParentPage = async () => {
     return { id: n.id, sessionId, type: n.type, status: n.status, title: desc.title, lines: desc.lines, children }
   })
 
-  // Лента объявлений (scoped read — родитель видит группы своих детей; F1: вне coverage).
-  const announcements = await payload.find({
-    collection: 'announcements',
-    sort: '-publishedAt',
-    limit: 20,
-    depth: 0,
-    pagination: false,
-    user,
-    overrideAccess: false,
-  })
-  const annGroupIds = [...new Set(announcements.docs.map((a) => relId(a.group)).filter((v): v is number => v != null))]
-  const annGroups: Group[] = annGroupIds.length
-    ? (
-        await payload.find({
-          collection: 'groups',
-          where: { id: { in: annGroupIds } },
-          depth: 0,
-          pagination: false,
-          overrideAccess: true,
-        })
-      ).docs
-    : []
-  const annGroupNameById = new Map(annGroups.map((g) => [g.id, g.name]))
-  const feedItems: FeedItem[] = announcements.docs.map((a) => ({
-    id: a.id,
-    title: a.title,
-    body: a.body,
-    groupName: annGroupNameById.get(relId(a.group) ?? -1) ?? null,
-    publishedAt: a.publishedAt ?? null,
-  }))
-
-  // Группы родителя (где есть дети) — для формы «вопрос тренеру».
-  const myPlayers = await payload.find({
-    collection: 'players',
-    where: { parent: { equals: user.id } },
-    depth: 0,
-    limit: 200,
-    pagination: false,
-    overrideAccess: true,
-  })
-  const myGroupIds = [...new Set(myPlayers.docs.map((p) => relId(p.group)).filter((v): v is number => v != null))]
-  const myGroups = myGroupIds.length
-    ? (
-        await payload.find({
-          collection: 'groups',
-          where: { id: { in: myGroupIds } },
-          sort: 'name',
-          depth: 0,
-          pagination: false,
-          overrideAccess: true,
-        })
-      ).docs.map((g) => ({ id: g.id, name: g.name }))
-    : []
-
   return (
-    <main style={container}>
-      <h1 style={{ fontSize: '1.4rem', margin: '0 0 0.25rem' }}>Изменения в расписании</h1>
-      <p style={{ color: 'var(--muted)', margin: '0 0 1.25rem' }}>
+    <AppShell title="Изменения" tabs={PARENT_TABS} active="changes">
+      <p className="muted" style={{ margin: '0 0 1.25rem' }}>
         Отметьте «Вижу», чтобы тренер знал, что вы в курсе.
       </p>
       <div style={{ marginBottom: '1.25rem' }}>
         <PushSubscribe />
       </div>
       <ParentInbox items={items} />
-      <AnnouncementsFeed items={feedItems} />
-      <QuestionForm groups={myGroups} />
-    </main>
+    </AppShell>
   )
 }
 

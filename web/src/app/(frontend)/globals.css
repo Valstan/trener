@@ -1,8 +1,53 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Дизайн-система «Футбольная школа» — мобильное PWA.
+   Тёмно-зелёная спортивная тема (brand themeColor #0b1f17). Токены + компонентные
+   классы, чтобы экраны не плодили inline-стили. Mobile-first; учитываем iOS
+   safe-area (env(safe-area-inset-*)) для standalone-режима.
+   ───────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --bg: #0b1f17;
+  /* Поверхности (тёмная тема) */
+  --bg: #0a1813;
+  --bg-elev: #0f221a;
+  --surface: #11261c;
+  --surface-2: #15301f;
+  --surface-hover: #173726;
+  --border: #21402f;
+  --border-strong: #2c7a4b;
+
+  /* Текст */
   --fg: #f3f7f4;
-  --accent: #16a34a;
   --muted: #9fb4a8;
+  --faint: #6f857a;
+
+  /* Акцент / семантика */
+  --accent: #22c55e;
+  --accent-hover: #16a34a;
+  --accent-soft: #163a26;
+  --accent-contrast: #07150d;
+  --danger: #f0876f;
+  --danger-soft: #3a201a;
+  --danger-border: #a14a3a;
+  --warning: #e7c14a;
+  --info: #6fb6e0;
+
+  /* Радиусы */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-pill: 999px;
+
+  /* Тени */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 12px 40px rgba(0, 0, 0, 0.45);
+
+  /* Раскладка */
+  --app-width: 600px;
+  --header-h: 56px;
+  --tabbar-h: 64px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 * {
@@ -22,9 +67,465 @@ body {
     Roboto,
     sans-serif;
   line-height: 1.5;
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* Спокойный градиент-фон вместо плоской заливки */
+  background-image: radial-gradient(120% 60% at 50% -10%, #102a1f 0%, var(--bg) 55%);
+  background-attachment: fixed;
+  min-height: 100dvh;
 }
 
 a {
   color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+button {
+  font-family: inherit;
+}
+
+/* ── Раскладка приложения ───────────────────────────────────────────────── */
+
+/* Колонка контента экрана. .has-tabbar добавляет отступ снизу под нижние табы. */
+.page {
+  max-width: var(--app-width);
+  margin: 0 auto;
+  padding: 1.5rem 1.15rem calc(2rem + var(--safe-bottom));
+  min-height: 100dvh;
+}
+.page.has-tabbar {
+  padding-bottom: calc(var(--tabbar-h) + 1.5rem + var(--safe-bottom));
+}
+
+/* Шапка экрана, липкая сверху */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  height: calc(var(--header-h) + var(--safe-top));
+  padding: var(--safe-top) 1.15rem 0;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.app-header .brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+.app-header .spacer {
+  flex: 1;
+}
+.app-header .app-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+.app-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: -0.4rem;
+  border-radius: var(--r-sm);
+  color: var(--fg);
+  font-size: 1.5rem;
+  line-height: 1;
+  text-decoration: none;
+}
+.app-back:hover {
+  background: var(--surface-hover);
+  text-decoration: none;
+}
+
+/* Нижняя навигация (нативный мобильный паттерн) */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  gap: 0.25rem;
+  height: calc(var(--tabbar-h) + var(--safe-bottom));
+  padding-bottom: var(--safe-bottom);
+  background: color-mix(in srgb, var(--bg-elev) 92%, transparent);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid var(--border);
+}
+.tab-bar a {
+  flex: 1 1 0;
+  max-width: 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0.5rem 0.25rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+.tab-bar a .ic {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+.tab-bar a[aria-current='page'] {
+  color: var(--accent);
+}
+.tab-bar a .badge-dot {
+  position: absolute;
+  transform: translate(0.9rem, -0.6rem);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── Типографика заголовков экрана ──────────────────────────────────────── */
+
+.page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+}
+.page-sub {
+  color: var(--muted);
+  margin: 0 0 1.5rem;
+  font-size: 0.95rem;
+}
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 2rem 0 0.85rem;
+}
+
+/* ── Карточки ───────────────────────────────────────────────────────────── */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 1rem 1.1rem;
+  box-shadow: var(--shadow-sm);
+}
+.card-accent {
+  border-color: var(--border-strong);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface));
+}
+.card-muted {
+  background: var(--bg-elev);
+  border-color: var(--border);
+}
+.stack {
+  display: grid;
+  gap: 0.85rem;
+}
+.stack-sm {
+  display: grid;
+  gap: 0.5rem;
+}
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+/* ── Кнопки ─────────────────────────────────────────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px; /* тач-таргет */
+  padding: 0.6rem 1.15rem;
+  border-radius: var(--r-sm);
+  border: 1px solid transparent;
+  background: var(--surface-2);
+  color: var(--fg);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.05s ease;
+  -webkit-tap-highlight-color: transparent;
+  text-decoration: none;
+}
+.btn:hover {
+  text-decoration: none;
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+.btn-ghost {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--fg);
+}
+.btn-ghost:hover {
+  background: var(--surface-hover);
+}
+.btn-danger {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+.btn-block {
+  width: 100%;
+}
+.btn-sm {
+  min-height: 36px;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.85rem;
+  border-radius: var(--r-sm);
+}
+
+/* Сегмент-переключатель (RSVP: придём / не придём) */
+.seg {
+  display: inline-flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+.seg-btn {
+  min-height: 36px;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+}
+.seg-btn.on {
+  background: var(--accent-soft);
+  border-color: var(--border-strong);
+}
+.seg-btn.on-neg {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+/* ── Бейджи / пилюли статусов ───────────────────────────────────────────── */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: var(--r-pill);
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  background: var(--bg-elev);
+  white-space: nowrap;
+}
+.badge-accent {
+  color: var(--accent);
+  border-color: var(--border-strong);
+  background: var(--accent-soft);
+}
+.badge-warn {
+  color: var(--warning);
+  border-color: #5a4d1f;
+  background: #2c2710;
+}
+.badge-danger {
+  color: var(--danger);
+  border-color: var(--danger-border);
+  background: var(--danger-soft);
+}
+
+/* ── Поля ввода ─────────────────────────────────────────────────────────── */
+
+.field {
+  display: grid;
+  gap: 0.4rem;
+}
+.field label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+.input,
+.textarea,
+.select {
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  color: var(--fg);
+  font-size: 1rem;
+  font-family: inherit;
+}
+.input:focus,
+.textarea:focus,
+.select:focus {
+  outline: none;
+  border-color: var(--border-strong);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+/* ── Прочее ─────────────────────────────────────────────────────────────── */
+
+.empty-state {
+  text-align: center;
+  color: var(--muted);
+  padding: 2.5rem 1rem;
+}
+.empty-state .ic {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.note {
+  font-size: 0.85rem;
+  color: var(--faint);
+}
+.muted {
+  color: var(--muted);
+}
+.small {
+  font-size: 0.85rem;
+}
+.pre {
+  white-space: pre-wrap;
+  margin: 0;
+}
+.error-text {
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+.divider {
+  height: 1px;
+  background: var(--border);
+  border: 0;
+  margin: 1.5rem 0;
+}
+.list-reset {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+/* Аккуратный маркер «новое» */
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+  margin-right: 0.45rem;
+  vertical-align: middle;
+}
+
+/* Крупная цифра coverage «приняли N из M» */
+.big-stat {
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Полоса прогресса */
+.progress {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--bg);
+  overflow: hidden;
+}
+.progress > i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  transition: width 0.4s ease;
+}
+
+/* Строка списка «не подтвердили» */
+.pending-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  font-size: 0.92rem;
+}
+.pending-row.cold {
+  background: var(--danger-soft);
+}
+
+/* Чекбокс-строка (согласие, флаг пуша) */
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+.check-row input {
+  margin-top: 0.2rem;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  flex: none;
+}
+
+/* Свёрнутый «вопрос тренеру» и подобные секции */
+.success-text {
+  color: var(--accent);
+  font-weight: 600;
 }

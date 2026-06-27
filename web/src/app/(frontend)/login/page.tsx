@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import React from 'react'
 
 import { LoginForm } from './LoginForm'
@@ -9,20 +10,21 @@ export const metadata: Metadata = {
   title: 'Вход — Футбольная школа',
 }
 
-const container: React.CSSProperties = {
-  maxWidth: 480,
-  margin: '0 auto',
-  padding: '4rem 1.5rem',
-  minHeight: '100vh',
-}
-
 const LoginPage = () => (
-  <main style={container}>
-    <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Вход</h1>
-    <p style={{ color: 'var(--muted)', marginTop: 0 }}>
-      Введите email — пришлём ссылку для входа. Пароль не нужен.
-    </p>
+  <main className="page" style={{ maxWidth: 460 }}>
+    <div style={{ textAlign: 'center', padding: '2rem 0 1.5rem' }}>
+      <div aria-hidden style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>
+        ⚽
+      </div>
+      <h1 style={{ fontSize: '1.6rem', margin: '0 0 0.35rem' }}>Вход</h1>
+      <p style={{ color: 'var(--muted)', margin: 0 }}>
+        Введите email — пришлём ссылку для входа. Пароль не нужен.
+      </p>
+    </div>
     <LoginForm />
+    <p className="note" style={{ textAlign: 'center', marginTop: '2rem' }}>
+      <Link href="/">← На главную</Link>
+    </p>
   </main>
 )
 

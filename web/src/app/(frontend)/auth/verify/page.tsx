@@ -12,13 +12,6 @@ import { CompleteLogin } from './CompleteLogin'
 // (кнопка → /auth/complete-login), чтобы префетч ссылки почтовиком не сжёг вход.
 export const dynamic = 'force-dynamic'
 
-const container: React.CSSProperties = {
-  maxWidth: 480,
-  margin: '0 auto',
-  padding: '4rem 1.5rem',
-  minHeight: '100vh',
-}
-
 const VerifyPage = async ({
   searchParams,
 }: {
@@ -37,19 +30,20 @@ const VerifyPage = async ({
   }
 
   return (
-    <main style={container}>
+    <main className="page" style={{ maxWidth: 460 }}>
       {valid && token ? (
         <CompleteLogin token={token} />
       ) : (
-        <>
-          <h1 style={{ fontSize: '1.5rem' }}>Ссылка недействительна</h1>
-          <p style={{ color: 'var(--muted)' }}>
-            Ссылка для входа истекла или уже была использована. Запросите новую.
-          </p>
-          <p>
+        <div style={{ textAlign: 'center', paddingTop: '2rem' }}>
+          <div aria-hidden style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>
+            ⚽
+          </div>
+          <h1 className="page-title">Ссылка недействительна</h1>
+          <p className="muted">Ссылка для входа истекла или уже была использована. Запросите новую.</p>
+          <p className="note" style={{ marginTop: '1.5rem' }}>
             <Link href="/login">← Запросить ссылку заново</Link>
           </p>
-        </>
+        </div>
       )}
     </main>
   )

@@ -1,6 +1,5 @@
 import config from '@payload-config'
 import { headers as nextHeaders } from 'next/headers'
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
@@ -9,19 +8,13 @@ import type { Group, User } from '@/payload-types'
 import { isAdmin, isCoach } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
+import { AppShell, COACH_TABS } from '../../components/AppShell'
 import { CoachQuestions, type QuestionItem } from './CoachQuestions'
 
 // Инбокс вопросов тренеру (M3-PR11). Доступ: персонал; читается scoped (тренер — вопросы
 // своих групп, #015). Имя/контакт родителя тренеру виден (он ведёт ребёнка) — для ответа
 // оффлайн. Вне coverage (F1). Двусторонняя переписка — M4.
 export const dynamic = 'force-dynamic'
-
-const container: React.CSSProperties = {
-  maxWidth: 640,
-  margin: '0 auto',
-  padding: '2.5rem 1.25rem 4rem',
-  minHeight: '100vh',
-}
 
 const CoachQuestionsPage = async () => {
   const payload = await getPayload({ config })
@@ -71,15 +64,9 @@ const CoachQuestionsPage = async () => {
   })
 
   return (
-    <main style={container}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem' }}>
-        <h1 style={{ fontSize: '1.4rem', margin: '0 0 1.25rem' }}>Вопросы родителей</h1>
-        <Link href="/coach/schedule" style={{ fontSize: '0.9rem' }}>
-          ← Расписание
-        </Link>
-      </div>
+    <AppShell title="Вопросы родителей" tabs={COACH_TABS} active="questions">
       <CoachQuestions items={items} />
-    </main>
+    </AppShell>
   )
 }
 

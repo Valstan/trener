@@ -18,16 +18,6 @@ type State = 'checking' | 'unsupported' | 'ios-needs-install' | 'ready' | 'subsc
 
 const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
-const banner: React.CSSProperties = {
-  padding: '0.8rem 1rem',
-  borderRadius: 10,
-  border: '1px solid #1f3a2c',
-  background: '#11261c',
-  fontSize: '0.92rem',
-  display: 'grid',
-  gap: '0.5rem',
-}
-
 // Подписка на web-push по жесту пользователя (требование браузеров). iOS-гард: пуш
 // доступен только в УСТАНОВЛЕННОМ PWA (16.4+) — иначе подсказываем установить.
 // Корректность от пуша НЕ зависит (in-app очередь первична) — это апгрейд доставки.
@@ -79,17 +69,17 @@ export const PushSubscribe = () => {
 
   if (state === 'subscribed') {
     return (
-      <div style={banner}>
-        <span style={{ color: 'var(--accent)' }}>🔔 Уведомления включены</span>
+      <div className="card stack-sm">
+        <span className="success-text">🔔 Уведомления включены</span>
       </div>
     )
   }
 
   if (state === 'ios-needs-install') {
     return (
-      <div style={banner}>
+      <div className="card stack-sm">
         <strong>Включите уведомления</strong>
-        <span style={{ color: 'var(--muted)' }}>
+        <span className="muted small">
           На iPhone сначала добавьте приложение на экран «Домой» (кнопка «Поделиться» → «На экран
           „Домой“»), затем откройте его и включите уведомления.
         </span>
@@ -99,9 +89,9 @@ export const PushSubscribe = () => {
 
   if (state === 'denied') {
     return (
-      <div style={banner}>
+      <div className="card stack-sm">
         <strong>Уведомления отключены</strong>
-        <span style={{ color: 'var(--muted)' }}>
+        <span className="muted small">
           Разрешите уведомления в настройках браузера, чтобы узнавать об изменениях быстрее. Даже без
           них изменения видны здесь, в приложении.
         </span>
@@ -111,9 +101,9 @@ export const PushSubscribe = () => {
 
   // ready
   return (
-    <div style={banner}>
+    <div className="card card-accent stack-sm">
       <strong>Уведомления об изменениях</strong>
-      <span style={{ color: 'var(--muted)' }}>
+      <span className="muted small">
         Включите пуш, чтобы узнавать о переносах и отменах сразу. Это ускорение — изменения в любом
         случае видны в приложении.
       </span>
@@ -121,15 +111,8 @@ export const PushSubscribe = () => {
         type="button"
         onClick={subscribe}
         disabled={state === 'busy'}
-        style={{
-          justifySelf: 'start',
-          padding: '0.5rem 1rem',
-          borderRadius: 8,
-          border: 'none',
-          background: 'var(--accent)',
-          color: '#fff',
-          cursor: state === 'busy' ? 'default' : 'pointer',
-        }}
+        className="btn btn-primary btn-sm"
+        style={{ justifySelf: 'start' }}
       >
         {state === 'busy' ? 'Включаю…' : 'Включить уведомления'}
       </button>
