@@ -4,7 +4,9 @@ Description=trener — ежедневный offsite-бэкап БД (03:30 MSK)
 [Timer]
 # Off-peak; бокс в Europe/Moscow (зону пиним явно). Бэкап не time-critical → широкий джиттер.
 OnCalendar=*-*-* 03:30:00 Europe/Moscow
-Persistent=true         # пропущенный запуск (бокс был выключен) — выполнить при старте
+# Пропущенный запуск (бокс был выключен) — выполнить при старте.
+# (systemd НЕ допускает inline-комментарии на строке директивы — только отдельной строкой.)
+Persistent=true
 RandomizedDelaySec=10m
 AccuracySec=1m
 
