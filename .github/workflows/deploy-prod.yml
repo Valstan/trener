@@ -65,7 +65,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
+          fetch-depth: 2 # для migration-guard: git diff HEAD~1 HEAD
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Migration-guard — упасть, если в коммите новые Payload-миграции
+        working-directory: . # иначе git pathspec резолвится от web/ (default) → web/web/* → guard молчит
+        # Миграции на прод накатываются ОТДЕЛЬНО и ДО кода (apply-migration.yml, нативный
+        # `payload migrate` по туннелю — НЕ через этот деплой). Здесь — лишь предохранитель:
+        # если merge добавил web/src/migrations/<ts>.ts, авто-деплой (workflow_run) падает,
+        # чтобы код не уехал раньше схемы. Применив миграцию, деплой запускают вручную через
+        # workflow_dispatch (ниже guard пропускается = «схема применена»). index.ts не в счёт
+        # (это реестр, его правит каждая миграция). См. docs/migrations.md.
+        run: |
+          set -e
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "workflow_dispatch — миграции считаем применёнными вручную, guard пропущен."
+            exit 0
+          fi
+          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=A HEAD~1 HEAD -- 'web/src/migrations/*.ts' 2>/dev/null || true)
+          NEW_MIGRATIONS=$(echo "${NEW_MIGRATIONS}" | grep -v '^web/src/migrations/index\.ts$' || true)
+          if [ -n "${NEW_MIGRATIONS}" ]; then
+            echo "::error::В коммите новые Payload-миграции — их надо накатить ДО кода:"
+            echo "${NEW_MIGRATIONS}"
+            echo ""
+            echo "Порядок:"
+            echo "  1. Actions → «Apply DB migration (manual)» → Run workflow (на нужной ветке)."
+            echo "  2. Затем Actions → «Deploy to production» → Run workflow (workflow_dispatch обходит этот guard)."
+            exit 1
+          fi
+          echo "Новых миграций нет — продолжаем деплой."
 
       - name: Setup SSH
         working-directory: .

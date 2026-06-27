@@ -1,0 +1,143 @@
+name: Apply DB migration (manual)
+
+# Накатывает Payload-миграции на ПРОД нативным `payload migrate` — запускается ВРУЧНУЮ
+# (workflow_dispatch) ДО деплоя кода. После наката код едет штатным deploy-prod.yml через
+# workflow_dispatch (migration-guard пропускает dispatch как «схема применена вручную»).
+#
+# ПОЧЕМУ из CI, а не на боксе: прод-артефакт — standalone (runtime-only), payload-CLI в нём
+# нет → `payload migrate` на боксе недоступен. Раннер же имеет полный node_modules после
+# install. БД достаём коротким SSH-туннелем к localhost:5432 бокса; туннель живёт только
+# внутри одного шага и гасится trap'ом (а раннер эфемерный — даже утёкший форвард умрёт с
+# VM, в отличие от локальных туннелей #050/G103).
+#
+# ПОЧЕМУ migrate, а не psql -f .sql (расхождение с #017 у GONBA/Sabantuy): единый источник
+# правды — `.ts` (ничему не дрейфовать), реестр пишется нативно, и каждая миграция идёт
+# ТРАНЗАКЦИЕЙ (откат при ошибке) — у сырого `psql -f` без BEGIN/COMMIT падение оставляет
+# схему наполовину применённой.
+#
+# NODE_ENV=production → push в payload.config выключен (нет drizzle y/N-зависа).
+# Применение ДО мержа → запускать на ветке фичи: gh workflow run apply-migration.yml
+#   --ref <feature-branch>   (G28: dispatch без --ref чекаутит main, где файла ещё нет).
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Только migrate:status (показать pending, ничего не применять)'
+        type: boolean
+        default: false
+
+concurrency:
+  # Сериализуем все операции с прод-схемой (этот workflow + apply-before-deploy).
+  group: prod-db-trener
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # payload.config требует непустой secret для init; миграции его не используют
+      # криптографически. Реальный секрет — на боксе в /etc/trener/trener.env.
+      PAYLOAD_SECRET: migrate-time-only-not-baked
+      NEXT_PUBLIC_SERVER_URL: https://xn--e1afpni.xn--80adkdyec4j.xn--p1ai
+      # Локальный конец туннеля: на раннере слушаем 15432 → форвардим в localhost:5432 бокса.
+      TUNNEL_PORT: '15432'
+
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        # ref = ветка, выбранная при dispatch (для apply-before-merge — ветка фичи).
+
+      - name: Setup SSH
+        working-directory: .
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          set -e
+          if [ -z "${SSH_PRIVATE_KEY}" ]; then
+            echo "::error::Secret SSH_PRIVATE_KEY не задан."
+            exit 1
+          fi
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 831d0ce99bdf.vps.myjino.ru >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<'EOF'
+          Host TRENERBOX
+            HostName 831d0ce99bdf.vps.myjino.ru
+            Port 22
+            User valstan
+            IdentityFile ~/.ssh/id_ed25519
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Migrate over SSH tunnel
+        env:
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          set -e
+          # Прод DATABASE_URL читаем с бокса (роль/пароль в /etc/trener/trener.env, #008).
+          PROD_DB=$(ssh TRENERBOX "grep '^DATABASE_URL=' /etc/trener/trener.env | head -1" \
+            | sed 's/^DATABASE_URL=//; s/^"//; s/"$//' | tr -d '\r')
+          if [ -z "$PROD_DB" ]; then
+            echo "::error::Не прочитал DATABASE_URL с бокса."
+            exit 1
+          fi
+          # Открываем форвард localhost:$TUNNEL_PORT(раннер) → 127.0.0.1:5432(бокс).
+          # ExitOnForwardFailure=yes → ssh не уйдёт в фон, если порт занять не удалось.
+          ssh -o ExitOnForwardFailure=yes -fNL "${TUNNEL_PORT}:127.0.0.1:5432" TRENERBOX
+          TUNNEL_PID=$(pgrep -f "${TUNNEL_PORT}:127.0.0.1:5432" | head -1)
+          trap 'kill "$TUNNEL_PID" 2>/dev/null || true' EXIT
+          sleep 2
+
+          # Перецелить URL на локальный конец туннеля: меняем ТОЛЬКО host:port бокса
+          # (127.0.0.1:5432 / localhost:5432) → 127.0.0.1:$TUNNEL_PORT. Пароль не трогаем.
+          LOCAL_DB=$(echo "$PROD_DB" | sed -E "s#@(127\.0\.0\.1|localhost):5432/#@127.0.0.1:${TUNNEL_PORT}/#")
+          if [ "$LOCAL_DB" = "$PROD_DB" ]; then
+            echo "::error::Не нашёл @host:5432/ в прод-URL — проверь формат DATABASE_URL на боксе."
+            exit 1
+          fi
+          export DATABASE_URL="$LOCAL_DB"
+          export NODE_ENV=production
+
+          # Preflight: read-only статус. Если туннель/доступ сломан — падаем ЗДЕСЬ, прод цел.
+          echo "::group::migrate:status (до)"
+          pnpm migrate:status
+          echo "::endgroup::"
+
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "dry_run=true — применение пропущено."
+            exit 0
+          fi
+
+          echo "::group::migrate (apply)"
+          pnpm migrate
+          echo "::endgroup::"
+
+          echo "::group::migrate:status (после)"
+          pnpm migrate:status
+          echo "::endgroup::"
