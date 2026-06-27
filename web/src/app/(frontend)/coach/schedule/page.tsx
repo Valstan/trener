@@ -11,21 +11,16 @@ import { loadCoverage, type CoverageSummary } from '@/lib/coverage'
 import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 
+import { AppShell, COACH_TABS } from '../../components/AppShell'
+
 // Расписание тренера: его сессии + сводка coverage по изменённым/отменённым.
 // Доступ: персонал; читает scoped (тренер — только свои группы, #015).
 export const dynamic = 'force-dynamic'
 
-const container: React.CSSProperties = {
-  maxWidth: 640,
-  margin: '0 auto',
-  padding: '2.5rem 1.25rem 4rem',
-  minHeight: '100vh',
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  planned: 'Запланирована',
-  changed: 'Изменена',
-  cancelled: 'Отменена',
+const STATUS: Record<string, { label: string; cls: string }> = {
+  planned: { label: 'Запланирована', cls: 'badge' },
+  changed: { label: 'Изменена', cls: 'badge badge-warn' },
+  cancelled: { label: 'Отменена', cls: 'badge badge-danger' },
 }
 
 const CoachSchedulePage = async () => {
@@ -69,42 +64,27 @@ const CoachSchedulePage = async () => {
   )
 
   return (
-    <main style={container}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.75rem' }}>
-        <h1 style={{ fontSize: '1.4rem', margin: '0 0 1.25rem' }}>Расписание</h1>
-        <div style={{ display: 'flex', gap: '0.9rem' }}>
-          <Link href="/coach/questions" style={{ fontSize: '0.9rem' }}>
-            Вопросы →
-          </Link>
-          <Link href="/coach/announcements" style={{ fontSize: '0.9rem' }}>
-            Объявления →
-          </Link>
-        </div>
-      </div>
+    <AppShell title="Расписание" tabs={COACH_TABS} active="schedule">
       {sessions.docs.length === 0 ? (
-        <p style={{ color: 'var(--muted)' }}>Тренировок пока нет.</p>
+        <div className="empty-state">
+          <span className="ic" aria-hidden>
+            📅
+          </span>
+          Тренировок пока нет.
+        </div>
       ) : (
-        <div style={{ display: 'grid', gap: '0.6rem' }}>
+        <div className="stack-sm">
           {sessions.docs.map((s) => {
             const summary = summaryBySession.get(s.id)
             const changed = s.status !== 'planned'
+            const st = STATUS[s.status] ?? { label: s.status, cls: 'badge' }
             return (
-              <div
-                key={s.id}
-                style={{
-                  padding: '0.85rem 1rem',
-                  borderRadius: 10,
-                  border: `1px solid ${changed ? '#2c7a4b' : '#1f3a2c'}`,
-                  background: '#11261c',
-                  display: 'grid',
-                  gap: '0.3rem',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem' }}>
+              <div key={s.id} className={changed ? 'card card-accent stack-sm' : 'card stack-sm'}>
+                <div className="row-between">
                   <strong>{formatDateTime(s.startDate)}</strong>
-                  <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>{STATUS_LABEL[s.status] ?? s.status}</span>
+                  <span className={st.cls}>{st.label}</span>
                 </div>
-                <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
+                <div className="muted small">
                   {groupNameById.get(relId(s.group) ?? -1) ?? 'Группа'}
                   {s.location ? ` · ${s.location}` : ''}
                 </div>
@@ -122,7 +102,7 @@ const CoachSchedulePage = async () => {
           })}
         </div>
       )}
-    </main>
+    </AppShell>
   )
 }
 

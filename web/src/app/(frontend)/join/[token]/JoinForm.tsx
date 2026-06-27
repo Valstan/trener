@@ -27,47 +27,36 @@ export const JoinForm = ({ token }: { token: string }) => {
 
   if (sent) {
     return (
-      <p style={{ marginTop: '1.5rem' }}>
-        Мы отправили ссылку для подтверждения на указанный email. Проверьте почту — ссылка
-        действует ограниченное время.
-      </p>
+      <div className="card card-accent" style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+        <div aria-hidden style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>
+          📬
+        </div>
+        <strong style={{ display: 'block', marginBottom: '0.35rem' }}>Проверьте почту</strong>
+        <span className="muted small">
+          Мы отправили ссылку для подтверждения на указанный email. Ссылка действует ограниченное
+          время.
+        </span>
+      </div>
     )
   }
 
   return (
-    <form onSubmit={onSubmit} style={{ marginTop: '1.5rem', display: 'grid', gap: '0.75rem' }}>
-      <label htmlFor="email" style={{ fontSize: '0.9rem', color: 'var(--muted)' }}>
-        Ваш email
-      </label>
-      <input
-        id="email"
-        type="email"
-        required
-        autoFocus
-        autoComplete="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="you@example.ru"
-        style={{
-          padding: '0.65rem 0.75rem',
-          fontSize: '1rem',
-          borderRadius: 8,
-          border: '1px solid #ccc',
-        }}
-      />
-      <button
-        type="submit"
-        disabled={loading}
-        style={{
-          padding: '0.7rem 1.25rem',
-          fontSize: '1rem',
-          cursor: loading ? 'default' : 'pointer',
-          borderRadius: 8,
-          border: 'none',
-          background: '#0b1f17',
-          color: '#fff',
-        }}
-      >
+    <form onSubmit={onSubmit} className="stack" style={{ marginTop: '1.5rem' }}>
+      <div className="field">
+        <label htmlFor="email">Ваш email</label>
+        <input
+          id="email"
+          className="input"
+          type="email"
+          required
+          autoFocus
+          autoComplete="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.ru"
+        />
+      </div>
+      <button type="submit" disabled={loading} className="btn btn-primary btn-block">
         {loading ? 'Отправляем…' : 'Получить ссылку для входа'}
       </button>
     </form>

@@ -34,14 +34,9 @@ export const ConsentForm = ({ policyVersion }: { policyVersion: string }) => {
   }
 
   return (
-    <form onSubmit={onSubmit} style={{ marginTop: '1.5rem', display: 'grid', gap: '1rem' }}>
-      <label style={{ display: 'flex', gap: '0.6rem', alignItems: 'flex-start', cursor: 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={agreed}
-          onChange={(e) => setAgreed(e.target.checked)}
-          style={{ marginTop: '0.2rem' }}
-        />
+    <form onSubmit={onSubmit} className="stack" style={{ marginTop: '1.5rem' }}>
+      <label className="check-row">
+        <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
         <span>
           Я подтверждаю, что являюсь законным представителем ребёнка, ознакомлен(а) с{' '}
           <Link href="/privacy" target="_blank">
@@ -54,20 +49,12 @@ export const ConsentForm = ({ policyVersion }: { policyVersion: string }) => {
       <button
         type="submit"
         disabled={!agreed || loading}
-        style={{
-          padding: '0.7rem 1.25rem',
-          fontSize: '1rem',
-          cursor: !agreed || loading ? 'default' : 'pointer',
-          borderRadius: 8,
-          border: 'none',
-          background: !agreed ? '#9aa6a0' : '#0b1f17',
-          color: '#fff',
-          justifySelf: 'start',
-        }}
+        className="btn btn-primary"
+        style={{ justifySelf: 'start' }}
       >
         {loading ? 'Сохраняем…' : 'Дать согласие и продолжить'}
       </button>
-      {error && <p style={{ color: '#c0392b' }}>{error}</p>}
+      {error && <p className="error-text">{error}</p>}
     </form>
   )
 }

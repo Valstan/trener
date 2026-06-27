@@ -16,37 +16,6 @@ export type InboxItem = {
   children: InboxChild[]
 }
 
-const card = (acked: boolean): React.CSSProperties => ({
-  padding: '1rem 1.1rem',
-  borderRadius: 10,
-  border: `1px solid ${acked ? '#1f3a2c' : '#2c7a4b'}`,
-  background: acked ? '#0e2218' : '#11261c',
-  display: 'grid',
-  gap: '0.5rem',
-})
-
-const ackButton = (busy: boolean): React.CSSProperties => ({
-  padding: '0.55rem 1.1rem',
-  fontSize: '0.95rem',
-  cursor: busy ? 'default' : 'pointer',
-  borderRadius: 8,
-  border: 'none',
-  background: busy ? '#9aa6a0' : 'var(--accent)',
-  color: '#fff',
-  justifySelf: 'start',
-})
-
-const rsvpButton = (active: boolean, negative = false): React.CSSProperties => ({
-  padding: '0.35rem 0.7rem',
-  fontSize: '0.85rem',
-  cursor: 'pointer',
-  borderRadius: 7,
-  border: `1px solid ${active ? (negative ? '#a14a3a' : '#2c7a4b') : '#2a4636'}`,
-  background: active ? (negative ? '#3a2018' : '#163a26') : 'transparent',
-  color: 'var(--fg)',
-  whiteSpace: 'nowrap',
-})
-
 // In-app очередь непринятых: подсветка непринятых + кнопка «Вижу» (ack). На открытии
 // помечаем delivered→seen (POST /parent/seen, на маунте — не на prefetch). ack
 // оптимистично флипает карточку, не перезагружая страницу.
@@ -107,22 +76,29 @@ export const ParentInbox = ({ items: initial }: { items: InboxItem[] }) => {
   }
 
   if (items.length === 0) {
-    return <p style={{ color: 'var(--muted)' }}>Изменений в расписании нет — всё подтверждено. ✅</p>
+    return (
+      <div className="empty-state">
+        <span className="ic" aria-hidden>
+          ✅
+        </span>
+        Изменений в расписании нет — всё подтверждено.
+      </div>
+    )
   }
 
   return (
-    <div style={{ display: 'grid', gap: '1rem' }}>
+    <div className="stack">
       {unacked > 0 && (
-        <div style={{ color: 'var(--muted)', fontSize: '0.95rem' }}>
+        <div className="muted small">
           Непринятых: <strong style={{ color: 'var(--fg)' }}>{unacked}</strong>
         </div>
       )}
       {items.map((i) => {
         const acked = i.status === 'acked'
         return (
-          <article key={i.id} style={card(acked)}>
+          <article key={i.id} className={acked ? 'card stack-sm' : 'card card-accent stack-sm'}>
             <strong style={{ fontSize: '1.05rem' }}>{i.title}</strong>
-            <ul style={{ margin: 0, paddingLeft: '1.1rem' }}>
+            <ul className="list-reset">
               {i.lines.map((line, idx) => (
                 <li key={idx}>{line}</li>
               ))}
@@ -130,42 +106,52 @@ export const ParentInbox = ({ items: initial }: { items: InboxItem[] }) => {
 
             {i.type === 'cancelled'
               ? i.children.length > 0 && (
-                  <div style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
-                    Касается: {i.children.map((c) => c.name).join(', ')}
-                  </div>
+                  <div className="muted small">Касается: {i.children.map((c) => c.name).join(', ')}</div>
                 )
               : i.children.length > 0 && (
-                  <div style={{ display: 'grid', gap: '0.4rem' }}>
-                    <span style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>Придёте на тренировку?</span>
+                  <div className="stack-sm">
+                    <span className="muted small">Придёте на тренировку?</span>
                     {i.children.map((c) => (
                       <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                         <span style={{ flex: '1 1 auto', minWidth: 0 }}>{c.name}</span>
-                        <button type="button" style={rsvpButton(c.rsvp === 'going')} onClick={() => setRsvp(i.sessionId, c.id, 'going')}>
-                          Придём
-                        </button>
-                        <button
-                          type="button"
-                          style={rsvpButton(c.rsvp === 'not_going', true)}
-                          onClick={() => setRsvp(i.sessionId, c.id, 'not_going')}
-                        >
-                          Не придём
-                        </button>
+                        <div className="seg">
+                          <button
+                            type="button"
+                            className={c.rsvp === 'going' ? 'seg-btn on' : 'seg-btn'}
+                            onClick={() => setRsvp(i.sessionId, c.id, 'going')}
+                          >
+                            Придём
+                          </button>
+                          <button
+                            type="button"
+                            className={c.rsvp === 'not_going' ? 'seg-btn on-neg' : 'seg-btn'}
+                            onClick={() => setRsvp(i.sessionId, c.id, 'not_going')}
+                          >
+                            Не придём
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
                 )}
 
             {acked ? (
-              <span style={{ color: 'var(--accent)', fontWeight: 600 }}>✓ Подтверждено</span>
+              <span className="success-text">✓ Подтверждено</span>
             ) : (
-              <button type="button" style={ackButton(pending === i.id)} disabled={pending === i.id} onClick={() => ack(i.id)}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ justifySelf: 'start' }}
+                disabled={pending === i.id}
+                onClick={() => ack(i.id)}
+              >
                 {pending === i.id ? 'Отправляем…' : 'Вижу'}
               </button>
             )}
           </article>
         )
       })}
-      {error && <p style={{ color: '#e07a6b' }}>{error}</p>}
+      {error && <p className="error-text">{error}</p>}
     </div>
   )
 }

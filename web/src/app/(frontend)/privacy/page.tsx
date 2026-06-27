@@ -15,48 +15,35 @@ export const metadata: Metadata = {
     'Как детская футбольная школа обрабатывает персональные данные ребёнка и родителя (152-ФЗ).',
 }
 
-const main: React.CSSProperties = {
-  maxWidth: 760,
-  margin: '0 auto',
-  padding: '3rem 1.5rem 5rem',
-  minHeight: '100vh',
-}
-
 const Section = ({ n, title, children }: { n: number; title: string; children: React.ReactNode }) => (
   <section style={{ marginTop: '1.75rem' }}>
     <h2 style={{ fontSize: '1.15rem', marginBottom: '0.4rem' }}>
       {n}. {title}
     </h2>
-    <div style={{ color: 'var(--fg)' }}>{children}</div>
+    <div>{children}</div>
   </section>
 )
 
 const PrivacyPage = () => (
-  <main style={main}>
-    <p style={{ marginBottom: '0.5rem' }}>
+  <main className="page" style={{ maxWidth: 760 }}>
+    <p className="note" style={{ marginBottom: '0.5rem' }}>
       <Link href="/">← На главную</Link>
     </p>
     <h1 style={{ fontSize: '1.6rem', marginBottom: '0.25rem' }}>
       Политика обработки персональных данных
     </h1>
-    <p style={{ color: 'var(--muted)', marginTop: 0 }}>Редакция {CONSENT_POLICY_VERSION}</p>
+    <p className="muted" style={{ marginTop: 0 }}>Редакция {CONSENT_POLICY_VERSION}</p>
 
     {!OPERATOR_FINALIZED && (
-      <p
-        role="note"
-        style={{
-          marginTop: '1rem',
-          padding: '0.75rem 1rem',
-          borderRadius: 8,
-          border: '1px solid #7a5d12',
-          background: '#2a230f',
-          color: '#f0d98a',
-          fontSize: '0.92rem',
-        }}
-      >
-        ⚠️ Черновик. Реквизиты оператора и дата уведомления Роскомнадзора вносятся перед запуском —
-        до этого документ не является действующим.
-      </p>
+      <div role="note" className="card" style={{ marginTop: '1rem', borderColor: '#5a4d1f', background: '#2c2710' }}>
+        <span className="badge badge-warn" style={{ marginBottom: '0.5rem' }}>
+          ⚠️ Черновик
+        </span>
+        <p style={{ margin: 0, color: 'var(--warning)', fontSize: '0.92rem' }}>
+          Реквизиты оператора и дата уведомления Роскомнадзора вносятся перед запуском — до этого
+          документ не является действующим.
+        </p>
+      </div>
     )}
 
     <Section n={1} title="Оператор">
