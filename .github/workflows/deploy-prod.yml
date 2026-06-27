@@ -176,6 +176,8 @@ jobs:
           # tgz собирается в корень репо (tar ../trener-app.tgz из web/); шаг с working-directory '.'
           scp -q trener-app.tgz TRENERBOX:/tmp/trener-app.tgz
           scp -q deploy/systemd/trener.service TRENERBOX:/tmp/trener.service
+          scp -q deploy/systemd/trener-rsvp-reminders.service TRENERBOX:/tmp/trener-rsvp-reminders.service
+          scp -q deploy/systemd/trener-rsvp-reminders.timer TRENERBOX:/tmp/trener-rsvp-reminders.timer
           ssh TRENERBOX 'bash -s' "$SHA" <<'REMOTE'
           set -e
           SHA="$1"
@@ -185,14 +187,22 @@ jobs:
           tar xzf /tmp/trener-app.tgz -C "$REL"
           rm -f /tmp/trener-app.tgz
           ln -sfn "$REL" "$BASE/releases/current"
-          # Юнит ставится идемпотентно из артефакта-деплоя ПЕРЕД restart (sudo cp + reload).
-          if ! cmp -s /tmp/trener.service /etc/systemd/system/trener.service 2>/dev/null; then
-            sudo cp /tmp/trener.service /etc/systemd/system/trener.service
-            sudo systemctl daemon-reload
-            echo "unit обновлён"
-          fi
-          rm -f /tmp/trener.service
+          # Юниты ставятся идемпотентно из артефакта-деплоя ПЕРЕД restart (sudo cp + reload):
+          # основной сервис + RSVP-cron (oneshot service + daily timer). Юниты в
+          # /etc/systemd/system переживают смену релиза (вне дерева releases/).
+          RELOAD=0
+          for U in trener.service trener-rsvp-reminders.service trener-rsvp-reminders.timer; do
+            if ! cmp -s "/tmp/$U" "/etc/systemd/system/$U" 2>/dev/null; then
+              sudo cp "/tmp/$U" "/etc/systemd/system/$U"
+              RELOAD=1
+              echo "unit $U обновлён"
+            fi
+            rm -f "/tmp/$U"
+          done
+          [ "$RELOAD" = 1 ] && sudo systemctl daemon-reload || true
           sudo systemctl enable trener >/dev/null 2>&1 || true
+          # Таймер enable+start; сам oneshot-сервис НЕ enable (его запускает таймер).
+          sudo systemctl enable --now trener-rsvp-reminders.timer >/dev/null 2>&1 || true
           sudo systemctl restart trener
           ls -1dt "$BASE"/releases/*/ 2>/dev/null | grep -v '/current/$' | tail -n +4 | xargs -r rm -rf
           echo "deployed $SHA"
