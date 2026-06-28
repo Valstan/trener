@@ -32,6 +32,20 @@
 - `corepack pnpm -C web typecheck` — чисто. `corepack pnpm -C web test` — **67/67** зелёные.
 - Скрипты Payload (если нужны): `./node_modules/.bin/payload run ./script.ts` (нужен top-level await).
 
+## Offsite-бэкап: PULL-стяжка (LIVE 2026-06-28)
+
+- Эта машина — **pull-сторона** offsite-бэкапа прод-БД (см. [`docs/backups.md`](../backups.md)).
+- Scheduled Task **`trener-backup-pull`** (ежедневно 04:30 MSK, S4U, StartWhenAvailable) запускает
+  `C:\Users\Valstan\bin\trener-backup-pull.ps1` (канонично — `deploy/backup/trener-backup-pull.ps1`):
+  `scp` шифр-дампов с бокса → `D:\YandexDisk\Backups\trener\` → клиент Диска уносит в облако.
+- **Клиент Яндекс.Диска должен быть запущен** (процесс `YandexDisk2`), иначе файл лежит локально и
+  не уходит offsite до следующего логина/старта клиента.
+- **Приватный gpg-ключ восстановления** живёт в keyring этой машины (`~/.gnupg`, fingerprint
+  `CA8C5062…0FF7F5`, без passphrase) — для `gpg --decrypt`. Источник истины ключа — менеджер паролей
+  владельца; **в `D:\YandexDisk` ключ не класть** (там лежат сами шифр-дампы).
+- Ручной прогон/диагностика: `Start-ScheduledTask -TaskName trener-backup-pull`; лог —
+  `D:\YandexDisk\Backups\trener\_pull.log`.
+
 ## Машинные грабли trener
 
 - **`Start-Service postgresql-x64-17` иногда падает с `StartServiceFailed` с первого раза**
