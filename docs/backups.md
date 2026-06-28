@@ -3,6 +3,32 @@
 > Детские ПДн (152-ФЗ) → бэкап **шифруется на боксе публичным gpg-ключом** (приватный — вне
 > бокса), хранится в **РФ-юрисдикции**, **offsite** (вне самого бокса). Дамп крошечный (~10 МБ).
 
+## ✅ Настроено 2026-06-28 (LIVE) — PULL → Яндекс.Диск
+
+Боевая конфигурация (выбрана **PULL-модель** через уже работающий клиент Яндекс.Диска на `rmz4val`
+— тот же механизм, что бэкапит MatricaRMZ; ноль новых аккаунтов/ключей S3, изоляция от Сабантуя).
+
+- **gpg-ключ** (выделенный, encrypt-only, rsa4096, без срока): fingerprint
+  `CA8C50622FAC950CE1FD67B20E93B5A95E0FF7F5`, uid `trener-backup (offsite DB backup) <zubazeirot@proton.me>`.
+  Публичный — на боксе `/etc/trener/backup-pubkey.asc`. **Приватный — у владельца** (менеджер
+  паролей + офлайн, **НЕ в Яндекс.Диске!**); рабочая копия в gpg-keyring `rmz4val` для восстановления.
+- **Бокс:** `trener-backup.timer` (enabled, 03:30 MSK) → `trener-backup.service` →
+  `bin/trener-backup.sh`. Конфиг `/etc/trener/trener-backup.env`: `BACKUP_DATABASE_URL`
+  (= app-роль `trener_app`), `BACKUP_RETENTION_DAYS=30`, `BACKUP_RCLONE_REMOTE=` **пуст** (PULL).
+  Шифр-дампы копятся в `/home/valstan/trener/backups/`.
+- **rmz4val (стяжка):** Scheduled Task `trener-backup-pull` (ежедневно 04:30 MSK, S4U,
+  StartWhenAvailable) → `deploy/backup/trener-backup-pull.ps1` (рабочая копия в
+  `C:\Users\Valstan\bin\`) → `scp` шифр-дампов в **`D:\YandexDisk\Backups\trener\`** → клиент Диска
+  уносит в облако. Лог — `_pull.log` рядом.
+- **Проверено end-to-end:** дамп `pg_dump 16.14 → gpg(public)` → на rmz4val `gpg(private) →
+  pg_restore --list` = валидный CUSTOM-архив, 293 TOC / 44 таблицы. Восстановимость подтверждена.
+- **Остаточная ручная сверка:** один раз глазами убедиться, что файл появился на disk.yandex.ru
+  (клиент Диска должен быть запущен/онлайн — программно отсюда не верифицируется).
+
+> Менять модель на PUSH→S3 (если дом-машина окажется ненадёжной): заполнить `BACKUP_RCLONE_REMOTE`
+> в `/etc/trener/trener-backup.env` + `apt install rclone` + `rclone config` на боксе; pull-задачу
+> на rmz4val тогда отключить. Бокс держит локальную копию 30 дней при любой модели.
+
 ## Архитектура
 
 `trener-backup.timer` (03:30 MSK) → `trener-backup.service` (oneshot) →
