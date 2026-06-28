@@ -16,6 +16,11 @@ Environment=NODE_ENV=production
 # здесь env нужен для runtime-секретов (DATABASE_URL, PAYLOAD_SECRET, VAPID_PRIVATE_KEY,
 # CRON_SECRET, SMTP_*).
 EnvironmentFile=-/etc/trener/trener.env
+# Токен менеджера секретов KARMAN — ОТДЕЛЬНЫМ файлом (не в trener.env!), чтобы он
+# пережил потерю trener.env: при потере приложение восстановит секреты из KARMAN по
+# этому токену (web/src/instrumentation.ts → secretsBootstrap, docs/secrets-manager.md).
+# Опционален (-): нет токена → восстановление просто не сработает, старт не блокируется.
+EnvironmentFile=-/etc/trener/secrets-token.env
 # standalone server.js читает HOSTNAME/PORT из env (флагов нет). Порт 3007 — свободен на
 # Боксе 1 (заняты: gonba 3000, karman 3002, vmalmyzhe 3004, dkmalmyzh 3005, kalinino 3006).
 Environment=PORT=3007
