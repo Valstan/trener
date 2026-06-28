@@ -10,8 +10,18 @@
 
 - **gpg-ключ** (выделенный, encrypt-only, rsa4096, без срока): fingerprint
   `CA8C50622FAC950CE1FD67B20E93B5A95E0FF7F5`, uid `trener-backup (offsite DB backup) <zubazeirot@proton.me>`.
-  Публичный — на боксе `/etc/trener/backup-pubkey.asc`. **Приватный — у владельца** (менеджер
-  паролей + офлайн, **НЕ в Яндекс.Диске!**); рабочая копия в gpg-keyring `rmz4val` для восстановления.
+  Публичный — на боксе `/etc/trener/backup-pubkey.asc`. **Приватный ключ хранится в менеджере
+  KARMAN** (`BACKUP_GPG_PRIVATE_KEY` + `BACKUP_GPG_PUBLIC_KEY` + `BACKUP_GPG_FINGERPRINT`; целостность
+  сверена sha256 при заливке 2026-06-29) **и** рабочей копией в gpg-keyring `rmz4val`. **НЕ в
+  Яндекс.Диске** (там сами шифр-дампы). Восстановить ключ:
+  `GET /api/secrets?key=BACKUP_GPG_PRIVATE_KEY` → импорт `gpg --import` (см.
+  [`secrets-manager.md`](secrets-manager.md)).
+  - ⚠️ **Осознанный компромисс владельца (2026-06-29):** KARMAN живёт на том же боксе, что и бэкапы,
+    и умеет расшифровать свои секреты → при компрометации бокса приватный ключ и локальные шифр-дампы
+    оказываются вместе, т.е. бэкапы становятся расшифровываемыми. Принято сознательно: риск «владелец
+    потеряет ключ → дампы мёртвы» для этого проекта реальнее, чем целевой взлом VPS ради дешифровки.
+    Усиление (если посоображения изменятся): запаролить ключ сильной passphrase и хранить в KARMAN
+    уже защищённым (passphrase — вне бокса).
 - **Бокс:** `trener-backup.timer` (enabled, 03:30 MSK) → `trener-backup.service` →
   `bin/trener-backup.sh`. Конфиг `/etc/trener/trener-backup.env`: `BACKUP_DATABASE_URL`
   (= app-роль `trener_app`), `BACKUP_RETENTION_DAYS=30`, `BACKUP_RCLONE_REMOTE=` **пуст** (PULL).
