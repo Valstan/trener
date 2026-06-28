@@ -67,6 +67,12 @@ curl -X POST https://831d0ce99bdf.vps.myjino.ru/api/secrets \
 `SMTP_FROM_NAME`, `SMTP_HOST`, `SMTP_PASS`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`,
 `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`.
 
+Плюс приватный/публичный ключ offsite-бэкапов (по решению владельца — резерв на случай потери,
+[`backups.md`](backups.md) описывает компромисс): `BACKUP_GPG_PRIVATE_KEY`, `BACKUP_GPG_PUBLIC_KEY`,
+`BACKUP_GPG_FINGERPRINT`. Итого **17 ключей**. Эти `BACKUP_GPG_*` — НЕ рантайм-секреты приложения
+(restore-recovery их в `process.env` не тянет, REQUIRED-список их не содержит), хранятся тут только
+как защищённое резервное копилище.
+
 ### Пересохранить после смены секрета
 
 При смене любого секрета на проде (например, ротация SMTP-пароля) — пересохранить в KARMAN, чтобы
