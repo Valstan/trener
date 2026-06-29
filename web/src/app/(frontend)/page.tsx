@@ -1,9 +1,17 @@
+import config from '@payload-config'
+import { headers as nextHeaders } from 'next/headers'
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
+import { getPayload } from 'payload'
 import React from 'react'
 
-// Публичный лендинг. Залогиненного пользователя по роли разводят сами экраны
-// (/parent, /coach) — здесь только вход. Страница статична (без обращения к БД),
-// чтобы сборка не требовала Postgres.
+import { homePathForUser } from '@/lib/auth/home'
+
+// Публичный лендинг для гостя. Залогиненного сразу уводим на его экран по роли —
+// иначе вошедший видит лендинг с кнопкой «Войти» и «зацикливается». force-dynamic:
+// страница теперь читает сессию в рантайме; сборку это не ломает (dynamic-страницы
+// не исполняются на build, Postgres при сборке по-прежнему не нужен).
+export const dynamic = 'force-dynamic'
 
 const FEATURES: { ic: string; title: string; text: string }[] = [
   { ic: '📅', title: 'Расписание', text: 'Тренировки группы всегда под рукой — время и место.' },
@@ -12,7 +20,15 @@ const FEATURES: { ic: string; title: string; text: string }[] = [
   { ic: '📣', title: 'Объявления', text: 'Сборы, форма, новости школы — в общей ленте.' },
 ]
 
-const HomePage = () => (
+const HomePage = async () => {
+  const payload = await getPayload({ config })
+  const { user } = await payload.auth({ headers: await nextHeaders() })
+  if (user) {
+    const home = homePathForUser(user)
+    if (home !== '/') redirect(home)
+  }
+
+  return (
   <main className="page" style={{ display: 'flex', flexDirection: 'column' }}>
     <section
       style={{
@@ -76,6 +92,7 @@ const HomePage = () => (
       </Link>
     </footer>
   </main>
-)
+  )
+}
 
 export default HomePage
