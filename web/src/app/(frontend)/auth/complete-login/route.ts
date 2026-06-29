@@ -2,6 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
+import { homePathForUser } from '@/lib/auth/home'
 import { acceptInvite } from '@/lib/auth/invite'
 import { consumeLoginToken } from '@/lib/auth/magicLink'
 import { buildAuthCookie } from '@/lib/auth/session'
@@ -55,6 +56,11 @@ export const POST = async (req: Request): Promise<Response> => {
       overrideAccess: true,
     })
     if (!user) return NextResponse.json({ ok: false }, { status: 401 })
+
+    // Вход существующего пользователя ведём на его экран по роли (не на '/', иначе
+    // вошедший попадёт на публичный лендинг и «зациклится»). invite-ветка уже задала
+    // redirect на онбординг-согласие.
+    if (result.kind === 'login') redirect = homePathForUser(user)
 
     const cookie = await buildAuthCookie(payload, user)
     const res = NextResponse.json({ ok: true, redirect })
