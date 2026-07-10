@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { adminOnly } from '../access/adminOnly'
 import { adminOrSelf } from '../access/adminOrSelf'
 import { adminField, hasRole } from '../access/roles'
+import { cleanupUserRelations } from '../hooks/cleanupUserRelations'
 import { ensureFirstUserAdmin } from '../hooks/ensureFirstUserAdmin'
 
 export const Users: CollectionConfig = {
@@ -95,6 +96,7 @@ export const Users: CollectionConfig = {
   ],
   hooks: {
     beforeChange: [ensureFirstUserAdmin],
+    beforeDelete: [cleanupUserRelations],
   },
   timestamps: true,
 }

@@ -1,6 +1,7 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOrCoachOwnGroup } from '../access/byGroup'
+import { cleanupPlayerRelations } from '../hooks/cleanupPlayerRelations'
 import { coachGroupIds, hasRole, isAdmin, isCoach, isParent } from '../access/roles'
 
 // Ребёнок (игрок).
@@ -46,6 +47,9 @@ export const Players: CollectionConfig = {
     useAsTitle: 'name',
     description:
       '152-ФЗ: минимизация. Только имя + группа + контакт родителя. Без дат рождения, фото, здоровья, адресов, СНИЛС.',
+  },
+  hooks: {
+    beforeDelete: [cleanupPlayerRelations],
   },
   fields: [
     {
