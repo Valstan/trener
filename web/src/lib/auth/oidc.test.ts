@@ -5,6 +5,7 @@ import {
   normalizeUrl,
   openTransaction,
   pkceChallenge,
+  sanitizeNextPath,
   sealTransaction,
 } from './oidc'
 
@@ -69,6 +70,46 @@ describe('sealTransaction / openTransaction — подписанная OIDC-тр
     const sealed = sealTransaction(TX, SECRET)
     const sig = sealed.slice(sealed.lastIndexOf('.') + 1)
     expect(openTransaction(`${data}.${sig}`, SECRET)).toBeNull()
+  })
+})
+
+describe('sanitizeNextPath — гард open-redirect для ?next=', () => {
+  it('внутренний путь проходит', () => {
+    expect(sanitizeNextPath('/join/abc-123')).toBe('/join/abc-123')
+    expect(sanitizeNextPath('/parent?tab=queue')).toBe('/parent?tab=queue')
+  })
+
+  it('внешние/протокольные формы отбрасываются (open-redirect)', () => {
+    expect(sanitizeNextPath('https://evil.example')).toBeNull()
+    expect(sanitizeNextPath('//evil.example/phish')).toBeNull()
+    expect(sanitizeNextPath('/\\evil.example')).toBeNull()
+    expect(sanitizeNextPath('javascript:alert(1)')).toBeNull()
+  })
+
+  it('мусор/границы: не строка, пусто, голый /, сверхдлинное → null', () => {
+    expect(sanitizeNextPath(null)).toBeNull()
+    expect(sanitizeNextPath(undefined)).toBeNull()
+    expect(sanitizeNextPath('')).toBeNull()
+    expect(sanitizeNextPath('/')).toBeNull()
+    expect(sanitizeNextPath('/' + 'a'.repeat(600))).toBeNull()
+  })
+})
+
+describe('транзакция с next — roundtrip и фильтрация', () => {
+  const SECRET = 'test-payload-secret'
+
+  it('валидный next переживает seal → open', () => {
+    const tx = { state: 's', nonce: 'n', verifier: 'v', next: '/join/tok-1' }
+    expect(openTransaction(sealTransaction(tx, SECRET), SECRET)).toEqual(tx)
+  })
+
+  it('невалидный next отбрасывается при open (вход продолжается по роли)', () => {
+    const tx = { state: 's', nonce: 'n', verifier: 'v', next: '//evil.example' }
+    expect(openTransaction(sealTransaction(tx, SECRET), SECRET)).toEqual({
+      state: 's',
+      nonce: 'n',
+      verifier: 'v',
+    })
   })
 })
 

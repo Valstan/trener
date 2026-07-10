@@ -6,6 +6,7 @@ import {
   generatePkce,
   getDiscovery,
   getRadarConfig,
+  sanitizeNextPath,
   sealTransaction,
 } from '@/lib/auth/oidc'
 import { generateRawToken } from '@/lib/auth/tokens'
@@ -24,10 +25,14 @@ export const GET = async (req: NextRequest): Promise<Response> => {
 
   try {
     const discovery = await getDiscovery(cfg)
+    // ?next=/join/<token> — вернуть после входа на исходный экран (только
+    // внутренний путь, гард sanitizeNextPath от open-redirect).
+    const next = sanitizeNextPath(req.nextUrl.searchParams.get('next'))
     const tx = {
       state: generateRawToken(),
       nonce: generateRawToken(),
       verifier: generatePkce().verifier,
+      ...(next ? { next } : {}),
     }
 
     const res = NextResponse.redirect(buildAuthorizeUrl(cfg, discovery, tx), 302)

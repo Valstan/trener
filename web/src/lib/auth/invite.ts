@@ -125,12 +125,60 @@ export type AcceptResult =
   | { ok: true; userId: number | string }
   | { ok: false; reason: 'claimed' | 'error' }
 
-// Доказанное владение email (accept-токен сконсьюмлен) → создаём/находим аккаунт
-// родителя и привязываем ребёнка. Защита 152-ФЗ-привязки:
+// Привязка ребёнка к КОНКРЕТНОМУ аккаунту (личность уже доказана: email-токеном
+// либо живой сессией — VK/magic-link). Защита 152-ФЗ-привязки:
 //   • привязка ТОЛЬКО если у ребёнка ещё нет родителя (idempotent, без перепривязки);
 //   • если ребёнок уже привязан к ДРУГОМУ аккаунту — отказ 'claimed' (анти-перехват).
 // После успешной привязки гасим открытые invite-токены этого ребёнка (join-ссылка
 // больше не действует).
+export const linkPlayerToUser = async (
+  payload: Payload,
+  userId: number | string,
+  playerId: number | string,
+): Promise<AcceptResult> => {
+  const player = await payload
+    .findByID({ collection: 'players', id: playerId, depth: 0, overrideAccess: true })
+    .catch(() => null)
+  if (!player) return { ok: false, reason: 'error' }
+
+  const currentParent = relId((player as { parent?: unknown }).parent)
+  if (currentParent !== null && currentParent !== userId) {
+    return { ok: false, reason: 'claimed' }
+  }
+  if (currentParent === null) {
+    await payload.update({
+      collection: 'players',
+      id: playerId,
+      data: { parent: userId as number },
+      overrideAccess: true,
+    })
+  }
+
+  // Гасим открытые invite-токены этого ребёнка (включая исходную join-ссылку).
+  const open = await payload.find({
+    collection: 'login-tokens',
+    where: {
+      and: [{ player: { equals: playerId } }, { purpose: { equals: 'invite' } }, { usedAt: { exists: false } }],
+    },
+    limit: 100,
+    depth: 0,
+    pagination: false,
+    overrideAccess: true,
+  })
+  for (const t of open.docs) {
+    await payload.update({
+      collection: 'login-tokens',
+      id: t.id,
+      data: { usedAt: new Date().toISOString() },
+      overrideAccess: true,
+    })
+  }
+
+  return { ok: true, userId }
+}
+
+// Доказанное владение email (accept-токен сконсьюмлен) → создаём/находим аккаунт
+// родителя и привязываем ребёнка (linkPlayerToUser).
 export const acceptInvite = async (
   payload: Payload,
   email: string,
@@ -158,43 +206,5 @@ export const acceptInvite = async (
     })
   }
 
-  const player = await payload
-    .findByID({ collection: 'players', id: playerId, depth: 0, overrideAccess: true })
-    .catch(() => null)
-  if (!player) return { ok: false, reason: 'error' }
-
-  const currentParent = relId((player as { parent?: unknown }).parent)
-  if (currentParent !== null && currentParent !== user.id) {
-    return { ok: false, reason: 'claimed' }
-  }
-  if (currentParent === null) {
-    await payload.update({
-      collection: 'players',
-      id: playerId,
-      data: { parent: user.id },
-      overrideAccess: true,
-    })
-  }
-
-  // Гасим открытые invite-токены этого ребёнка (включая исходную join-ссылку).
-  const open = await payload.find({
-    collection: 'login-tokens',
-    where: {
-      and: [{ player: { equals: playerId } }, { purpose: { equals: 'invite' } }, { usedAt: { exists: false } }],
-    },
-    limit: 100,
-    depth: 0,
-    pagination: false,
-    overrideAccess: true,
-  })
-  for (const t of open.docs) {
-    await payload.update({
-      collection: 'login-tokens',
-      id: t.id,
-      data: { usedAt: new Date().toISOString() },
-      overrideAccess: true,
-    })
-  }
-
-  return { ok: true, userId: user.id }
+  return linkPlayerToUser(payload, user.id, playerId)
 }

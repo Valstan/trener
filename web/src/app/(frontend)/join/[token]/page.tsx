@@ -1,27 +1,40 @@
 import config from '@payload-config'
 import Link from 'next/link'
+import { headers as nextHeaders } from 'next/headers'
 import { getPayload } from 'payload'
 import React from 'react'
 
+import { isParent } from '@/access/roles'
 import { peekInviteToken } from '@/lib/auth/invite'
+import { getRadarConfig } from '@/lib/auth/oidc'
 
+import { AcceptAsUser } from './AcceptAsUser'
 import { JoinForm } from './JoinForm'
 
-// Лендинг приглашения от тренера. Показывает, какого ребёнка/группу привязываем,
-// и просит email родителя. Привязки здесь НЕ происходит — только после клика по
-// письму (доказанное владение email). Токен не гасим (peek без мутации).
+// Лендинг приглашения от тренера. Показывает, какого ребёнка/группу привязываем.
+// Три ветки:
+//   • залогинен родитель (VK/magic-link) → one-click «Принять приглашение»
+//     (личность доказана сессией, email-раунд не нужен);
+//   • аноним → email-форма (классический путь) + кнопка VK с возвратом сюда
+//     (?next=) — после входа приглашение принимается one-click'ом;
+//   • залогинен персонал → email-форма (ребёнка нельзя записать на coach/admin).
+// Привязки на GET НЕ происходит; токен не гасим (peek без мутации).
 export const dynamic = 'force-dynamic'
 
 const JoinPage = async ({ params }: { params: Promise<{ token: string }> }) => {
   const { token } = await params
 
   let preview: Awaited<ReturnType<typeof peekInviteToken>> = { ok: false }
+  let sessionParentEmail: string | null = null
   try {
     const payload = await getPayload({ config })
     preview = await peekInviteToken(payload, token)
+    const { user } = await payload.auth({ headers: await nextHeaders() })
+    if (user && isParent(user)) sessionParentEmail = user.email
   } catch {
     preview = { ok: false }
   }
+  const vkEnabled = getRadarConfig() !== null
 
   if (!preview.ok) {
     return (
@@ -62,10 +75,31 @@ const JoinPage = async ({ params }: { params: Promise<{ token: string }> }) => {
         ) : null}
         .
       </p>
-      <p className="muted">
-        Введите свой email — пришлём ссылку для подтверждения и входа. Пароль не нужен.
-      </p>
-      <JoinForm token={token} />
+      {sessionParentEmail ? (
+        <AcceptAsUser token={token} email={sessionParentEmail} />
+      ) : (
+        <>
+          {vkEnabled && (
+            <>
+              {/* Возврат сюда после VK-входа (?next=) — приглашение примется one-click'ом. */}
+              <a
+                className="btn btn-primary btn-block"
+                href={`/auth/vk/start?next=${encodeURIComponent(`/join/${token}`)}`}
+                style={{ marginTop: '0.5rem' }}
+              >
+                Войти через VK и принять
+              </a>
+              <p className="note" style={{ textAlign: 'center', margin: '1rem 0 0' }}>
+                или по email
+              </p>
+            </>
+          )}
+          <p className="muted">
+            Введите свой email — пришлём ссылку для подтверждения и входа. Пароль не нужен.
+          </p>
+          <JoinForm token={token} />
+        </>
+      )}
     </main>
   )
 }

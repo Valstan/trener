@@ -57,7 +57,9 @@ export const GET = async (req: NextRequest): Promise<Response> => {
     const user = await findOrLinkRadarUser(payload, claims)
     const authCookie = await buildAuthCookie(payload, user)
 
-    const res = NextResponse.redirect(new URL(homePathForUser(user), serverUrl), 302)
+    // next из подписанной транзакции (уже прошёл sanitizeNextPath) — например,
+    // возврат на /join/<token> для one-click привязки; иначе экран по роли.
+    const res = NextResponse.redirect(new URL(tx.next ?? homePathForUser(user), serverUrl), 302)
     res.cookies.set('radar_oidc_tx', '', { path: '/auth/vk', maxAge: 0 })
     res.headers.append('Set-Cookie', authCookie)
     return res

@@ -118,7 +118,18 @@ export const generatePkce = (): { verifier: string; challenge: string } => {
 export const pkceChallenge = (verifier: string): string =>
   createHash('sha256').update(verifier).digest('base64url')
 
-export type OidcTransaction = { state: string; nonce: string; verifier: string }
+// next — куда вернуть пользователя после входа (напр. /join/<token>, чтобы принять
+// приглашение уже залогиненным). Только внутренний путь — см. sanitizeNextPath.
+export type OidcTransaction = { state: string; nonce: string; verifier: string; next?: string }
+
+// Гард open-redirect: принимаем ТОЛЬКО внутренний абсолютный путь ('/x…', но не
+// '//host' и не 'https://…'), разумной длины. Всё прочее → null (редирект по роли).
+export const sanitizeNextPath = (raw: string | null | undefined): string | null => {
+  if (typeof raw !== 'string') return null
+  if (raw.length < 2 || raw.length > 512) return null
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.includes('\\')) return null
+  return raw
+}
 
 // Транзакция OIDC живёт в httpOnly-cookie между /start и /callback. Подписываем
 // HMAC'ом (PAYLOAD_SECRET), чтобы подброшенная/подделанная cookie не прошла
@@ -152,7 +163,14 @@ export const openTransaction = (sealed: string, secret: string): OidcTransaction
     ) {
       return null
     }
-    return { state: parsed.state, nonce: parsed.nonce, verifier: parsed.verifier }
+    // next — опциональный; невалидный молча отбрасываем (вход продолжится по роли).
+    const next = sanitizeNextPath(parsed.next)
+    return {
+      state: parsed.state,
+      nonce: parsed.nonce,
+      verifier: parsed.verifier,
+      ...(next ? { next } : {}),
+    }
   } catch {
     return null
   }
