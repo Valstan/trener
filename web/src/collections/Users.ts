@@ -25,6 +25,9 @@ export const Users: CollectionConfig = {
     useAsTitle: 'name',
   },
   auth: true,
+  // Пара (authProvider, externalId) уникальна: одна внешняя личность — один аккаунт.
+  // NULL-пары (обычные email-пользователи) под уникальность не попадают.
+  indexes: [{ fields: ['authProvider', 'externalId'], unique: true }],
   fields: [
     {
       name: 'name',
@@ -58,6 +61,35 @@ export const Users: CollectionConfig = {
       access: {
         // Менять роли может только админ (защита от самоповышения привилегий).
         update: adminField,
+      },
+    },
+    // ── Связь с внешней личностью центра авторизации «Радар» (SSO через VK) ──
+    // Заполняются ТОЛЬКО серверным путём VK-входа (findOrLinkRadarUser,
+    // overrideAccess) либо админом вручную (отвязать аккаунт). Самослужебное
+    // редактирование закрыто: иначе пользователь привязал бы чужой sub к себе.
+    {
+      name: 'authProvider',
+      type: 'select',
+      label: 'Внешний провайдер входа',
+      options: [{ label: 'Радар-ID (VK)', value: 'radar' }],
+      access: {
+        create: adminField,
+        update: adminField,
+      },
+      admin: {
+        description: 'SSO-провайдер, через который связан аккаунт. Пусто — вход по email.',
+      },
+    },
+    {
+      name: 'externalId',
+      type: 'text',
+      label: 'Внешний ID (sub)',
+      access: {
+        create: adminField,
+        update: adminField,
+      },
+      admin: {
+        description: 'Стабильный идентификатор личности у провайдера (sub Радара).',
       },
     },
   ],

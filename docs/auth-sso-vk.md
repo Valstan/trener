@@ -1,12 +1,17 @@
 # Вход через VK по единому центру авторизации «Радар» (проект Сарафан)
 
-> Статус: **ПРОЕКТ / ожидает контракт Радара.** Радар в разработке. Этот документ
-> фиксирует архитектуру стороны trener и **контракт, который trener запрашивает у
-> Радара**. Код интеграции пишется ПОСЛЕ согласования контракта (иначе — переделка
-> против движущегося контракта; pool #020 «probe before build»).
+> Статус: **РЕАЛИЗОВАНО (2026-07-10).** Контракт §4 ратифицирован Мозгом 2026-06-30
+> «как есть, без правок» (`brain_matrica/mailboxes/trener/from-brain/2026-06-30-radar-sso-ratified-you-are-pilot.md`);
+> Радар-ID Ф1 задеплоен и live (`вход.вмалмыже.рф`, punycode
+> `xn--b1ae3a1a.xn--80adkdyec4j.xn--p1ai`); клиент `trener` зарегистрирован
+> (confidential, redirect'ы прод + localhost:3000). Сторона trener построена по §3:
+> `lib/auth/oidc.ts` (discovery/PKCE/JWKS-валидация), `lib/auth/radarLink.ts`
+> (связывание §3.3), маршруты `/auth/vk/start|callback`, кнопка на `/login`
+> (env-gated: `RADAR_ISSUER_URL`+`RADAR_CLIENT_ID`+`RADAR_CLIENT_SECRET`).
+> Хвост: адаптация invite-флоу под VK-аккаунты (§3.4) — отдельным PR.
 >
 > Решения владельца (2026-06-29): охват — **все роли через VK**; magic-link —
-> **сосуществует**; Радар — **в разработке** (контракт согласуем через Мозг).
+> **сосуществует**.
 
 ## 1. Зачем
 
@@ -89,13 +94,24 @@ magic-link и invite **остаются**. На `/login` добавляется 
 6. **Роли:** Радар **не** диктует роли проекта (trener назначает локально). Подтвердить.
 7. **Logout (опц.):** RP-initiated logout endpoint, если будет единый выход.
 
-## 5. Что НЕ делаем сейчас
-- Код маршрутов/связывания/UI — после согласования §4 (защита от переделки).
-- Поля `authProvider`/`externalId` в `users` — вместе с кодом (это схемная правка: dev
-  push / прод-миграция, [`migrations.md`](migrations.md) — не вводим спекулятивно).
+## 5. Реализация (2026-07-10)
 
-## 6. Следующий шаг
-Контракт §4 отправлен в Мозг (`mailbox/to-brain/2026-06-29-sso-radar-contract-proposal.md`)
-для согласования с командой Сарафан/Радар. По «зелёному» контракту — реализация стороны
-trener одним PR (маршруты + связывание + поля users + кнопка), за ним — адаптация
-invite-флоу под VK-аккаунты.
+- **Поля `users`:** `authProvider` (select, пока только `radar`) + `externalId` (sub);
+  compound-unique `(authProvider, externalId)`; field-access `create/update: adminField`
+  (заполняет только серверный путь с `overrideAccess` — самопривязка чужого sub закрыта).
+- **`lib/auth/oidc.ts`:** discovery с кэшем (+проверка `issuer`), PKCE S256, обмен кода
+  (`client_secret_post`), `jose.jwtVerify` по remote-JWKS (iss/aud/exp/RS256) + nonce.
+  Транзакция state/nonce/verifier между start и callback — httpOnly-cookie, подписанная
+  HMAC(PAYLOAD_SECRET) (анти-tampering/cookie-tossing). Punycode-нормализация issuer и
+  redirect_uri через WHATWG URL (G108: кириллический IDN в OAuth-конфиге).
+- **`lib/auth/radarLink.ts`:** `findOrLinkRadarUser` по §3.3 + анти-захват №2: если
+  аккаунт с verified-email уже связан с ДРУГИМ sub — не перепривязываем (отдельный юзер).
+  Личность без пригодного email → детерминированный служебный адрес
+  `radar-<sub>@sso.invalid` (email в auth-коллекции обязателен; вход — только VK).
+- **Отказоустойчивость:** любой сбой флоу → мягкий redirect `/login?error=vk`,
+  magic-link продолжает работать. Без RADAR_*-env маршруты отвечают 404, кнопки нет.
+
+## 6. Следующие шаги
+- Адаптация invite-флоу (§3.4): приём приглашения залогиненным VK-родителем без
+  второго аккаунта по email — отдельным PR.
+- Round-trip-смоук прод↔Радар после деплоя (остаток Ф1 на стороне setka — пинг Мозга).
