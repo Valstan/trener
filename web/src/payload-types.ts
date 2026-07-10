@@ -144,6 +144,14 @@ export interface User {
    */
   phone?: string | null;
   roles: ('admin' | 'coach' | 'parent')[];
+  /**
+   * SSO-провайдер, через который связан аккаунт. Пусто — вход по email.
+   */
+  authProvider?: 'radar' | null;
+  /**
+   * Стабильный идентификатор личности у провайдера (sub Радара).
+   */
+  externalId?: string | null;
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -508,6 +516,8 @@ export interface UsersSelect<T extends boolean = true> {
   name?: T;
   phone?: T;
   roles?: T;
+  authProvider?: T;
+  externalId?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;

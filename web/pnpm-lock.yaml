@@ -26,6 +26,9 @@ importers:
       graphql:
         specifier: ^16.8.2
         version: 16.14.2
+      jose:
+        specifier: 5.9.6
+        version: 5.9.6
       next:
         specifier: 15.4.11
         version: 15.4.11(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(sass@1.77.4)
