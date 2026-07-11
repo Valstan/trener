@@ -3,55 +3,54 @@
 > Sticky-note для непрерывности сессий. Перезаписывается `/close_session`. История через `git log -- docs/SESSION_HANDOFF.md`.
 
 **Status:** ACTIVE
-**Updated:** 2026-06-30 (Сессия «оживить фронт»: исправлена **петля входа** (выкачена в прод и проверена live) + идемпотентный **dev-сид** + зафиксирован контракт **входа через VK/Радар** (запрос в Мозг). Три PR #51/#52/#53 смержены, прод здоров на `8ce82ce`.)
+**Updated:** 2026-07-11 (Сессия «Радар-SSO + хвосты»: построена и выкачена в прод сторона trener для единого входа Малмыжа — 6 PR #55–#60, все в проде. Прод здоров на `478f42c`.)
 **Branch:** main
 
 ## Текущая нитка
 
-Сессия — сделать фронт «осязаемым» (был полный, но dev-БД пустая → везде empty-state) и починить вход. Три PR смержены ([#51](https://github.com/Valstan/trener/pull/51)/[#52](https://github.com/Valstan/trener/pull/52)/[#53](https://github.com/Valstan/trener/pull/53)).
+Реализован **единый вход Малмыжа** (Радар-ID, `вход.вмалмыже.рф`) — trener пилот Ф1 экосистемного SSO. Плюс закрыты три кодовых хвоста. Шесть PR смержены и задеплоены:
 
-- **Петля входа — ИСПРАВЛЕНА ([#51](https://github.com/Valstan/trener/pull/51)), выкачена в прод.** Был баг (и на проде!): `complete-login` редиректил на `/`, а `/` — статический лендинг с «Войти» → вошедший зацикливался. Фикс: хелпер `web/src/lib/auth/home.ts` (роль→экран), `complete-login` ведёт по роли, лендинг `/` (теперь `force-dynamic`) уводит залогиненного на его экран. +5 тестов (**85/85**). Прод проверен по SSH loopback :3007 (health 200, `current=8ce82ce`).
-- **Dev-сид ([#52](https://github.com/Valstan/trener/pull/52)).** `corepack pnpm -C web seed` (`web/src/scripts/seed-dev.ts`) — тренер/родители/2 группы/дети/расписание; через реальные волны changed+cancelled хуки сами рассылают уведомления → наполняются очередь родителя и coverage тренера. Предохранитель на `trener_dev` (не прод), идемпотентно, печатает свежие magic-link для входа без SMTP.
-- **Вход через VK/Радар — контракт зафиксирован ([#53](https://github.com/Valstan/trener/pull/53)).** Радар (проект Сарафан) — единый центр авторизации, **в разработке**. Дизайн стороны trener + запрашиваемый контракт — `docs/auth-sso-vk.md`; запрос ушёл в `mailbox/to-brain/`. Решения владельца: **все роли через VK**, magic-link **сосуществует**. Код интеграции — ПОСЛЕ согласования контракта.
+- **[#55](https://github.com/Valstan/trener/pull/55) вход через Радар-ID (OIDC Code+PKCE).** `lib/auth/oidc.ts` (discovery-кэш, PKCE S256, `jose.jwtVerify` по JWKS, tx-cookie с HMAC), `lib/auth/radarLink.ts` (связывание §3.3 + двойной анти-захват), маршруты `/auth/vk/start|callback`, поля `users.authProvider/externalId` (миграция `20260710_052545`, верифицирована `diff pg_dump == IDENTICAL`, накатана на прод до мержа). Секреты `RADAR_*` в `/etc/trener/trener.env` + зеркало в KARMAN.
+- **[#57](https://github.com/Valstan/trener/pull/57) приём приглашения залогиненным.** `linkPlayerToUser` (из `acceptInvite`), `POST /auth/accept-invite-session` (one-click, только parent), `?next=` в OIDC с гардом open-redirect (`sanitizeNextPath`).
+- **[#58](https://github.com/Valstan/trener/pull/58) каскады delete Player/User.** beforeDelete-хуки (FK `SET NULL`⨯`NOT NULL`); согласия уходят с аккаунтом (бумага — источник истины, лог).
+- **[#59](https://github.com/Valstan/trener/pull/59)** `pnpm/action-setup` v4→v6.
+- **[#60](https://github.com/Valstan/trener/pull/60) брендинг единого входа.** Кнопка «Войти через VK» → «Войти через Малмыж» (VK — метод внутри единого входа, не провайдер). Только тексты; роут `/auth/vk/callback` не трогали (зафиксирован в регистрации у Радара).
+
+Тесты 85 → **116**. Письмо-отчёт Мозгу отправлено ([#56](https://github.com/Valstan/trener/pull/56)).
 
 ## Следующий шаг
 
-Развилка владельца:
+**Живой round-trip Ф1 — за владельцем (одно действие, вне кода):** `интер.вмалмыже.рф/login` → «Войти через Малмыж» → на `вход.вмалмыже.рф` войти через ВКонтакте (App «Войти в Сервисы Малмыжа») → вернётесь в trener на экран по роли. Всё до VK-согласия проверено с прод-бокса (discovery/jwks 200, кнопка редиректит на `вход.вмалмыже.рф`). Как пройдёт — пинг Мозга «round-trip Ф1 закрыт» → setka подключает GONBA/Sabantuy тем же образцом.
 
-**A. Вход через VK/Радар — ждём контракт.** Когда Мозг согласует контракт Радара (см. `docs/auth-sso-vk.md` §4) → реализовать сторону trener одним PR: маршруты `/auth/vk/start`+`/auth/vk/callback`, связывание аккаунта (поля `authProvider`/`externalId` в `users`, схемная правка — #017-поток миграций), кнопка «Войти через VK» на `/login`, адаптация invite-флоу под VK-аккаунты. Привязка родитель→ребёнок остаётся через приглашение.
-
-**B. Доработки UI / новые функции.** Походить по экранам (сервер на :3000, ссылки из сида) и решить, что сыро. Из дорожной карты: двусторонний **чат** (M4); **результаты матчей** (коллекция Matches); **создание расписания тренером** во фронте; ⚠️ **фото/видео-галереи** (детские медиа = чувствительные ПДн, юридически тяжёлое).
-
-**C. go-live — остался ОДИН гейт (действие владельца, вне кода):** РКН-уведомление + реквизиты оператора в `web/src/lib/operator.ts` + `OPERATOR_FINALIZED=true` (сейчас `false`). Технические гейты сняты (бэкапы/KARMAN — прошлая сессия).
-
-**Кодовые хвосты (мелочь):** каскады delete Player/User (FK `SET NULL` ⨯ `NOT NULL` → beforeDelete-чистка); deprecation `pnpm/action-setup@v4` (косметика).
+Дальше — развилка владельца:
+- **go-live — остался ОДИН гейт (вне кода):** РКН-уведомление + реквизиты оператора в `web/src/lib/operator.ts` + `OPERATOR_FINALIZED=true` (сейчас `false`). Технические гейты сняты.
+- **Функции из дорожной карты:** двусторонний **чат** (M4); **результаты матчей** (коллекция Matches); **создание расписания тренером** во фронте; ⚠️ фото/видео-галереи (детские медиа — юридически тяжёлое).
 
 ## ⚠️ Заметки этой сессии (не потерять)
 
-- **Фронт был полный, «пусто» = пустая dev-БД.** Лечится `corepack pnpm -C web seed`. Ссылки входа magic-link живут 30 мин — перевыпуск = перезапуск сида (данные не дублируются). Демо-аккаунты: `coach@trener.local`, `parent1..3@trener.local`, `admin@trener.local` / пароль `devpass1234` (только dev).
-- **Петля входа была и на проде** — фикс #51 выкачен и проверен. Если всплывёт похожее на других экранах — корень был «post-auth redirect на публичный лендинг»; единый источник теперь `web/src/lib/auth/home.ts`.
-- **VK/Радар:** Радар в разработке, контракт согласуется через Мозг (письмо `mailbox/to-brain/2026-06-29-sso-radar-contract-proposal.md`). Мост сессии (`buildAuthCookie`) уже даёт «все роли через VK» без отдельного admin-SSO. НЕ писать код до зелёного контракта (переделка).
-- **Грабля: :443 к боксу с rmz4val перемежающе таймаутится** (`000`/`UND_ERR_CONNECT_TIMEOUT`), SSH/:22 работает → myjino-edge фильтрация IP. Прод-смоук делать по SSH к loopback (`curl 127.0.0.1:3007/health`). В профиле машины.
-- **Грабля харнесса (Windows):** `web/src/app/(payload)/admin/importMap.js` периодически «модифицируется» пустым CRLF-дифом (живой dev-сервер трогает) — это шум, `git checkout --` до коммита.
+- **Единый вход уже архитектурно единый:** trener говорит OIDC с `вход.вмалмыже.рф` (Радар-ID), НЕ с VK напрямую. VK — upstream-метод внутри Радара (пока единственный живой; magic-link/Telegram — Ф2/Ф3). Роут `/auth/vk/*` — внутреннее имя, зафиксировано в регистрации клиента (redirect_uri символ-в-символ), **переименовывать нельзя**.
+- **client_secret Радара** для клиента `trener` — на боксе setka `/etc/setka/trener-oidc-credentials.txt` (root); в проде trener — в `/etc/trener/trener.env` + KARMAN. Локально (rmz4val) — в `web/.env` (gitignored).
+- **Грабля rmz4val:** с этой машины :443 к `вход.вмалмыже.рф`/боксам перемежающе таймаутится (myjino-edge фильтрация IP) → dev VK-вход падает в `/login?error=vk`, хотя код верен. Проверять SSO — с прод-бокса по SSH (discovery/jwks/redirect), не с rmz4val.
+- **knip локально OOM'ится** (`oxc-parser` ArrayBuffer, память машины) — гейт `deadcode` держим на CI, локально не блокирующий.
+- **Мерж-очередь:** три быстрых `--squash` подряд отменяют CI друг друга на main (concurrency) — задеплоился финальный коммит со всем содержимым. Не баг, но если нужен деплой конкретного среднего коммита — мержить по одному.
 
 ## Контекст — ПРОД (Бокс 1)
 
-- **Бокс:** myjino VPS `831d0ce99bdf.vps.myjino.ru` (SSH-алиас `GONBA`/`TRENERBOX`, user `valstan`, ключ `~/.ssh/id_ed25519`, **passwordless sudo** — с rmz4val правим `/etc`, читаем логи/БД через :22). trener — **:3007**; KARMAN — **:3002** (тот же бокс). **Postgres сервер 16.14** (НЕ 17 — это dev). Домен `интер.вмалмыже.рф` (punycode `xn--e1afpni.xn--80adkdyec4j.xn--p1ai`).
-- **БД `trener`** + роль `trener_app`. `payload_migrations`: `baseline`(1) + `dedup_unique_indexes`(2). В проде один пользователь — `valstan@valstan.ru` (админ). `releases/current` = `8ce82ce` (= main HEAD).
-- **`/etc/trener/`** (#008, root:valstan): `trener.env` (DATABASE_URL, PAYLOAD_SECRET, NEXT_PUBLIC_* VAPID public, VAPID_PRIVATE_KEY, CRON_SECRET, SMTP_* 7шт) · **`secrets-token.env`** (SECRETS_TOKEN KARMAN — ОТДЕЛЬНО) · `trener-backup.env` (конфиг бэкапа) · `backup-pubkey.asc` (public gpg, 0644). Резерв 14 секретов + 3 `BACKUP_GPG_*` — в KARMAN.
-- **systemd:** `trener.service` (:3007, EnvironmentFile `trener.env` + `secrets-token.env`) + `trener-rsvp-reminders.timer` (active) + **`trener-backup.timer` (enabled, 03:30 MSK)**. Юниты ставятся деплоем идемпотентно; скрипты — `/home/valstan/trener/bin/` (+ pull-скрипт на rmz4val `~/bin/trener-backup-pull.ps1`).
-- **Деплой:** авто при мерже (`deploy-prod.yml` workflow_run после CI) ИЛИ `workflow_dispatch`. Релизы `/home/valstan/trener/releases/<sha>` + симлинк `current`, держим 3. G8-edge (Ship-hang, фильтрация IP раннера) — в эту сессию НЕ воспроизвёлся.
+- **Бокс:** myjino VPS `831d0ce99bdf.vps.myjino.ru` (SSH-алиас `GONBA`/`TRENERBOX`, user `valstan`, passwordless sudo). trener — **:3007**; KARMAN — **:3002**. **Postgres 16.14**. Домен `интер.вмалмыже.рф` (punycode `xn--e1afpni.xn--80adkdyec4j.xn--p1ai`).
+- **БД `trener`** + роль `trener_app`. `payload_migrations`: `baseline`(1) + `dedup_unique_indexes`(2) + **`radar_sso_identity`(3)**. `releases/current` = `478f42c` (= main HEAD).
+- **`/etc/trener/`** (#008): `trener.env` (+ `RADAR_ISSUER_URL`/`RADAR_CLIENT_ID`/`RADAR_CLIENT_SECRET`, всего 17 ключей) · `secrets-token.env` (KARMAN, отдельно) · `trener-backup.env` · `backup-pubkey.asc`. Зеркало 17 ключей + 3 `BACKUP_GPG_*` в KARMAN.
+- **Единый вход:** issuer `вход.вмалмыже.рф` (punycode `xn--b1ae3a1a.xn--80adkdyec4j.xn--p1ai`) — модуль Радар-ID проекта setka (`../setka`, ADR-0002). Клиент `trener` зарегистрирован (confidential). Контракт — `docs/auth-sso-vk.md` (статус: РЕАЛИЗОВАНО).
+- **Деплой:** авто при мерже (`deploy-prod.yml` workflow_run после CI) ИЛИ `workflow_dispatch`. Схемные правки — поток #017 (`docs/migrations.md`): миграция на ветке ДО мержа → мерж → ручной deploy.
 
 ## Контекст — DEV (rmz4val, эта машина)
 
-- Профиль: [`docs/machines/rmz4val.md`](machines/README.md). Postgres **17** `postgresql-x64-17` (порт 5432; `Start-Service`, иногда со 2-го раза), БД `trener_dev`, pnpm только `corepack pnpm` (10.15). `web/.env` (gitignored, теперь с `SECRETS_TOKEN`). **node v24** → standalone только в CI. **gpg-keyring** хранит приватный ключ бэкапов (restore-source, fp `CA8C5062…0FF7F5`).
-- **Грабля cwd Bash-тула:** рабочая директория «залипает» между вызовами; `cd web && …` молча падает, если уже в `web`. Использовать `corepack pnpm -C web …`.
-- Каркас: Payload 3.75 / Next 15.4, 11 коллекций, **85 юнит-тестов** зелёные. Мержим вручную `gh pr merge --squash --delete-branch` по зелёному CI (#027). Гейты CI: lint/typecheck/test/knip/build.
-- **Сид demo-данных:** `corepack pnpm -C web seed` (`src/scripts/seed-dev.ts`) — наполнить пустую `trener_dev` для «пощупать» фронт; печатает свежие magic-link.
+- Профиль: [`docs/machines/rmz4val.md`](machines/README.md). Postgres **17** `postgresql-x64-17` (порт 5432; `Start-Service`, иногда со 2-го раза — в эту сессию сервис был Stopped, поднимал вручную), БД `trener_dev`, pnpm только `corepack pnpm`. `web/.env` (gitignored, с `RADAR_*` для dev). **node v24**.
+- **Грабля cwd Bash-тула:** рабочая директория «залипает»; использовать `corepack pnpm -C web …`.
+- Каркас: Payload 3.75 / Next 15.4, **jose 5.9.6** (прямая зависимость для OIDC), 11 коллекций, **116 юнит-тестов**. Мержим вручную `gh pr merge --squash --delete-branch` по зелёному CI. Гейты CI: lint/typecheck/test/knip/build.
+- **Сид demo-данных:** `corepack pnpm -C web seed` — наполнить пустую `trener_dev`; печатает свежие magic-link.
+- **Верификация миграции** (перед PR): раздел «Верификация» в `docs/migrations.md` — diff pg_dump dev-push vs migrate-сборки == IDENTICAL.
 
 ## Хвосты (не блокеры)
 
-- Каскады delete Player/User (FK `SET NULL` ⨯ `NOT NULL`) — beforeDelete-чистка, редкое admin-действие.
-- deprecation-warning `pnpm/action-setup@v4` на node20-раннере — косметика.
-- ✅ Роль-роутинг главной — СДЕЛАН (#51): `/` уводит залогиненного на его экран.
-- Письма brain этой сессии в `mailbox/to-brain/`: запрос контракта VK/Радар (`2026-06-29-sso-radar-contract-proposal.md`) + грабля post-auth-redirect (`2026-06-30-magic-link-post-auth-redirect-loop.md`) — brain прочитает со своей стороны.
+- ✅ invite-флоу под VK (#57), каскады delete (#58), action-setup бамп (#59), брендинг единого входа (#60) — СДЕЛАНЫ.
+- Открытых кодовых хвостов нет. Следующее — по развилке владельца (go-live-гейт / функции дорожной карты).
