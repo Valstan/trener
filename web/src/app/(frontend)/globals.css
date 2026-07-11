@@ -250,6 +250,10 @@ button {
   display: grid;
   gap: 0.5rem;
 }
+.stack-xs {
+  display: grid;
+  gap: 0.3rem;
+}
 .row {
   display: flex;
   align-items: center;
@@ -445,6 +449,37 @@ button {
 .pre {
   white-space: pre-wrap;
   margin: 0;
+}
+
+/* ── Результат матча ────────────────────────────────────────────────────── */
+
+.match-score {
+  font-size: 1.4rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  padding: 0.1rem 0.6rem;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+}
+.match-win {
+  color: var(--accent);
+}
+.match-loss {
+  color: var(--danger);
+}
+.match-draw {
+  color: var(--muted);
+}
+.scorer-list {
+  margin: 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.15rem;
+}
+.scorer-list li {
+  font-size: 0.9rem;
 }
 .error-text {
   color: var(--danger);

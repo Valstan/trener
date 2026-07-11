@@ -78,6 +78,7 @@ export interface Config {
     rsvps: Rsvp;
     announcements: Announcement;
     questions: Question;
+    matches: Match;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -96,6 +97,7 @@ export interface Config {
     rsvps: RsvpsSelect<false> | RsvpsSelect<true>;
     announcements: AnnouncementsSelect<false> | AnnouncementsSelect<true>;
     questions: QuestionsSelect<false> | QuestionsSelect<true>;
+    matches: MatchesSelect<false> | MatchesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -399,6 +401,35 @@ export interface Question {
   createdAt: string;
 }
 /**
+ * Результаты игр. Информационный канал (coverage не затрагивает). Голы детей — 152-ФЗ: только имя.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "matches".
+ */
+export interface Match {
+  id: number;
+  group: number | Group;
+  matchDate: string;
+  opponent: string;
+  homeAway: 'home' | 'away';
+  location?: string | null;
+  scoreOur: number;
+  scoreOpponent: number;
+  /**
+   * 152-ФЗ: только имя ребёнка (из справочника Дети). Виден родителям группы.
+   */
+  scorers?:
+    | {
+        player: number | Player;
+        goals: number;
+        id?: string | null;
+      }[]
+    | null;
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -465,6 +496,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'questions';
         value: number | Question;
+      } | null)
+    | ({
+        relationTo: 'matches';
+        value: number | Match;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -676,6 +711,29 @@ export interface QuestionsSelect<T extends boolean = true> {
   status?: T;
   readAt?: T;
   answeredAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "matches_select".
+ */
+export interface MatchesSelect<T extends boolean = true> {
+  group?: T;
+  matchDate?: T;
+  opponent?: T;
+  homeAway?: T;
+  location?: T;
+  scoreOur?: T;
+  scoreOpponent?: T;
+  scorers?:
+    | T
+    | {
+        player?: T;
+        goals?: T;
+        id?: T;
+      };
+  note?: T;
   updatedAt?: T;
   createdAt?: T;
 }
