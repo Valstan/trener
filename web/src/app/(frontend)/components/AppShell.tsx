@@ -11,12 +11,14 @@ export type Tab = { key: string; href: string; label: string; icon: string }
 export const COACH_TABS: Tab[] = [
   { key: 'schedule', href: '/coach/schedule', label: 'Расписание', icon: '📅' },
   { key: 'announcements', href: '/coach/announcements', label: 'Объявления', icon: '📣' },
+  { key: 'matches', href: '/coach/matches', label: 'Результаты', icon: '🏆' },
   { key: 'questions', href: '/coach/questions', label: 'Вопросы', icon: '💬' },
 ]
 
 export const PARENT_TABS: Tab[] = [
   { key: 'changes', href: '/parent', label: 'Изменения', icon: '🔔' },
   { key: 'announcements', href: '/parent/announcements', label: 'Объявления', icon: '📣' },
+  { key: 'matches', href: '/parent/matches', label: 'Результаты', icon: '🏆' },
   { key: 'ask', href: '/parent/ask', label: 'Вопрос', icon: '💬' },
 ]
 
