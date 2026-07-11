@@ -153,6 +153,25 @@ button {
   background: var(--surface-hover);
   text-decoration: none;
 }
+.app-account {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-right: -0.4rem;
+  border-radius: var(--r-pill);
+  font-size: 1.2rem;
+  line-height: 1;
+  text-decoration: none;
+}
+.app-account:hover {
+  background: var(--surface-hover);
+  text-decoration: none;
+}
+.app-account[aria-current='page'] {
+  background: var(--accent-soft);
+}
 
 /* Нижняя навигация (нативный мобильный паттерн) */
 .tab-bar {
