@@ -48,6 +48,16 @@ export const AppShell = ({
       )}
       {title && <span className="app-title">{title}</span>}
       <span className="spacer" />
+      {tabs && (
+        <Link
+          href="/account"
+          className="app-account"
+          aria-label="Аккаунт"
+          aria-current={active === 'account' ? 'page' : undefined}
+        >
+          <span aria-hidden>👤</span>
+        </Link>
+      )}
     </header>
 
     <main className={tabs ? 'page has-tabbar' : 'page'}>{children}</main>
