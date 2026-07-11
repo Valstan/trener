@@ -13,10 +13,10 @@ import { JoinForm } from './JoinForm'
 
 // Лендинг приглашения от тренера. Показывает, какого ребёнка/группу привязываем.
 // Три ветки:
-//   • залогинен родитель (VK/magic-link) → one-click «Принять приглашение»
+//   • залогинен родитель (единый вход/magic-link) → one-click «Принять приглашение»
 //     (личность доказана сессией, email-раунд не нужен);
-//   • аноним → email-форма (классический путь) + кнопка VK с возвратом сюда
-//     (?next=) — после входа приглашение принимается one-click'ом;
+//   • аноним → email-форма (классический путь) + кнопка единого входа Малмыжа с
+//     возвратом сюда (?next=) — после входа приглашение принимается one-click'ом;
 //   • залогинен персонал → email-форма (ребёнка нельзя записать на coach/admin).
 // Привязки на GET НЕ происходит; токен не гасим (peek без мутации).
 export const dynamic = 'force-dynamic'
@@ -34,7 +34,7 @@ const JoinPage = async ({ params }: { params: Promise<{ token: string }> }) => {
   } catch {
     preview = { ok: false }
   }
-  const vkEnabled = getRadarConfig() !== null
+  const ssoEnabled = getRadarConfig() !== null
 
   if (!preview.ok) {
     return (
@@ -79,15 +79,15 @@ const JoinPage = async ({ params }: { params: Promise<{ token: string }> }) => {
         <AcceptAsUser token={token} email={sessionParentEmail} />
       ) : (
         <>
-          {vkEnabled && (
+          {ssoEnabled && (
             <>
-              {/* Возврат сюда после VK-входа (?next=) — приглашение примется one-click'ом. */}
+              {/* Возврат сюда после единого входа (?next=) — приглашение примется one-click'ом. */}
               <a
                 className="btn btn-primary btn-block"
                 href={`/auth/vk/start?next=${encodeURIComponent(`/join/${token}`)}`}
                 style={{ marginTop: '0.5rem' }}
               >
-                Войти через VK и принять
+                Войти через Малмыж и принять
               </a>
               <p className="note" style={{ textAlign: 'center', margin: '1rem 0 0' }}>
                 или по email

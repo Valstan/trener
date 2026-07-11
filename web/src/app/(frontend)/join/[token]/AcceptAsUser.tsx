@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react'
 
-// One-click приём приглашения залогиненным родителем (вошёл через VK/magic-link):
+// One-click приём приглашения залогиненным родителем (вошёл единым входом/magic-link):
 // личность доказана сессией, email-раунд не нужен. POST /auth/accept-invite-session.
 export const AcceptAsUser = ({ token, email }: { token: string; email: string }) => {
   const [loading, setLoading] = useState(false)
