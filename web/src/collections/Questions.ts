@@ -2,6 +2,7 @@ import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
 import { coachGroupIds, isAdmin, isCoach, isParent } from '../access/roles'
+import { cleanupQuestionRelations } from '../hooks/cleanupQuestionRelations'
 import { fanOutQuestion } from '../hooks/fanOutQuestion'
 
 // Вопрос родителя тренеру (M3-PR11) — суррогат чата (kickoff §4/§8). ОДНО сообщение,
@@ -53,6 +54,8 @@ export const Questions: CollectionConfig = {
   },
   hooks: {
     afterChange: [fanOutQuestion],
+    // M4: реплики нитки — required FK на вопрос; чистим до удаления головы.
+    beforeDelete: [cleanupQuestionRelations],
   },
   fields: [
     {
