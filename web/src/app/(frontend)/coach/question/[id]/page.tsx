@@ -8,6 +8,7 @@ import { coachGroupIds, isAdmin, isCoach } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS } from '../../../components/AppShell'
+import { MarkRead } from './MarkRead'
 import { ReplyForm } from '../../../components/ReplyForm'
 import { ThreadMessages, type ThreadMessage } from '../../../components/ThreadMessages'
 
@@ -79,6 +80,7 @@ const CoachThreadPage = async ({ params }: { params: Promise<{ id: string }> }) 
 
   return (
     <AppShell title="Переписка" back={{ href: '/coach/questions' }} tabs={COACH_TABS} active="questions">
+      <MarkRead questionId={questionId} status={question.status} />
       <p className="muted" style={{ margin: '0 0 1rem' }}>
         {parentName}
         {parent?.phone ? ` · ${parent.phone}` : ''} · {group?.name ?? 'Группа'}
