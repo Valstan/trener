@@ -10,7 +10,9 @@ export type QuestionItem = {
   parentName: string
   parentPhone: string | null
   body: string
-  createdAt: string | null
+  createdAt: string | null // время последней активности нитки (реплика или голова)
+  lastBody: string | null // последняя реплика M4 (null — нитка без ответов)
+  lastAuthorRole: 'parent' | 'coach' | null
 }
 
 const cardClass = (status: QuestionItem['status']): string =>
@@ -89,6 +91,12 @@ export const CoachQuestions = ({ items: initial }: { items: QuestionItem[] }) =>
             {q.parentPhone ? ` · ${q.parentPhone}` : ''}
           </div>
           <p className="pre">{q.body}</p>
+          {q.lastBody && (
+            <p className="pre muted" style={{ margin: 0, borderLeft: '3px solid var(--border)', paddingLeft: '0.6rem' }}>
+              {q.lastAuthorRole === 'coach' ? 'Вы: ' : ''}
+              {q.lastBody}
+            </p>
+          )}
           <div className="row-between" style={{ alignItems: 'center' }}>
             {q.status === 'answered' ? (
               <span className="success-text">✓ Отвечено</span>
