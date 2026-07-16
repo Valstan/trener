@@ -3,48 +3,49 @@
 > Sticky-note для непрерывности сессий. Перезаписывается `/close_session`. История через `git log -- docs/SESSION_HANDOFF.md`.
 
 **Status:** ACTIVE
-**Updated:** 2026-07-12 (Сессия «Результаты матчей + доступ к приложению + логин/пароль»: 3 PR в проде — #62, #63, #64. Прод здоров на `715dbd0`.)
+**Updated:** 2026-07-16 (Сессия «Расписание во фронте + M4-чат»: 3 PR в проде — #66, #67, #68. Прод здоров на `8ceb8c8`. Машина PC40.)
 **Branch:** main
 
 ## Текущая нитка
 
-Три фичи выкачены в прод (все смержены и задеплоены, миграция #62 накатана по потоку #017):
+Дорожная карта kickoff §8 **закрыта до M4 включительно**. Выкачено в прод:
 
-- **[#62](https://github.com/Valstan/trener/pull/62) результаты матчей.** Коллекция `Matches` (счёт + авторы голов, scoped-доступ по группам), экраны тренера ([/coach/matches](../web/src/app/(frontend)/coach/matches/page.tsx)) и родителя ([/parent/matches](../web/src/app/(frontend)/parent/matches/page.tsx)), вкладка 🏆. Каскад: `cleanupPlayerRelations` вычищает ребёнка из авторов голов (FK `NOT NULL ⨯ SET NULL`, родня `rsvps.player`). Миграция `20260711_123550_matches` (batch 4). Письмо Мозгу про array-relationship+FK-граблю ушло в том же PR.
-- **[#63](https://github.com/Valstan/trener/pull/63) цель обработки в политике 152-ФЗ.** Авторы голов видны родителям группы → §3/§2/§8 политики [/privacy](../web/src/app/(frontend)/privacy/page.tsx) обновлены, `CONSENT_POLICY_VERSION` → `2026-07-11`.
-- **[#64](https://github.com/Valstan/trener/pull/64) доступ к приложению + логин/пароль.** Ссылка «⚽ Открыть приложение» в навигации Payload-админки → `/coach/schedule` (координатор больше не заперт в CMS). Экран [/account](../web/src/app/(frontend)/account/page.tsx) (логин=email + установка пароля, иконка 👤 в шапке), вход по email+паролю на `/login` (аддитивно к magic-link/SSO, анти-enumeration). Роуты `/auth/set-password`, `/auth/password-login`.
+- **[#66](https://github.com/Valstan/trener/pull/66) расписание тренером во фронте.** `POST/PATCH /coach/session` + `SessionComposer`/`SessionEditor` на [/coach/schedule](../web/src/app/(frontend)/coach/schedule/page.tsx): создание (planned, не волна), перенос/отмена триггерят ядро M2 (авто-флип статуса, пуш/ack/coverage). `lib/sessionInput` — валидация с C1-семантикой частичного патча.
+- **[#67](https://github.com/Valstan/trener/pull/67) M4 двусторонний чат.** Вопрос = голова нитки (данные не мигрировали), новая коллекция `question-messages` (денорм group/parent → плоский read-scope; `author` не-required — FK-грабля NOT NULL ⨯ SET NULL). Reply-эндпоинты `/coach|/parent/question/[id]/reply`, статусы головы `new→answered→new`, `fanOutQuestionReply` (пуш по направлению автора, без ПДн), `cleanupQuestionRelations` (каскад реплик). Экраны: нитка тренера `/coach/question/[id]`, у родителя `/parent/ask/[id]` + список «Мои переписки». **Миграция `20260716_112725_m4_chat_messages` (batch 5)** накатана по потоку #017 (+догон дрейфа default `policy_version` из #63). Политика 152-ФЗ не бампалась: новых категорий ПДн нет.
+- **[#68](https://github.com/Valstan/trener/pull/68) хвосты чата.** Инбокс тренера показывает последнюю реплику нитки; открытие нитки гасит new→read (`MarkRead`). Письмо Мозгу: mojibake от `curl -d` с кириллицей в git-bash/Windows (`mailbox/to-brain/2026-07-16-windows-curl-cyrillic-mojibake.md`).
 
-Тесты 116 → **119**. Все флоу проверены вживую.
+Тесты 119 → **135**. Все флоу проверены вживую (включая изоляцию чужого родителя и mark-read через браузер).
 
 ## Следующий шаг
 
-**По дорожной карте осталось (за владельцем — что брать):**
-- **Расписание тренером во фронте** (рекоменд. как следующее — меньше объём, без realtime): сейчас тренер во фронте расписание только просматривает (`/coach/schedule`), создаёт/правит в Payload-админке. Дать фронтовый composer (как у матчей/объявлений), триггерящий готовое ядро изменение→push→ack→coverage.
-- **M4 двусторонний чат** родитель↔тренер (сейчас только «вопрос тренеру» в одну сторону) — самый крупный кусок, затрагивает realtime/уведомления.
+**Дорожная карта исчерпана — дальше за владельцем:**
 - ⚠️ Фото/видео-галереи — отложены (детские медиа, юридически тяжёлое).
+- go-live 152-ФЗ (реквизиты оператора + РКН) — трекер в [`docs/PENDING_FOLLOWUPS.md`](PENDING_FOLLOWUPS.md), ждёт решения о запуске «вживую».
+- Возможная идея из вопроса владельца 2026-07-16: **открытая само-регистрация с модерацией** («заявка в школу») — сейчас онбординг только по инвайту (осознанно, 152-ФЗ). Не начинали — обсудить объём, если владелец захочет.
 
 ## ⚠️ Контекст этой сессии (не потерять)
 
-- **Фаза проекта — закрытое тестирование на вымышленных данных** (решение владельца 2026-07-11). **go-live-гейт намеренно открыт:** `OPERATOR_FINALIZED=false`, плейсхолдеры в [`operator.ts`](../web/src/lib/operator.ts) НЕ заполнять выдуманными ИНН/адресом, боевую политику не публиковать до реального уведомления РКН. Чек-лист — в [`docs/PENDING_FOLLOWUPS.md`](PENDING_FOLLOWUPS.md) (трекер #033), `/start` поднимет.
-- **Пароль у персонала уже работал** (Payload `auth:true`): `/admin/login` + `/admin/account`. #64 распространил логин/пароль на фронт-пользователей.
-- **Админ ходит по фронту как staff:** страницы `/coach/*` пускают и admin, и coach (`isCoach(user) || isAdmin(user)`). Отдельного admin-фронта нет — админ использует coach-оболочку.
-- **Грабля браузер-верификации:** синтетические клики по React-кнопкам (`computer left_click` по ref) в этом окружении часто НЕ триггерят onClick; форму слать через DOM (`form.requestSubmit()`), логиниться через REST (`/api/users/login` или `/auth/complete-login` fetch'ем). Скриншоты `computer screenshot` таймаутятся — верификация через `get_page_text`/`read_page`.
-- **Грабля rmz4val:** Postgres `postgresql-x64-17` ложится после простоя/обрыва — поднимать `Start-Service` (иногда со 2-го раза). SSO/прод-проверки :443 перемежающе таймаутятся — сверять с бокса по SSH (`ssh GONBA`, loopback `:3007`).
+- **Фаза — закрытое тестирование на вымышленных данных**; go-live-гейт открыт намеренно (`OPERATOR_FINALIZED=false`), см. PENDING_FOLLOWUPS.
+- **Порядок статусов чата:** реплика родителя возвращает голову в `new`; ответ тренера (`reply`) сам ставит `answered` — кнопка «Ответил» в инбоксе осталась для оффлайн-ответов.
+- **Грабля curl+кириллица (Windows/git-bash):** `-d` с литеральной кириллицей кладёт mojibake в БД; слать `--data-binary @file` из UTF-8-файла, проверки писать в UTF-8-файл (консоль cp866 маскирует). Письмо Мозгу ушло.
+- **Postgres на PC40 (`postgresql-x64-17`, порт 5433)** тоже ложится, как на rmz4val, и `Start-Service` из обычной оболочки даёт Access denied — поднимать элевейтед: `powershell Start-Process powershell -Verb RunAs -ArgumentList '-Command Start-Service postgresql-x64-17'`.
+- **Дев-сервер, стартовавший при лежащей БД, не сделал drizzle-push** — после подъёма Postgres перезапустить сервер, иначе новых таблиц нет.
 
 ## Контекст — ПРОД (Бокс 1)
 
-- **Бокс:** myjino VPS `831d0ce99bdf.vps.myjino.ru` (SSH-алиас `GONBA`/`TRENERBOX`, user `valstan`, passwordless sudo). trener — **:3007**; KARMAN — **:3002**. **Postgres 16.14**. Домен `интер.вмалмыже.рф`.
-- **БД `trener`** + роль `trener_app`. `payload_migrations`: baseline(1) + dedup_unique_indexes(2) + radar_sso_identity(3) + **matches(4)**. `releases/current` = `715dbd0` (= main HEAD).
-- **Деплой:** авто при мерже (`deploy-prod.yml` workflow_run после CI) ИЛИ `workflow_dispatch`. Схемные правки — поток #017 ([`docs/migrations.md`](migrations.md)): миграция на ветке ДО мержа (`apply-migration.yml`) → мерж → авто-деплой падает на migration-guard (ожидаемо) → ручной deploy (`workflow_dispatch` обходит guard). **Без миграций** авто-деплой проходит штатно.
+- **Бокс:** myjino VPS `831d0ce99bdf.vps.myjino.ru` (SSH-алиас `GONBA`/`TRENERBOX`, user `valstan`, passwordless sudo). trener — **:3007**; KARMAN — **:3002**. **Postgres 16.14**. Домен `интер.вмалмыже.рф` (`xn--e1afpni.xn--80adkdyec4j.xn--p1ai`).
+- **БД `trener`** + роль `trener_app`. `payload_migrations`: baseline(1) … matches(4) + **m4_chat_messages(5)**. `releases/current` = `8ceb8c8` (= main HEAD).
+- **Деплой:** авто при мерже (`deploy-prod.yml` workflow_run после CI) ИЛИ `workflow_dispatch`. Схемные правки — поток #017 ([`docs/migrations.md`](migrations.md)): миграция на ветке ДО мержа (`apply-migration.yml --ref <ветка>`) → мерж → авто-деплой падает на migration-guard (ожидаемо) → ручной deploy. **Без миграций** авто-деплой проходит штатно.
 - **`/etc/trener/`** (#008): `trener.env` (RADAR_* + 17 ключей) · `secrets-token.env` (KARMAN) · `trener-backup.env` · `backup-pubkey.asc`. Зеркало в KARMAN (ADR-0006).
+- Внешний smoke с бокса: `curl --resolve $dom:443:127.0.0.1 https://$dom/health` (снаружи punycode-гадание не нужно — домен выше).
 
-## Контекст — DEV (rmz4val, эта машина)
+## Контекст — DEV
 
-- Профиль: [`docs/machines/rmz4val.md`](machines/README.md). Postgres **17** `postgresql-x64-17` (порт 5432), БД `trener_dev`, pnpm только `corepack pnpm`, node v24.
-- Каркас: Payload 3.75 / Next 15.4, jose 5.9.6, **12 коллекций** (+ Matches), **119 юнит-тестов**. Мержим вручную `gh pr merge --squash --delete-branch` по зелёному CI. Гейты CI: lint/typecheck/test/knip/build.
-- **Сид demo-данных:** `corepack pnpm -C web seed` — печатает свежие magic-link (тренер Иван Петров, родители Ольга/Дмитрий/Елена, админ admin@trener.local/devpass1234).
-- **Верификация миграции** перед PR: раздел «Верификация» в [`docs/migrations.md`](migrations.md) (diff pg_dump dev-push vs migrate == IDENTICAL).
+- Машины: **PC40** (эта, `D:\GitHubReps\`, Postgres 17 на **5433**) и rmz4val (`D:\PROGRAMMING\`, порт 5432) — профили в [`docs/machines/`](machines/README.md); psql не в PATH (полный путь в профиле).
+- Каркас: Payload 3.75 / Next 15.4, **13 коллекций** (+ QuestionMessages), **135 юнит-тестов**. Мержим вручную `gh pr merge --squash --delete-branch` по зелёному CI. Гейты CI: lint/typecheck/test/knip/build.
+- **Сид demo-данных:** `corepack pnpm -C web seed` — перевыпускает magic-link без потери данных (тренер Иван Петров, родители Ольга/Дмитрий/Елена, админ admin@trener.local/devpass1234).
+- Верификация миграции перед PR: раздел «Верификация» в [`docs/migrations.md`](migrations.md) (на PC40 — порт 5433, пароль из `web/.env`).
 
 ## Хвосты (не блокеры)
 
-- Открытых кодовых хвостов нет. Следующее — по дорожной карте (расписание во фронте / чат M4), см. «Следующий шаг».
+- Открытых кодовых хвостов нет. Следующее — по решению владельца (см. «Следующий шаг»).
