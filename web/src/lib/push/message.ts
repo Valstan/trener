@@ -35,3 +35,12 @@ export const buildQuestionMessage = (): PushMessage => ({
   body: 'Откройте приложение, чтобы прочитать и ответить.',
   url: '/coach/questions',
 })
+
+// Ответ тренера в нитке чата (M4). Адресат — РОДИТЕЛЬ, ссылка на его переписку
+// /parent/ask (не на нитку по id — id псевдо-идентификатор, R4). Текст ответа и
+// имена — НЕ в payload (проходит через Apple/Google); читается из РФ-БД.
+export const buildQuestionReplyMessage = (): PushMessage => ({
+  title: 'Ответ тренера',
+  body: 'Откройте приложение, чтобы прочитать ответ.',
+  url: '/parent/ask',
+})

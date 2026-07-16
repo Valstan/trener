@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { buildAnnouncementMessage, buildPushMessage, buildQuestionMessage } from './message'
+import { buildAnnouncementMessage, buildPushMessage, buildQuestionMessage, buildQuestionReplyMessage } from './message'
 import { isDeadSubscription } from './send'
 
 // R4: payload пуша не несёт ПДн ребёнка — только неидентифицирующий текст + /parent.
@@ -41,6 +41,17 @@ describe('buildQuestionMessage', () => {
   it('ссылка на инбокс тренера /coach/questions, без ПДн', () => {
     const m = buildQuestionMessage()
     expect(m.url).toBe('/coach/questions')
+    const blob = `${m.title} ${m.body} ${m.url}`
+    expect(blob).not.toMatch(/\d{2,}/)
+  })
+})
+
+// R4 (M4): ответ тренера пушит родителю только зов открыть переписку — текст ответа
+// и имена НЕ в payload; ссылка на нейтральный /parent/ask (не на нитку по id).
+describe('buildQuestionReplyMessage', () => {
+  it('ссылка на /parent/ask, без ПДн и без id нитки', () => {
+    const m = buildQuestionReplyMessage()
+    expect(m.url).toBe('/parent/ask')
     const blob = `${m.title} ${m.body} ${m.url}`
     expect(blob).not.toMatch(/\d{2,}/)
   })

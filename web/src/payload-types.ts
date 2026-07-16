@@ -78,6 +78,7 @@ export interface Config {
     rsvps: Rsvp;
     announcements: Announcement;
     questions: Question;
+    'question-messages': QuestionMessage;
     matches: Match;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
@@ -97,6 +98,7 @@ export interface Config {
     rsvps: RsvpsSelect<false> | RsvpsSelect<true>;
     announcements: AnnouncementsSelect<false> | AnnouncementsSelect<true>;
     questions: QuestionsSelect<false> | QuestionsSelect<true>;
+    'question-messages': QuestionMessagesSelect<false> | QuestionMessagesSelect<true>;
     matches: MatchesSelect<false> | MatchesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
@@ -401,6 +403,23 @@ export interface Question {
   createdAt: string;
 }
 /**
+ * Нитки чата M4: голова — «Вопрос тренеру», здесь — ответы и реплики.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "question-messages".
+ */
+export interface QuestionMessage {
+  id: number;
+  question: number | Question;
+  group: number | Group;
+  parent: number | User;
+  author?: (number | null) | User;
+  authorRole: 'parent' | 'coach';
+  body: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Результаты игр. Информационный канал (coverage не затрагивает). Голы детей — 152-ФЗ: только имя.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -496,6 +515,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'questions';
         value: number | Question;
+      } | null)
+    | ({
+        relationTo: 'question-messages';
+        value: number | QuestionMessage;
       } | null)
     | ({
         relationTo: 'matches';
@@ -711,6 +734,20 @@ export interface QuestionsSelect<T extends boolean = true> {
   status?: T;
   readAt?: T;
   answeredAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "question-messages_select".
+ */
+export interface QuestionMessagesSelect<T extends boolean = true> {
+  question?: T;
+  group?: T;
+  parent?: T;
+  author?: T;
+  authorRole?: T;
+  body?: T;
   updatedAt?: T;
   createdAt?: T;
 }

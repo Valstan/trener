@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
 
 export type QuestionItem = {
@@ -88,19 +89,22 @@ export const CoachQuestions = ({ items: initial }: { items: QuestionItem[] }) =>
             {q.parentPhone ? ` · ${q.parentPhone}` : ''}
           </div>
           <p className="pre">{q.body}</p>
-          {q.status === 'answered' ? (
-            <span className="success-text">✓ Отвечено</span>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-primary btn-sm"
-              style={{ justifySelf: 'start' }}
-              disabled={busy === q.id}
-              onClick={() => markAnswered(q.id)}
-            >
-              {busy === q.id ? 'Отмечаем…' : 'Ответил'}
-            </button>
-          )}
+          <div className="row-between" style={{ alignItems: 'center' }}>
+            {q.status === 'answered' ? (
+              <span className="success-text">✓ Отвечено</span>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                style={{ justifySelf: 'start' }}
+                disabled={busy === q.id}
+                onClick={() => markAnswered(q.id)}
+              >
+                {busy === q.id ? 'Отмечаем…' : 'Ответил'}
+              </button>
+            )}
+            <Link href={`/coach/question/${q.id}`}>Переписка →</Link>
+          </div>
         </article>
       ))}
     </div>
