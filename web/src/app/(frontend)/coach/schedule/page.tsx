@@ -12,8 +12,11 @@ import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { SessionComposer } from './SessionComposer'
+import { SessionEditor } from './SessionEditor'
 
-// Расписание тренера: его сессии + сводка coverage по изменённым/отменённым.
+// Расписание тренера: компоновщик новой тренировки + его сессии (с inline-правкой/
+// отменой — волна ядра M2) + сводка coverage по изменённым/отменённым.
 // Доступ: персонал; читает scoped (тренер — только свои группы, #015).
 export const dynamic = 'force-dynamic'
 
@@ -38,19 +41,20 @@ const CoachSchedulePage = async () => {
     overrideAccess: false,
   })
 
-  const groupIds = [...new Set(sessions.docs.map((s) => relId(s.group)).filter((v): v is number => v != null))]
-  const groups = groupIds.length
-    ? (
-        await payload.find({
-          collection: 'groups',
-          where: { id: { in: groupIds } },
-          depth: 0,
-          pagination: false,
-          overrideAccess: true,
-        })
-      ).docs
-    : ([] as Group[])
+  // Группы пользователя (scoped) — селектор компоновщика + имена в карточках.
+  const groups = (
+    await payload.find({
+      collection: 'groups',
+      sort: 'name',
+      limit: 200,
+      depth: 0,
+      pagination: false,
+      user,
+      overrideAccess: false,
+    })
+  ).docs as Group[]
   const groupNameById = new Map(groups.map((g) => [g.id, g.name]))
+  const groupOptions = groups.map((g) => ({ id: g.id, name: g.name }))
 
   // Coverage только для сессий с волной (изменённых/отменённых).
   const summaryBySession = new Map<number, CoverageSummary>()
@@ -65,6 +69,18 @@ const CoachSchedulePage = async () => {
 
   return (
     <AppShell title="Расписание" tabs={COACH_TABS} active="schedule">
+      {groupOptions.length === 0 ? (
+        <div className="empty-state">
+          <span className="ic" aria-hidden>
+            📅
+          </span>
+          У вас пока нет групп — тренировку добавить некому.
+        </div>
+      ) : (
+        <SessionComposer groups={groupOptions} />
+      )}
+
+      <h2 className="section-title">Тренировки</h2>
       {sessions.docs.length === 0 ? (
         <div className="empty-state">
           <span className="ic" aria-hidden>
@@ -97,6 +113,16 @@ const CoachSchedulePage = async () => {
                     · <Link href={`/coach/session/${s.id}`}>подробнее →</Link>
                   </div>
                 )}
+                <SessionEditor
+                  session={{
+                    id: s.id,
+                    startDate: s.startDate,
+                    endDate: s.endDate,
+                    location: s.location,
+                    note: s.note,
+                    status: s.status,
+                  }}
+                />
               </div>
             )
           })}
