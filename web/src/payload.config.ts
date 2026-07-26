@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 
 import { Users } from './collections/Users'
 import { Branches } from './collections/Branches'
+import { Subscriptions } from './collections/Subscriptions'
 import { Groups } from './collections/Groups'
 import { Players } from './collections/Players'
 import { TrainingSessions } from './collections/TrainingSessions'
@@ -65,6 +66,7 @@ export default buildConfig({
     Questions,
     QuestionMessages,
     Matches,
+    Subscriptions,
   ],
   // Email — magic-link онбординг (PR2) + уведомления. Провайдеро-независимо через
   // внешний SMTP-relay (env). Пока SMTP_HOST не задан, адаптер не подключаем →

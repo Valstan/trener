@@ -81,6 +81,7 @@ export interface Config {
     questions: Question;
     'question-messages': QuestionMessage;
     matches: Match;
+    subscriptions: Subscription;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -102,6 +103,7 @@ export interface Config {
     questions: QuestionsSelect<false> | QuestionsSelect<true>;
     'question-messages': QuestionMessagesSelect<false> | QuestionMessagesSelect<true>;
     matches: MatchesSelect<false> | MatchesSelect<true>;
+    subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -190,6 +192,14 @@ export interface Branch {
   id: number;
   name: string;
   city?: string | null;
+  /**
+   * Реквизиты и инструкция для родителей (M8): куда и как платить. Показываются на экране «Оплата».
+   */
+  paymentDetails?: string | null;
+  /**
+   * Необязательно: ссылка/QR-цель, открывающая форму оплаты с реквизитами.
+   */
+  paymentUrl?: string | null;
   /**
    * Снять галочку = закрыть филиал, не удаляя его историю.
    */
@@ -487,6 +497,25 @@ export interface Match {
   createdAt: string;
 }
 /**
+ * Учёт оплат абонементов. Продление = новая запись; статус выводится по датам.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriptions".
+ */
+export interface Subscription {
+  id: number;
+  player: number | Player;
+  paidFrom?: string | null;
+  paidUntil: string;
+  amount?: number | null;
+  /**
+   * Например: «перенос из-за болезни», «скидка на второго ребёнка».
+   */
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -565,6 +594,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'matches';
         value: number | Match;
+      } | null)
+    | ({
+        relationTo: 'subscriptions';
+        value: number | Subscription;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -644,6 +677,8 @@ export interface UsersSelect<T extends boolean = true> {
 export interface BranchesSelect<T extends boolean = true> {
   name?: T;
   city?: T;
+  paymentDetails?: T;
+  paymentUrl?: T;
   active?: T;
   updatedAt?: T;
   createdAt?: T;
@@ -829,6 +864,19 @@ export interface MatchesSelect<T extends boolean = true> {
         goals?: T;
         id?: T;
       };
+  note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subscriptions_select".
+ */
+export interface SubscriptionsSelect<T extends boolean = true> {
+  player?: T;
+  paidFrom?: T;
+  paidUntil?: T;
+  amount?: T;
   note?: T;
   updatedAt?: T;
   createdAt?: T;
