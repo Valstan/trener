@@ -6,9 +6,11 @@ import React from 'react'
 
 import type { Group, User } from '@/payload-types'
 import { isOwner, isCoach } from '@/access/roles'
+import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { CoachQuestions, type QuestionItem } from './CoachQuestions'
 
 // Инбокс вопросов тренеру (M3-PR11). Доступ: персонал; читается scoped (тренер — вопросы
@@ -22,12 +24,16 @@ const CoachQuestionsPage = async () => {
   if (!user) redirect('/login')
   if (!(isCoach(user) || isOwner(user))) redirect('/')
 
+  // Контекст филиала владельца (M5 PR-D).
+  const { branches, ctx, ctxGroupIds } = await loadOwnerBranch(payload, user)
+
   const questions = await payload.find({
     collection: 'questions',
     sort: '-createdAt',
     limit: 200,
     depth: 0,
     pagination: false,
+    where: ctxGroupIds ? { group: { in: ctxGroupIds } } : {},
     user,
     overrideAccess: false,
   })
@@ -88,6 +94,7 @@ const CoachQuestionsPage = async () => {
 
   return (
     <AppShell title="Вопросы родителей" tabs={COACH_TABS} active="questions">
+      {branches && <BranchSwitcher branches={branches} current={ctx} />}
       <CoachQuestions items={items} />
     </AppShell>
   )
