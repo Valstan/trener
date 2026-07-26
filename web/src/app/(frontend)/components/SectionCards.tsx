@@ -20,7 +20,7 @@ const PARENT_SECTIONS: Section[] = [
   { key: 'matches', href: '/parent/matches', icon: '🏆', title: 'Результаты', text: 'Матчи и счёт' },
   { key: 'ask', href: '/parent/ask', icon: '💬', title: 'Вопрос тренеру', text: 'Личная переписка с тренером' },
   { key: 'account', href: '/account', icon: '👤', title: 'Аккаунт', text: 'Email, пароль, вход' },
-  { key: 'payments', href: '#', icon: '💳', title: 'Оплата', text: 'Абонементы и сроки — скоро', soon: true },
+  { key: 'payments', href: '/parent/payments', icon: '💳', title: 'Оплата', text: 'Абонемент: до когда оплачено и как платить' },
   { key: 'gallery', href: '#', icon: '📷', title: 'Фотогалерея', text: 'Фото и видео с матчей — скоро', soon: true },
 ]
 
@@ -30,7 +30,7 @@ const STAFF_SECTIONS: Section[] = [
   { key: 'matches', href: '/coach/matches', icon: '🏆', title: 'Результаты', text: 'Матчи и составы' },
   { key: 'questions', href: '/coach/questions', icon: '💬', title: 'Вопросы', text: 'Переписка с родителями' },
   { key: 'account', href: '/account', icon: '👤', title: 'Аккаунт', text: 'Email, пароль, вход' },
-  { key: 'payments', href: '#', icon: '💳', title: 'Оплата', text: 'Абонементы и сроки — скоро', soon: true },
+  { key: 'payments', href: '/coach/payments', icon: '💳', title: 'Оплата', text: 'Таблица абонементов по детям' },
   { key: 'gallery', href: '#', icon: '📷', title: 'Фотогалерея', text: 'Фото и видео с матчей — скоро', soon: true },
 ]
 

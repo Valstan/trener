@@ -36,6 +36,25 @@ export const Branches: CollectionConfig = {
       maxLength: 120,
     },
     {
+      name: 'paymentDetails',
+      type: 'textarea',
+      label: 'Реквизиты оплаты',
+      maxLength: 2000,
+      admin: {
+        description:
+          'Реквизиты и инструкция для родителей (M8): куда и как платить. Показываются на экране «Оплата».',
+      },
+    },
+    {
+      name: 'paymentUrl',
+      type: 'text',
+      label: 'Ссылка на форму оплаты',
+      maxLength: 500,
+      admin: {
+        description: 'Необязательно: ссылка/QR-цель, открывающая форму оплаты с реквизитами.',
+      },
+    },
+    {
       name: 'active',
       type: 'checkbox',
       label: 'Действующий',

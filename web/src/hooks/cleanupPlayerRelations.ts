@@ -16,7 +16,7 @@ export const cleanupPlayerRelations: CollectionBeforeDeleteHook = async ({
   id,
   req: { payload },
 }) => {
-  for (const collection of ['rsvps', 'login-tokens'] as const) {
+  for (const collection of ['rsvps', 'login-tokens', 'subscriptions'] as const) {
     try {
       await payload.delete({
         collection,
