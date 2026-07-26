@@ -3,6 +3,7 @@ import * as migration_20260627_140438_dedup_unique_indexes from './20260627_1404
 import * as migration_20260710_052545_radar_sso_identity from './20260710_052545_radar_sso_identity';
 import * as migration_20260711_123550_matches from './20260711_123550_matches';
 import * as migration_20260716_112725_m4_chat_messages from './20260716_112725_m4_chat_messages';
+import * as migration_20260726_134752_m5_branches_roles from './20260726_134752_m5_branches_roles';
 
 export const migrations = [
   {
@@ -28,6 +29,11 @@ export const migrations = [
   {
     up: migration_20260716_112725_m4_chat_messages.up,
     down: migration_20260716_112725_m4_chat_messages.down,
-    name: '20260716_112725_m4_chat_messages'
+    name: '20260716_112725_m4_chat_messages',
+  },
+  {
+    up: migration_20260726_134752_m5_branches_roles.up,
+    down: migration_20260726_134752_m5_branches_roles.down,
+    name: '20260726_134752_m5_branches_roles'
   },
 ];

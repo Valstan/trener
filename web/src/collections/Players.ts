@@ -2,7 +2,7 @@ import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOrCoachOwnGroup } from '../access/byGroup'
 import { cleanupPlayerRelations } from '../hooks/cleanupPlayerRelations'
-import { coachGroupIds, hasRole, isAdmin, isCoach, isParent } from '../access/roles'
+import { adminBranchId, branchGroupIds, coachGroupIds, hasRole, isCoach, isOwner, isParent } from '../access/roles'
 
 // Ребёнок (игрок).
 //
@@ -16,7 +16,14 @@ import { coachGroupIds, hasRole, isAdmin, isCoach, isParent } from '../access/ro
 const readPlayers: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isAdmin(user)) return true
+  if (isOwner(user)) return true
+  // Админ филиала — контент групп своего филиала (M5).
+  const branch = adminBranchId(user)
+  if (branch != null) {
+    const ids = await branchGroupIds(req, branch)
+    if (!ids.length) return false
+    return { group: { in: ids } }
+  }
   if (isCoach(user)) {
     const ids = await coachGroupIds(req, user.id)
     if (!ids.length) return false
@@ -37,7 +44,7 @@ export const Players: CollectionConfig = {
     plural: 'Дети',
   },
   access: {
-    create: ({ req: { user } }) => hasRole(user, 'admin', 'coach'),
+    create: ({ req: { user } }) => hasRole(user, 'owner', 'admin', 'coach'),
     read: readPlayers,
     update: adminOrCoachOwnGroup,
     delete: adminOrCoachOwnGroup,

@@ -1,7 +1,7 @@
 import type { Payload, PayloadRequest } from 'payload'
 
 import type { Player, TrainingSession, User } from '@/payload-types'
-import { coachGroupIds, isAdmin } from '@/access/roles'
+import { coachGroupIds, isOwner } from '@/access/roles'
 import { relId } from '@/lib/relId'
 import { summarizeRsvp, type RsvpSummary } from '@/lib/rsvp'
 
@@ -12,7 +12,7 @@ export const coachCanSeeSession = async (
   user: Pick<User, 'id' | 'roles'>,
   session: TrainingSession,
 ): Promise<boolean> => {
-  if (isAdmin(user)) return true
+  if (isOwner(user)) return true
   const groupIds = await coachGroupIds({ payload } as unknown as PayloadRequest, user.id)
   return groupIds.includes(relId(session.group) ?? -1)
 }

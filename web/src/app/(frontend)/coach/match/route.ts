@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { isAdmin, isCoach } from '@/access/roles'
+import { isOwner, isCoach } from '@/access/roles'
 
 // POST { groupId, matchDate, opponent, homeAway, location?, scoreOur, scoreOpponent,
 //        scorers: [{ playerId, goals }], note? } → результат матча (дорожная карта §4).
@@ -17,7 +17,7 @@ export const POST = async (req: Request): Promise<Response> => {
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || !(isCoach(user) || isAdmin(user))) return NextResponse.json({ ok: false }, { status: 401 })
+    if (!user || !(isCoach(user) || isOwner(user))) return NextResponse.json({ ok: false }, { status: 401 })
 
     let parsed: {
       groupId?: unknown
@@ -58,7 +58,7 @@ export const POST = async (req: Request): Promise<Response> => {
     }
 
     // Владение: тренер — только своя группа; админ — любая.
-    if (!isAdmin(user)) {
+    if (!isOwner(user)) {
       const owned = await payload.find({
         collection: 'groups',
         where: { and: [{ id: { equals: groupId } }, { coaches: { in: [user.id] } }] },

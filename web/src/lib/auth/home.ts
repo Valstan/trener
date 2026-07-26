@@ -1,4 +1,4 @@
-import { isAdmin, isCoach, isParent } from '@/access/roles'
+import { isAdmin, isCoach, isOwner, isParent } from '@/access/roles'
 
 // Домашний экран пользователя по роли — единый источник для:
 //   • редиректа после входа (/auth/complete-login),
@@ -12,7 +12,8 @@ import { isAdmin, isCoach, isParent } from '@/access/roles'
 // Неизвестная/пустая роль → '/' (на лендинге это значит «не редиректим», без петли).
 export const homePathForUser = (user: { roles?: string[] | null } | null | undefined): string => {
   if (!user) return '/'
-  if (isAdmin(user)) return '/admin'
+  // owner и админ филиала работают в панели координатора (M5).
+  if (isOwner(user) || isAdmin(user)) return '/admin'
   if (isCoach(user)) return '/coach/schedule'
   if (isParent(user)) return '/parent'
   return '/'

@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOrCoachOwnGroup } from '../access/byGroup'
-import { coachGroupIds, isAdmin, isCoach, isParent, parentGroupIds } from '../access/roles'
+import { adminBranchId, branchGroupIds, coachGroupIds, isOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
 import { fanOutAnnouncement } from '../hooks/fanOutAnnouncement'
 
 // Объявление тренера группе (M3-PR10, kickoff §4). Информационный канал поверх ядра
@@ -16,7 +16,14 @@ import { fanOutAnnouncement } from '../hooks/fanOutAnnouncement'
 const readAnnouncements: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isAdmin(user)) return true
+  if (isOwner(user)) return true
+  // Админ филиала — контент групп своего филиала (M5).
+  const branch = adminBranchId(user)
+  if (branch != null) {
+    const ids = await branchGroupIds(req, branch)
+    if (!ids.length) return false
+    return { group: { in: ids } }
+  }
   if (isCoach(user)) {
     const ids = await coachGroupIds(req, user.id)
     if (!ids.length) return false

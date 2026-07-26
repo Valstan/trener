@@ -3,10 +3,15 @@ import type { FieldAccess, PayloadRequest } from 'payload'
 // ─────────────────────────────────────────────────────────────────────────────
 // Роли и скоупинг доступа (#015 — day-1, серверный write-authz = клиентский edit-gate).
 //
-// Три роли: admin | coach | parent.
-//   • admin  — структура школы, пользователи, оверсайт.
+// Четыре роли (M5, docs/m5-design.md §2): owner | admin | coach | parent.
+//   • owner  — владелец сети: все филиалы, структура, назначение ролей.
+//   • admin  — администратор СВОЕГО филиала (users.branch): участники и группы
+//              филиала; не создаёт филиалы и не назначает owner/admin.
 //   • coach  — правит ТОЛЬКО свои группы и их данные (расписание, дети группы).
 //   • parent — видит ТОЛЬКО своих детей и расписание их групп.
+//
+// До M5 роль god-уровня называлась `admin`; миграцией batch 6 такие пользователи
+// переведены в `owner`, а `admin` переопределён как филиальный администратор.
 //
 // Скоупинг тренера и родителя — это и есть ров (coverage «приняли N из M»):
 // корректность держится на точной привязке тренер→группа и родитель→ребёнок,
@@ -14,20 +19,50 @@ import type { FieldAccess, PayloadRequest } from 'payload'
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Roleish = { roles?: string[] | null } | null | undefined
+type Branchish = Roleish & { branch?: { id: string | number } | string | number | null }
 
 export const hasRole = (user: Roleish, ...roles: string[]): boolean =>
   Boolean(user && Array.isArray(user.roles) && roles.some((r) => user.roles!.includes(r)))
 
+export const isOwner = (user: Roleish): boolean => hasRole(user, 'owner')
 export const isAdmin = (user: Roleish): boolean => hasRole(user, 'admin')
 export const isCoach = (user: Roleish): boolean => hasRole(user, 'coach')
 export const isParent = (user: Roleish): boolean => hasRole(user, 'parent')
 
-// Field-level: разрешить задавать значение поля только персоналу (admin/coach).
-// Если доступа нет — Payload отбрасывает присланное значение и применяет defaultValue.
-export const adminOrStaffField: FieldAccess = ({ req: { user } }) => hasRole(user, 'admin', 'coach')
+// Филиал, которым управляет админ: users.branch (id). null — не админ или филиал
+// не назначен (админ без филиала не управляет ничем — fail-closed).
+export const adminBranchId = (user: Branchish): string | number | null => {
+  if (!isAdmin(user) || !user?.branch) return null
+  return typeof user.branch === 'object' ? user.branch.id : user.branch
+}
 
-// Field-level: менять может только админ (напр. роли — защита от самоповышения).
-export const adminField: FieldAccess = ({ req: { user } }) => hasRole(user, 'admin')
+// Field-level: разрешить задавать значение поля только персоналу (owner/admin/coach).
+// Если доступа нет — Payload отбрасывает присланное значение и применяет defaultValue.
+export const adminOrStaffField: FieldAccess = ({ req: { user } }) =>
+  hasRole(user, 'owner', 'admin', 'coach')
+
+// Field-level: менять может только владелец (напр. SSO-привязка — защита от
+// самоперепривязки чужого sub; до M5 гейт назывался adminField).
+export const ownerField: FieldAccess = ({ req: { user } }) => isOwner(user)
+
+// Field-level гейт назначения ролей (защита от самоповышения):
+//   • owner назначает любые роли;
+//   • admin — только coach/parent (не owner/admin) и только в своём филиале
+//     (сверка branch цели — в rolesWithinAdminBranch ниже, где есть doc/data);
+//   • остальные роли менять не могут.
+export const rolesField: FieldAccess = ({ req: { user }, data, doc }) => {
+  if (isOwner(user)) return true
+  if (!isAdmin(user)) return false
+  const proposed: unknown = data?.roles
+  if (Array.isArray(proposed) && proposed.some((r) => r === 'owner' || r === 'admin')) return false
+  // Цель — юзер того же филиала (на create сверяем присланный branch).
+  const branch = adminBranchId(user as Branchish)
+  if (branch == null) return false
+  const targetBranch = (doc ?? data)?.branch
+  const targetId =
+    typeof targetBranch === 'object' && targetBranch !== null ? targetBranch.id : targetBranch
+  return targetId != null && String(targetId) === String(branch)
+}
 
 // ─── Кросс-коллекционный скоупинг (async access, возвращает Where) ───────────
 // Все служебные find'ы идут с overrideAccess: true — это разрывает рекурсию
@@ -41,6 +76,22 @@ export const coachGroupIds = async (
   const res = await req.payload.find({
     collection: 'groups',
     where: { coaches: { in: [userId] } },
+    depth: 0,
+    limit: 1000,
+    pagination: false,
+    overrideAccess: true,
+  })
+  return res.docs.map((doc) => doc.id)
+}
+
+// ID групп филиала — скоуп филиального админа (M5). Служебный find, overrideAccess (G90).
+export const branchGroupIds = async (
+  req: PayloadRequest,
+  branchId: string | number,
+): Promise<(string | number)[]> => {
+  const res = await req.payload.find({
+    collection: 'groups',
+    where: { branch: { equals: branchId } },
     depth: 0,
     limit: 1000,
     pagination: false,
@@ -66,6 +117,25 @@ export const parentGroupIds = async (
     .map((doc) => (typeof doc.group === 'object' && doc.group !== null ? doc.group.id : doc.group))
     .filter((g): g is number => typeof g === 'number')
   return Array.from(new Set(ids))
+}
+
+// ID тренировок групп филиала — скоуп филиального админа для session-привязанных
+// коллекций (Notifications, Rsvps). Та же плоская схема, что coachSessionIds.
+export const branchSessionIds = async (
+  req: PayloadRequest,
+  branchId: string | number,
+): Promise<(string | number)[]> => {
+  const groupIds = await branchGroupIds(req, branchId)
+  if (!groupIds.length) return []
+  const res = await req.payload.find({
+    collection: 'training-sessions',
+    where: { group: { in: groupIds } },
+    depth: 0,
+    limit: 10000,
+    pagination: false,
+    overrideAccess: true,
+  })
+  return res.docs.map((doc) => doc.id)
 }
 
 // ID тренировок групп, где данный пользователь — тренер. Нужен для scoped-read

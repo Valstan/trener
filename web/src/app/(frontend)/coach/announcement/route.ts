@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { isAdmin, isCoach } from '@/access/roles'
+import { isOwner, isCoach } from '@/access/roles'
 
 // POST { groupId, title, body, triggersPush? } → объявление тренера группе (M3-PR10).
 // #015: тренер шлёт ТОЛЬКО в свои группы (проверяем владение: группа.coaches ∋ user).
@@ -15,7 +15,7 @@ export const POST = async (req: Request): Promise<Response> => {
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || !(isCoach(user) || isAdmin(user))) return NextResponse.json({ ok: false }, { status: 401 })
+    if (!user || !(isCoach(user) || isOwner(user))) return NextResponse.json({ ok: false }, { status: 401 })
 
     let groupId: unknown
     let title: unknown
@@ -43,7 +43,7 @@ export const POST = async (req: Request): Promise<Response> => {
     }
 
     // Владение: тренер — только своя группа; админ — любая.
-    if (!isAdmin(user)) {
+    if (!isOwner(user)) {
       const owned = await payload.find({
         collection: 'groups',
         where: { and: [{ id: { equals: groupId } }, { coaches: { in: [user.id] } }] },

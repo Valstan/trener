@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { coachGroupIds, isAdmin, isCoach } from '@/access/roles'
+import { coachGroupIds, isOwner, isCoach } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 // POST { body } → ответ тренера в нитке чата M4. #015: тренер отвечает ТОЛЬКО на
@@ -14,7 +14,7 @@ export const POST = async (req: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || !(isCoach(user) || isAdmin(user))) return NextResponse.json({ ok: false }, { status: 401 })
+    if (!user || !(isCoach(user) || isOwner(user))) return NextResponse.json({ ok: false }, { status: 401 })
 
     const { id } = await ctx.params
     const questionId = Number(id)
@@ -39,7 +39,7 @@ export const POST = async (req: Request, ctx: { params: Promise<{ id: string }> 
     if (groupId == null || parentId == null) return NextResponse.json({ ok: false }, { status: 404 })
 
     // Владение: группа вопроса — среди групп тренера (admin — любой).
-    if (!isAdmin(user)) {
+    if (!isOwner(user)) {
       const groupIds = await coachGroupIds({ payload } as never, user.id)
       if (!groupIds.includes(groupId)) return NextResponse.json({ ok: false }, { status: 403 })
     }

@@ -2,7 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
 import { adminOrSelf } from '../access/adminOrSelf'
-import { adminField, hasRole } from '../access/roles'
+import { hasRole, ownerField, rolesField } from '../access/roles'
 import { cleanupUserRelations } from '../hooks/cleanupUserRelations'
 import { ensureFirstUserAdmin } from '../hooks/ensureFirstUserAdmin'
 
@@ -13,9 +13,9 @@ export const Users: CollectionConfig = {
     plural: 'Пользователи',
   },
   access: {
-    // Вход в админку: персонал (admin + coach). Родители работают в PWA-клиенте,
-    // не в админ-панели.
-    admin: ({ req: { user } }) => hasRole(user, 'admin', 'coach'),
+    // Вход в админку: персонал (owner + admin + coach). Родители работают в
+    // PWA-клиенте, не в админ-панели.
+    admin: ({ req: { user } }) => hasRole(user, 'owner', 'admin', 'coach'),
     create: adminOnly,
     delete: adminOnly,
     read: adminOrSelf,
@@ -51,17 +51,19 @@ export const Users: CollectionConfig = {
       hasMany: true,
       required: true,
       // Наименее привилегированная роль по умолчанию. Первый пользователь повышается
-      // до admin хуком ensureFirstUserAdmin; персонал назначает роли вручную.
+      // до owner хуком ensureFirstUserAdmin; персонал назначает роли вручную.
       defaultValue: ['parent'],
       saveToJWT: true,
       options: [
-        { label: 'Администратор', value: 'admin' },
+        { label: 'Владелец сети', value: 'owner' },
+        { label: 'Администратор филиала', value: 'admin' },
         { label: 'Тренер', value: 'coach' },
         { label: 'Родитель', value: 'parent' },
       ],
       access: {
-        // Менять роли может только админ (защита от самоповышения привилегий).
-        update: adminField,
+        // Защита от самоповышения: owner — любые роли; админ филиала — только
+        // coach/parent в своём филиале (rolesField, M5).
+        update: rolesField,
       },
     },
     // ── Связь с внешней личностью центра авторизации «Радар» (SSO через VK) ──
@@ -74,8 +76,8 @@ export const Users: CollectionConfig = {
       label: 'Внешний провайдер входа',
       options: [{ label: 'Радар-ID (VK)', value: 'radar' }],
       access: {
-        create: adminField,
-        update: adminField,
+        create: ownerField,
+        update: ownerField,
       },
       admin: {
         description: 'SSO-провайдер, через который связан аккаунт. Пусто — вход по email.',
@@ -86,11 +88,48 @@ export const Users: CollectionConfig = {
       type: 'text',
       label: 'Внешний ID (sub)',
       access: {
-        create: adminField,
-        update: adminField,
+        create: ownerField,
+        update: ownerField,
       },
       admin: {
         description: 'Стабильный идентификатор личности у провайдера (sub Радара).',
+      },
+    },
+    // ── M5: филиал и модерация входа (docs/m5-design.md §2–3) ──
+    {
+      name: 'branch',
+      type: 'relationship',
+      label: 'Филиал',
+      relationTo: 'branches',
+      saveToJWT: true,
+      access: {
+        // Переводит между филиалами только владелец (админ филиала — в PR-B,
+        // вместе с экраном заявок).
+        create: ownerField,
+        update: ownerField,
+      },
+      admin: {
+        description:
+          'Филиал участника — граница видимости. Пусто — только у владельцев сети.',
+      },
+    },
+    {
+      name: 'status',
+      type: 'select',
+      label: 'Статус участника',
+      required: true,
+      // PR-A: default approved — гейт модерации входа (pending + серверные
+      // проверки контента) включается в PR-B вместе с экраном заявок, чтобы не
+      // оставить пол-состояния. Существующие юзеры бэкфиллятся approved миграцией.
+      defaultValue: 'approved',
+      saveToJWT: true,
+      options: [
+        { label: 'Ждёт подтверждения', value: 'pending' },
+        { label: 'Подтверждён', value: 'approved' },
+      ],
+      access: {
+        create: ownerField,
+        update: ownerField,
       },
     },
   ],

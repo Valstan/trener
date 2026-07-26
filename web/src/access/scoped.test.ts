@@ -17,8 +17,8 @@ describe('selfByField', () => {
     expect(call(selfByField('parent'), undefined)).toBe(false)
   })
 
-  it('true для админа (видит все)', () => {
-    expect(call(selfByField('parent'), { id: 7, roles: ['admin'] })).toBe(true)
+  it('true для владельца (видит все)', () => {
+    expect(call(selfByField('parent'), { id: 7, roles: ['owner'] })).toBe(true)
   })
 
   it('Where по указанному полю для не-админа', () => {
@@ -43,8 +43,8 @@ describe('selfByUser / selfByParent', () => {
     expect(call(selfByParent, { id: 9, roles: ['coach'] })).toEqual({ parent: { equals: 9 } })
   })
 
-  it('админ — true в обоих', () => {
-    expect(call(selfByUser, { id: 1, roles: ['admin'] })).toBe(true)
-    expect(call(selfByParent, { id: 1, roles: ['admin'] })).toBe(true)
+  it('владелец — true в обоих', () => {
+    expect(call(selfByUser, { id: 1, roles: ['owner'] })).toBe(true)
+    expect(call(selfByParent, { id: 1, roles: ['owner'] })).toBe(true)
   })
 })

@@ -7,6 +7,7 @@ import { buildConfig } from 'payload'
 import { fileURLToPath } from 'url'
 
 import { Users } from './collections/Users'
+import { Branches } from './collections/Branches'
 import { Groups } from './collections/Groups'
 import { Players } from './collections/Players'
 import { TrainingSessions } from './collections/TrainingSessions'
@@ -51,6 +52,7 @@ export default buildConfig({
   }),
   collections: [
     Users,
+    Branches,
     Groups,
     Players,
     TrainingSessions,

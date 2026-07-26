@@ -4,7 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { coachGroupIds, isAdmin, isCoach } from '@/access/roles'
+import { coachGroupIds, isOwner, isCoach } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS } from '../../../components/AppShell'
@@ -20,7 +20,7 @@ const CoachThreadPage = async ({ params }: { params: Promise<{ id: string }> }) 
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
-  if (!(isCoach(user) || isAdmin(user))) redirect('/')
+  if (!(isCoach(user) || isOwner(user))) redirect('/')
 
   const { id } = await params
   const questionId = Number(id)
@@ -32,7 +32,7 @@ const CoachThreadPage = async ({ params }: { params: Promise<{ id: string }> }) 
   if (!question) notFound()
 
   const groupId = relId(question.group)
-  if (!isAdmin(user)) {
+  if (!isOwner(user)) {
     const groupIds = await coachGroupIds({ payload } as never, user.id)
     if (!groupIds.includes(groupId ?? -1)) notFound()
   }
