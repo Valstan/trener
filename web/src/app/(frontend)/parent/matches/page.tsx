@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { isParent } from '@/access/roles'
+import { isParent, isPending } from '@/access/roles'
 import { resolveMatchViews } from '@/lib/matches'
 
 import { AppShell, PARENT_TABS } from '../../components/AppShell'
@@ -19,6 +19,7 @@ const ParentMatchesPage = async () => {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
+  if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/')
 
   const matches = await payload.find({

@@ -25,6 +25,12 @@ export const hasRole = (user: Roleish, ...roles: string[]): boolean =>
   Boolean(user && Array.isArray(user.roles) && roles.some((r) => user.roles!.includes(r)))
 
 export const isOwner = (user: Roleish): boolean => hasRole(user, 'owner')
+
+// Модерация входа (M5 PR-B): самореги ждут подтверждения владельцем/админом.
+// Пропущенный статус = approved: JWT-сессии, выписанные ДО ввода поля, статуса
+// не несут — fail-closed здесь запер бы всех действующих пользователей.
+export const isPending = (user: ({ status?: string | null } & Roleish) | null | undefined): boolean =>
+  Boolean(user) && user!.status === 'pending'
 export const isAdmin = (user: Roleish): boolean => hasRole(user, 'admin')
 export const isCoach = (user: Roleish): boolean => hasRole(user, 'coach')
 export const isParent = (user: Roleish): boolean => hasRole(user, 'parent')
