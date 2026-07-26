@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { isAdmin, isCoach } from '@/access/roles'
+import { isOwner, isCoach } from '@/access/roles'
 import { parseSessionCreate, parseSessionPatch } from '@/lib/sessionInput'
 
 // Фронтовый composer расписания (дорожная карта после #64): тренер заводит/правит/
@@ -22,7 +22,7 @@ export const POST = async (req: Request): Promise<Response> => {
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || !(isCoach(user) || isAdmin(user))) return NextResponse.json({ ok: false }, { status: 401 })
+    if (!user || !(isCoach(user) || isOwner(user))) return NextResponse.json({ ok: false }, { status: 401 })
 
     let raw: unknown = null
     try {
@@ -33,7 +33,7 @@ export const POST = async (req: Request): Promise<Response> => {
     const input = parseSessionCreate(raw)
     if (!input) return NextResponse.json({ ok: false }, { status: 400 })
 
-    if (!isAdmin(user)) {
+    if (!isOwner(user)) {
       const owned = await payload.find({
         collection: 'groups',
         where: { and: [{ id: { equals: input.groupId } }, { coaches: { in: [user.id] } }] },
@@ -69,7 +69,7 @@ export const PATCH = async (req: Request): Promise<Response> => {
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || !(isCoach(user) || isAdmin(user))) return NextResponse.json({ ok: false }, { status: 401 })
+    if (!user || !(isCoach(user) || isOwner(user))) return NextResponse.json({ ok: false }, { status: 401 })
 
     let raw: unknown = null
     try {

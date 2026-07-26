@@ -1,6 +1,6 @@
 import type { Access } from 'payload'
 
-import { isAdmin } from './roles'
+import { isOwner } from './roles'
 
 // Скоупинг «только свои записи» по произвольному relationship-полю, ссылающемуся
 // на пользователя (#015). Админ — все; остальные — только записи, где <field> == user.id.
@@ -13,7 +13,7 @@ export const selfByField =
   (field: string): Access =>
   ({ req: { user } }) => {
     if (!user) return false
-    if (isAdmin(user)) return true
+    if (isOwner(user)) return true
     return { [field]: { equals: user.id } }
   }
 

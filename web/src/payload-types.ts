@@ -68,6 +68,7 @@ export interface Config {
   blocks: {};
   collections: {
     users: User;
+    branches: Branch;
     groups: Group;
     players: Player;
     'training-sessions': TrainingSession;
@@ -88,6 +89,7 @@ export interface Config {
   collectionsJoins: {};
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
+    branches: BranchesSelect<false> | BranchesSelect<true>;
     groups: GroupsSelect<false> | GroupsSelect<true>;
     players: PlayersSelect<false> | PlayersSelect<true>;
     'training-sessions': TrainingSessionsSelect<false> | TrainingSessionsSelect<true>;
@@ -147,7 +149,7 @@ export interface User {
    * Контакт тренера/родителя. 152-ФЗ: минимизация — только для связи.
    */
   phone?: string | null;
-  roles: ('admin' | 'coach' | 'parent')[];
+  roles: ('owner' | 'admin' | 'coach' | 'parent')[];
   /**
    * SSO-провайдер, через который связан аккаунт. Пусто — вход по email.
    */
@@ -156,6 +158,11 @@ export interface User {
    * Стабильный идентификатор личности у провайдера (sub Радара).
    */
   externalId?: string | null;
+  /**
+   * Филиал участника — граница видимости. Пусто — только у владельцев сети.
+   */
+  branch?: (number | null) | Branch;
+  status: 'pending' | 'approved';
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -177,6 +184,21 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "branches".
+ */
+export interface Branch {
+  id: number;
+  name: string;
+  city?: string | null;
+  /**
+   * Снять галочку = закрыть филиал, не удаляя его историю.
+   */
+  active?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "groups".
  */
 export interface Group {
@@ -187,6 +209,10 @@ export interface Group {
    */
   coaches?: (number | User)[] | null;
   description?: string | null;
+  /**
+   * Филиал группы — граница видимости всего её контента (M5).
+   */
+  branch: number | Branch;
   updatedAt: string;
   createdAt: string;
 }
@@ -477,6 +503,10 @@ export interface PayloadLockedDocument {
         value: number | User;
       } | null)
     | ({
+        relationTo: 'branches';
+        value: number | Branch;
+      } | null)
+    | ({
         relationTo: 'groups';
         value: number | Group;
       } | null)
@@ -576,6 +606,8 @@ export interface UsersSelect<T extends boolean = true> {
   roles?: T;
   authProvider?: T;
   externalId?: T;
+  branch?: T;
+  status?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -595,12 +627,24 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "branches_select".
+ */
+export interface BranchesSelect<T extends boolean = true> {
+  name?: T;
+  city?: T;
+  active?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "groups_select".
  */
 export interface GroupsSelect<T extends boolean = true> {
   name?: T;
   coaches?: T;
   description?: T;
+  branch?: T;
   updatedAt?: T;
   createdAt?: T;
 }

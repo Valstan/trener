@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { coachGroupIds, isAdmin, isCoach } from '@/access/roles'
+import { coachGroupIds, isOwner, isCoach } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 // POST { status: 'read'|'answered' } → тренер двигает статус вопроса (M3-PR11).
@@ -14,7 +14,7 @@ export const POST = async (req: Request, ctx: { params: Promise<{ id: string }> 
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || !(isCoach(user) || isAdmin(user))) return NextResponse.json({ ok: false }, { status: 401 })
+    if (!user || !(isCoach(user) || isOwner(user))) return NextResponse.json({ ok: false }, { status: 401 })
 
     const { id } = await ctx.params
     const questionId = Number(id)
@@ -35,7 +35,7 @@ export const POST = async (req: Request, ctx: { params: Promise<{ id: string }> 
     if (!question) return NextResponse.json({ ok: false }, { status: 404 })
 
     // Владение: группа вопроса — среди групп тренера (admin — любой).
-    if (!isAdmin(user)) {
+    if (!isOwner(user)) {
       const groupIds = await coachGroupIds({ payload } as never, user.id)
       if (!groupIds.includes(relId(question.group) ?? -1)) return NextResponse.json({ ok: false }, { status: 403 })
     }

@@ -31,7 +31,7 @@ export const POST = async (req: Request): Promise<Response> => {
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!hasRole(user, 'admin', 'coach')) {
+    if (!hasRole(user, 'owner', 'admin', 'coach')) {
       return NextResponse.json({ ok: false }, { status: 403 })
     }
 

@@ -201,7 +201,13 @@ export const acceptInvite = async (
     // его не знает и не использует (вход только по magic-link).
     user = await payload.create({
       collection: 'users',
-      data: { email: normalizedEmail, password: generateRawToken(), roles: ['parent'] },
+      // Инвайт тренера = подтверждение участия (M5): сразу approved.
+      data: {
+        email: normalizedEmail,
+        password: generateRawToken(),
+        roles: ['parent'],
+        status: 'approved',
+      },
       overrideAccess: true,
     })
   }

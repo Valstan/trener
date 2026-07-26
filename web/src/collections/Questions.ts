@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
-import { coachGroupIds, isAdmin, isCoach, isParent } from '../access/roles'
+import { adminBranchId, branchGroupIds, coachGroupIds, isOwner, isCoach, isParent } from '../access/roles'
 import { cleanupQuestionRelations } from '../hooks/cleanupQuestionRelations'
 import { fanOutQuestion } from '../hooks/fanOutQuestion'
 
@@ -21,7 +21,14 @@ import { fanOutQuestion } from '../hooks/fanOutQuestion'
 const readQuestions: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isAdmin(user)) return true
+  if (isOwner(user)) return true
+  // Админ филиала — контент групп своего филиала (M5).
+  const branch = adminBranchId(user)
+  if (branch != null) {
+    const ids = await branchGroupIds(req, branch)
+    if (!ids.length) return false
+    return { group: { in: ids } }
+  }
   if (isCoach(user)) {
     const ids = await coachGroupIds(req, user.id)
     if (!ids.length) return false

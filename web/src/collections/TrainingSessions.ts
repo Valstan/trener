@@ -5,7 +5,9 @@ import {
   adminOrStaffField,
   coachGroupIds,
   hasRole,
-  isAdmin,
+  adminBranchId,
+  branchGroupIds,
+  isOwner,
   isCoach,
   isParent,
   parentGroupIds,
@@ -25,7 +27,14 @@ import { trackSessionChange } from '../hooks/trackSessionChange'
 const readSessions: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isAdmin(user)) return true
+  if (isOwner(user)) return true
+  // Админ филиала — контент групп своего филиала (M5).
+  const branch = adminBranchId(user)
+  if (branch != null) {
+    const ids = await branchGroupIds(req, branch)
+    if (!ids.length) return false
+    return { group: { in: ids } }
+  }
   if (isCoach(user)) {
     const ids = await coachGroupIds(req, user.id)
     if (!ids.length) return false
@@ -46,7 +55,7 @@ export const TrainingSessions: CollectionConfig = {
     plural: 'Расписание',
   },
   access: {
-    create: ({ req: { user } }) => hasRole(user, 'admin', 'coach'),
+    create: ({ req: { user } }) => hasRole(user, 'owner', 'admin', 'coach'),
     read: readSessions,
     update: adminOrCoachOwnGroup,
     delete: adminOrCoachOwnGroup,

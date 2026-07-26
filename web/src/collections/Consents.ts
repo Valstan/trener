@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
-import { adminOrStaffField, isAdmin } from '../access/roles'
+import { adminOrStaffField, isOwner } from '../access/roles'
 import { CONSENT_POLICY_VERSION } from '../lib/consent'
 
 // Согласие родителя/законного представителя на обработку ПДн ребёнка (152-ФЗ).
@@ -16,7 +16,7 @@ import { CONSENT_POLICY_VERSION } from '../lib/consent'
 // (согласие — юридическая запись, не редактируется задним числом обычными ролями).
 const readConsents: Access = ({ req: { user } }) => {
   if (!user) return false
-  if (isAdmin(user)) return true
+  if (isOwner(user)) return true
   // Родитель видит только свои согласия.
   return { parent: { equals: user.id } }
 }

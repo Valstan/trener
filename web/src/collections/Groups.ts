@@ -1,17 +1,31 @@
-import type { Access, CollectionConfig } from 'payload'
+import type { Access, CollectionConfig, Where } from 'payload'
 
-import { adminOnly } from '../access/adminOnly'
-import { coachGroupIds, isAdmin, isCoach, isParent, parentGroupIds } from '../access/roles'
+import {
+  adminBranchId,
+  coachGroupIds,
+  isCoach,
+  isOwner,
+  isParent,
+  parentGroupIds,
+} from '../access/roles'
 
-// Группа (команда) детской футбольной школы: имя + тренер(ы) + состав (Players).
+// Группа (команда) детской футбольной школы: имя + филиал + тренер(ы) + состав
+// (Players). Филиал группы — ось многофилиальности M5: весь групповой контент
+// наследует филиал через это поле (docs/m5-design.md §0).
 const readGroups: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isAdmin(user)) return true
+  if (isOwner(user)) return true
+  const branch = adminBranchId(user)
+  if (branch != null) {
+    const where: Where = { branch: { equals: branch } }
+    return where
+  }
   if (isCoach(user)) {
     const ids = await coachGroupIds(req, user.id)
     if (!ids.length) return false
-    return { id: { in: ids } }
+    const where: Where = { id: { in: ids } }
+    return where
   }
   if (isParent(user)) {
     const ids = await parentGroupIds(req, user.id)
@@ -21,12 +35,42 @@ const readGroups: Access = async ({ req }) => {
   return false
 }
 
-// Тренер правит только свои группы; админ — все.
-const updateGroups: Access = async ({ req }) => {
-  const { user } = req
+// Тренер правит только свои группы; владелец — все; админ — группы своего филиала.
+const updateGroups: Access = ({ req: { user } }) => {
   if (!user) return false
-  if (isAdmin(user)) return true
-  if (isCoach(user)) return { coaches: { in: [user.id] } }
+  if (isOwner(user)) return true
+  const branch = adminBranchId(user)
+  if (branch != null) {
+    const where: Where = { branch: { equals: branch } }
+    return where
+  }
+  if (isCoach(user)) {
+    const where: Where = { coaches: { in: [user.id] } }
+    return where
+  }
+  return false
+}
+
+// Создание/удаление групп: владелец — где угодно; админ — только в своём филиале
+// (на create сверяем присланный branch — id или объект; fail-closed).
+const createGroups: Access = ({ req: { user }, data }) => {
+  if (!user) return false
+  if (isOwner(user)) return true
+  const branch = adminBranchId(user)
+  if (branch == null) return false
+  const target = data?.branch
+  const targetId = typeof target === 'object' && target !== null ? target.id : target
+  return targetId != null && String(targetId) === String(branch)
+}
+
+const deleteGroups: Access = ({ req: { user } }) => {
+  if (!user) return false
+  if (isOwner(user)) return true
+  const branch = adminBranchId(user)
+  if (branch != null) {
+    const where: Where = { branch: { equals: branch } }
+    return where
+  }
   return false
 }
 
@@ -37,13 +81,13 @@ export const Groups: CollectionConfig = {
     plural: 'Группы',
   },
   access: {
-    create: adminOnly,
-    delete: adminOnly,
+    create: createGroups,
+    delete: deleteGroups,
     read: readGroups,
     update: updateGroups,
   },
   admin: {
-    defaultColumns: ['name', 'coaches'],
+    defaultColumns: ['name', 'branch', 'coaches'],
     useAsTitle: 'name',
   },
   fields: [
@@ -71,6 +115,16 @@ export const Groups: CollectionConfig = {
       type: 'textarea',
       label: 'Описание',
       maxLength: 500,
+    },
+    {
+      name: 'branch',
+      type: 'relationship',
+      label: 'Филиал',
+      relationTo: 'branches',
+      required: true,
+      admin: {
+        description: 'Филиал группы — граница видимости всего её контента (M5).',
+      },
     },
   ],
   timestamps: true,

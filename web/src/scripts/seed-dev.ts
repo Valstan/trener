@@ -55,7 +55,29 @@ const iso = (): string => new Date().toISOString()
 // Для /admin координатора им же можно войти email+паролем (fallback).
 const DEV_PASSWORD = 'devpass1234'
 
-type Role = 'admin' | 'coach' | 'parent'
+type Role = 'owner' | 'admin' | 'coach' | 'parent'
+
+// ─── Филиал (M5): весь demo-контент живёт в филиале «Малмыж» ────────────────
+const findOrCreateBranch = async (name: string, city: string) => {
+  const found = await payload.find({
+    collection: 'branches',
+    where: { name: { equals: name } },
+    limit: 1,
+    overrideAccess: true,
+  })
+  if (found.docs[0]) {
+    log(`branch ✔ ${name}`)
+    return found.docs[0]
+  }
+  const b = await payload.create({
+    collection: 'branches',
+    data: { name, city, active: true },
+    overrideAccess: true,
+  })
+  log(`branch + ${name}`)
+  return b
+}
+const branch = await findOrCreateBranch('Малмыж', 'Малмыж')
 
 const findOrCreateUser = async (email: string, name: string, roles: Role[], phone?: string) => {
   const e = email.toLowerCase()
@@ -71,16 +93,25 @@ const findOrCreateUser = async (email: string, name: string, roles: Role[], phon
   }
   const u = await payload.create({
     collection: 'users',
-    data: { email: e, name, roles, phone, password: DEV_PASSWORD },
+    // Владелец сети — без филиала (видит все); остальные живут в demo-филиале.
+    data: {
+      email: e,
+      name,
+      roles,
+      phone,
+      password: DEV_PASSWORD,
+      branch: roles.includes('owner') ? undefined : branch.id,
+      status: 'approved',
+    },
     overrideAccess: true,
   })
   log(`user + ${e} (${roles.join(',')})`)
   return u
 }
 
-// Первым создаём админа: на пустой БД хук ensureFirstUserAdmin повышает первого
-// пользователя до admin — пусть это будет именно админ-аккаунт.
-const admin = await findOrCreateUser('admin@trener.local', 'Администратор школы', ['admin'])
+// Первым создаём владельца: на пустой БД хук ensureFirstUserAdmin повышает первого
+// пользователя до owner — пусть это будет именно owner-аккаунт.
+const admin = await findOrCreateUser('admin@trener.local', 'Владелец школы', ['owner'])
 const coach = await findOrCreateUser('coach@trener.local', 'Иван Петров', ['coach'], '+7 999 100-20-30')
 const p1 = await findOrCreateUser('parent1@trener.local', 'Ольга Смирнова', ['parent'], '+7 999 111-11-11')
 const p2 = await findOrCreateUser('parent2@trener.local', 'Дмитрий Кузнецов', ['parent'], '+7 999 222-22-22')
@@ -101,7 +132,7 @@ const findOrCreateGroup = async (name: string, description: string) => {
   }
   const g = await payload.create({
     collection: 'groups',
-    data: { name, description, coaches: [coach.id] },
+    data: { name, description, coaches: [coach.id], branch: branch.id },
     overrideAccess: true,
   })
   log(`group + ${name}`)

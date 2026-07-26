@@ -5,7 +5,7 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import type { Group, User } from '@/payload-types'
-import { isAdmin, isCoach } from '@/access/roles'
+import { isOwner, isCoach } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS } from '../../components/AppShell'
@@ -20,7 +20,7 @@ const CoachQuestionsPage = async () => {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
-  if (!(isCoach(user) || isAdmin(user))) redirect('/')
+  if (!(isCoach(user) || isOwner(user))) redirect('/')
 
   const questions = await payload.find({
     collection: 'questions',

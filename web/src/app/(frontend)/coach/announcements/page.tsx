@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { isAdmin, isCoach } from '@/access/roles'
+import { isOwner, isCoach } from '@/access/roles'
 import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 
@@ -19,7 +19,7 @@ const CoachAnnouncementsPage = async () => {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
-  if (!(isCoach(user) || isAdmin(user))) redirect('/')
+  if (!(isCoach(user) || isOwner(user))) redirect('/')
 
   // Группы тренера (scoped read) — для селектора адресата.
   const groups = await payload.find({

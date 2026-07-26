@@ -4,7 +4,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { isAdmin, isCoach } from '@/access/roles'
+import { isOwner, isCoach } from '@/access/roles'
 import { coachCanSeeSession, loadCoverage } from '@/lib/coverage'
 import { describeChange } from '@/lib/notifications/describe'
 
@@ -24,7 +24,7 @@ const CoachSessionPage = async ({ params }: { params: Promise<{ id: string }> })
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
-  if (!(isCoach(user) || isAdmin(user))) redirect('/')
+  if (!(isCoach(user) || isOwner(user))) redirect('/')
 
   const session = await payload
     .findByID({ collection: 'training-sessions', id: sessionId, depth: 0, overrideAccess: true })

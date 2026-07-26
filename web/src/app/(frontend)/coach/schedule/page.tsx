@@ -6,7 +6,7 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import type { Group } from '@/payload-types'
-import { isAdmin, isCoach } from '@/access/roles'
+import { isOwner, isCoach } from '@/access/roles'
 import { loadCoverage, type CoverageSummary } from '@/lib/coverage'
 import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
@@ -30,7 +30,7 @@ const CoachSchedulePage = async () => {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
-  if (!(isCoach(user) || isAdmin(user))) redirect('/')
+  if (!(isCoach(user) || isOwner(user))) redirect('/')
 
   const sessions = await payload.find({
     collection: 'training-sessions',

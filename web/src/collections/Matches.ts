@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOrCoachOwnGroup } from '../access/byGroup'
-import { coachGroupIds, isAdmin, isCoach, isParent, parentGroupIds } from '../access/roles'
+import { adminBranchId, branchGroupIds, coachGroupIds, isOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
 
 // Результат матча (дорожная карта §4, после M3). Информационный канал поверх ядра
 // M2 — как Announcements: НЕ ack-очередь, НЕ создаёт Notifications, НЕ влияет на
@@ -20,7 +20,14 @@ import { coachGroupIds, isAdmin, isCoach, isParent, parentGroupIds } from '../ac
 const readMatches: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isAdmin(user)) return true
+  if (isOwner(user)) return true
+  // Админ филиала — контент групп своего филиала (M5).
+  const branch = adminBranchId(user)
+  if (branch != null) {
+    const ids = await branchGroupIds(req, branch)
+    if (!ids.length) return false
+    return { group: { in: ids } }
+  }
   if (isCoach(user)) {
     const ids = await coachGroupIds(req, user.id)
     if (!ids.length) return false

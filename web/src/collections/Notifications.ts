@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
-import { coachSessionIds, isAdmin, isCoach, isParent } from '../access/roles'
+import { adminBranchId, branchSessionIds, coachSessionIds, isOwner, isCoach, isParent } from '../access/roles'
 
 // Уведомление родителю об изменении/отмене тренировки.
 //
@@ -31,7 +31,14 @@ import { coachSessionIds, isAdmin, isCoach, isParent } from '../access/roles'
 const readNotifications: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isAdmin(user)) return true
+  if (isOwner(user)) return true
+  // Админ филиала — уведомления/RSVP сессий групп своего филиала (M5).
+  const branch = adminBranchId(user)
+  if (branch != null) {
+    const ids = await branchSessionIds(req, branch)
+    if (!ids.length) return false
+    return { session: { in: ids } }
+  }
   if (isCoach(user)) {
     const ids = await coachSessionIds(req, user.id)
     if (!ids.length) return false

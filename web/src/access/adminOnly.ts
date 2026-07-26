@@ -1,5 +1,7 @@
 import type { Access } from 'payload'
 
-import { isAdmin } from './roles'
+import { isOwner } from './roles'
 
-export const adminOnly: Access = ({ req: { user } }) => isAdmin(user)
+// God-гейт: только владелец сети (до M5 — роль admin). Используется на закрытых
+// client-write путях (update/delete служебных коллекций) и структурных операциях.
+export const adminOnly: Access = ({ req: { user } }) => isOwner(user)
