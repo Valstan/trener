@@ -43,7 +43,7 @@ describe('fanOutAnnouncement', () => {
 
     // дети тянутся по группе, overrideAccess (G90)
     expect(find).toHaveBeenCalledOnce()
-    expect((find.mock.calls[0][0] as AnyArgs).where).toEqual({ group: { equals: 77 } })
+    expect((find.mock.calls[0][0] as AnyArgs).where).toEqual({ group: { in: [77] } })
     expect((find.mock.calls[0][0] as AnyArgs).overrideAccess).toBe(true)
 
     // один пуш на КАЖДОГО уникального родителя (10, 20), не на ребёнка

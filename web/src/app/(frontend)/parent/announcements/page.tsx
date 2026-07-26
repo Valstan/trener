@@ -24,7 +24,8 @@ const ParentAnnouncementsPage = async () => {
 
   const announcements = await payload.find({
     collection: 'announcements',
-    sort: '-publishedAt',
+    // Закреплённые (баннеры владельца, M5 PR-C) — сверху ленты.
+    sort: ['-pinned', '-publishedAt'],
     limit: 20,
     depth: 0,
     pagination: false,
@@ -48,8 +49,14 @@ const ParentAnnouncementsPage = async () => {
     id: a.id,
     title: a.title,
     body: a.body,
-    groupName: annGroupNameById.get(relId(a.group) ?? -1) ?? null,
+    groupName:
+      a.scope === 'network'
+        ? 'Вся школа'
+        : a.scope === 'branch'
+          ? 'Наш филиал'
+          : (annGroupNameById.get(relId(a.group) ?? -1) ?? null),
     publishedAt: a.publishedAt ?? null,
+    pinned: a.pinned ?? false,
   }))
 
   return (

@@ -21,32 +21,55 @@ export const POST = async (req: Request): Promise<Response> => {
     let title: unknown
     let body: unknown
     let triggersPush: unknown
+    let scope: unknown
+    let branchIds: unknown
+    let pinned: unknown
     try {
       const parsed = (await req.json()) as {
         groupId?: unknown
         title?: unknown
         body?: unknown
         triggersPush?: unknown
+        scope?: unknown
+        branchIds?: unknown
+        pinned?: unknown
       }
       groupId = parsed?.groupId
       title = parsed?.title
       body = parsed?.body
       triggersPush = parsed?.triggersPush
+      scope = parsed?.scope
+      branchIds = parsed?.branchIds
+      pinned = parsed?.pinned
     } catch {
       // ниже 400
     }
 
     const titleStr = typeof title === 'string' ? title.trim() : ''
     const bodyStr = typeof body === 'string' ? body.trim() : ''
-    if (typeof groupId !== 'number' || !titleStr || !bodyStr) {
+    if (!titleStr || !bodyStr) return NextResponse.json({ ok: false }, { status: 400 })
+
+    // Охват (M5 PR-C): сеть/филиалы — только владелец; тренеру — группа как раньше.
+    const scopeStr = scope === 'branch' || scope === 'network' ? scope : 'group'
+    if ((scopeStr !== 'group' || pinned === true) && !isOwner(user)) {
+      return NextResponse.json({ ok: false }, { status: 403 })
+    }
+    const branchList =
+      scopeStr === 'branch'
+        ? (Array.isArray(branchIds) ? branchIds : []).filter((b): b is number => typeof b === 'number')
+        : []
+    if (scopeStr === 'branch' && !branchList.length) {
+      return NextResponse.json({ ok: false }, { status: 400 })
+    }
+    if (scopeStr === 'group' && typeof groupId !== 'number') {
       return NextResponse.json({ ok: false }, { status: 400 })
     }
 
-    // Владение: тренер — только своя группа; админ — любая.
-    if (!isOwner(user)) {
+    // Владение: тренер — только своя группа; владелец — любая.
+    if (scopeStr === 'group' && !isOwner(user)) {
       const owned = await payload.find({
         collection: 'groups',
-        where: { and: [{ id: { equals: groupId } }, { coaches: { in: [user.id] } }] },
+        where: { and: [{ id: { equals: groupId as number } }, { coaches: { in: [user.id] } }] },
         limit: 1,
         depth: 0,
         pagination: false,
@@ -59,13 +82,19 @@ export const POST = async (req: Request): Promise<Response> => {
       collection: 'announcements',
       data: {
         author: user.id,
-        group: groupId,
+        scope: scopeStr,
+        group: scopeStr === 'group' ? (groupId as number) : null,
+        branches: branchList.length ? branchList : null,
+        pinned: pinned === true,
         title: titleStr,
         body: bodyStr,
         triggersPush: triggersPush === true,
         publishedAt: new Date().toISOString(),
       },
       overrideAccess: true,
+      // user прокидывается в req.user хуков — guardScope (beforeValidate) сверяет
+      // владельца и под overrideAccess.
+      user,
     })
 
     return NextResponse.json({ ok: true })

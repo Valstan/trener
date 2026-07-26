@@ -290,17 +290,17 @@ const existingAnn = await payload.find({ collection: 'announcements', limit: 1, 
 if (existingAnn.totalDocs === 0) {
   await payload.create({
     collection: 'announcements',
-    data: { author: coach.id, group: gSenior.id, title: 'Форма на следующую неделю', body: 'На тренировки приносим тёмную форму и щитки. Бутсы — по погоде.', triggersPush: false, publishedAt: at(-1, 12, 0) },
+    data: { author: coach.id, scope: 'group' as const, group: gSenior.id, title: 'Форма на следующую неделю', body: 'На тренировки приносим тёмную форму и щитки. Бутсы — по погоде.', triggersPush: false, publishedAt: at(-1, 12, 0) },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'announcements',
-    data: { author: coach.id, group: gSenior.id, title: 'Товарищеский матч в субботу', body: 'В субботу в 11:00 играем со школой «Динамо» на домашнем поле. Приходим за 30 минут до начала.', triggersPush: true, publishedAt: at(0, 9, 0) },
+    data: { author: coach.id, scope: 'group' as const, group: gSenior.id, title: 'Товарищеский матч в субботу', body: 'В субботу в 11:00 играем со школой «Динамо» на домашнем поле. Приходим за 30 минут до начала.', triggersPush: true, publishedAt: at(0, 9, 0) },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'announcements',
-    data: { author: coach.id, group: gJunior.id, title: 'Командная фотосессия', body: 'В пятницу после тренировки — общая фотография команды. Форма парадная.', triggersPush: false, publishedAt: at(0, 10, 0) },
+    data: { author: coach.id, scope: 'group' as const, group: gJunior.id, title: 'Командная фотосессия', body: 'В пятницу после тренировки — общая фотография команды. Форма парадная.', triggersPush: false, publishedAt: at(0, 10, 0) },
     overrideAccess: true,
   })
   log('announcements + созданы (3 шт.)')

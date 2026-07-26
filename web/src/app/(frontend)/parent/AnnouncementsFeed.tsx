@@ -8,6 +8,7 @@ export type FeedItem = {
   body: string
   groupName: string | null
   publishedAt: string | null
+  pinned?: boolean
 }
 
 const LS_KEY = 'trener.announcements.lastSeen'
@@ -63,9 +64,10 @@ export const AnnouncementsFeed = ({ items }: { items: FeedItem[] }) => {
   return (
     <div className="stack-sm">
       {items.map((a) => (
-        <article key={a.id} className={isNew(a.publishedAt) ? 'card card-accent stack-sm' : 'card stack-sm'}>
+        <article key={a.id} className={isNew(a.publishedAt) || a.pinned ? 'card card-accent stack-sm' : 'card stack-sm'}>
           <div className="row-between" style={{ alignItems: 'baseline' }}>
             <strong>
+              {a.pinned && <span aria-label="Закреплено">📌 </span>}
               {isNew(a.publishedAt) && <span className="dot" aria-hidden />}
               {a.title}
             </strong>
