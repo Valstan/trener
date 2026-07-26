@@ -7,6 +7,8 @@ import React from 'react'
 
 import { homePathForUser } from '@/lib/auth/home'
 
+import { ServicesCatalogLink } from './components/ServicesCatalogLink'
+
 // Публичный лендинг для гостя. Залогиненного сразу уводим на его экран по роли —
 // иначе вошедший видит лендинг с кнопкой «Войти» и «зацикливается». force-dynamic:
 // страница теперь читает сессию в рантайме; сборку это не ломает (dynamic-страницы
@@ -86,6 +88,7 @@ const HomePage = async () => {
         color: 'var(--muted)',
       }}
     >
+      <ServicesCatalogLink style={{ marginBottom: '0.5rem' }} />
       <Link href="/privacy">Политика обработки персональных данных</Link>
       <Link href="/admin" style={{ color: 'var(--faint)' }}>
         Панель координатора →

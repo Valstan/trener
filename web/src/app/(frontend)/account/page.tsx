@@ -7,6 +7,7 @@ import React from 'react'
 import { isCoach, isParent } from '@/access/roles'
 
 import { AppShell, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
+import { ServicesCatalogLink } from '../components/ServicesCatalogLink'
 import { AccountForm } from './AccountForm'
 
 // Экран «Аккаунт» любого вошедшего: логин (email) + установка постоянного пароля.
@@ -24,6 +25,12 @@ const AccountPage = async () => {
   return (
     <AppShell title="Аккаунт" tabs={tabs} active="account" back={{ href: '/', label: 'Назад' }}>
       <AccountForm email={user.email} />
+
+      <h2 className="section-title">Другие сервисы города</h2>
+      <p className="muted small" style={{ marginTop: 0 }}>
+        Общий каталог сайтов Малмыжа — вход туда тот же, что и сюда.
+      </p>
+      <ServicesCatalogLink />
     </AppShell>
   )
 }
