@@ -7,11 +7,13 @@ import React from 'react'
 
 import type { Group } from '@/payload-types'
 import { isOwner, isCoach } from '@/access/roles'
+import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { loadCoverage, type CoverageSummary } from '@/lib/coverage'
 import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { SessionComposer } from './SessionComposer'
 import { SessionEditor } from './SessionEditor'
 
@@ -32,11 +34,15 @@ const CoachSchedulePage = async () => {
   if (!user) redirect('/login')
   if (!(isCoach(user) || isOwner(user))) redirect('/')
 
+  // Контекст филиала владельца (M5 PR-D): фильтр групп/сессий + селектор в шапке.
+  const { branches, ctx, ctxGroupIds } = await loadOwnerBranch(payload, user)
+
   const sessions = await payload.find({
     collection: 'training-sessions',
     sort: 'startDate',
     limit: 100,
     pagination: false,
+    where: ctxGroupIds ? { group: { in: ctxGroupIds } } : {},
     user,
     overrideAccess: false,
   })
@@ -49,6 +55,7 @@ const CoachSchedulePage = async () => {
       limit: 200,
       depth: 0,
       pagination: false,
+      where: ctx != null ? { branch: { equals: ctx } } : {},
       user,
       overrideAccess: false,
     })
@@ -69,6 +76,7 @@ const CoachSchedulePage = async () => {
 
   return (
     <AppShell title="Расписание" tabs={COACH_TABS} active="schedule">
+      {branches && <BranchSwitcher branches={branches} current={ctx} />}
       {groupOptions.length === 0 ? (
         <div className="empty-state">
           <span className="ic" aria-hidden>

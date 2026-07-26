@@ -5,10 +5,12 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import { isOwner, isCoach } from '@/access/roles'
+import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { AnnouncementComposer } from './AnnouncementComposer'
 
 // Объявления тренера: компоновщик (выбор группы + текст + флаг пуша) + список своих
@@ -21,12 +23,16 @@ const CoachAnnouncementsPage = async () => {
   if (!user) redirect('/login')
   if (!(isCoach(user) || isOwner(user))) redirect('/')
 
+  // Контекст филиала владельца (M5 PR-D).
+  const { branches: ctxBranches, ctx, ctxGroupIds } = await loadOwnerBranch(payload, user)
+
   // Группы тренера (scoped read) — для селектора адресата.
   const groups = await payload.find({
     collection: 'groups',
     sort: 'name',
     limit: 200,
     pagination: false,
+    where: ctx != null ? { branch: { equals: ctx } } : {},
     user,
     overrideAccess: false,
   })
@@ -45,13 +51,17 @@ const CoachAnnouncementsPage = async () => {
       ).docs.map((b) => ({ id: b.id, name: b.name }))
     : null
 
-  // Прошлые объявления (scoped read), свежие сверху.
+  // Прошлые объявления (scoped read), свежие сверху. В контексте филиала —
+  // его группы + сетевые/филиальные.
   const announcements = await payload.find({
     collection: 'announcements',
     sort: '-publishedAt',
     limit: 50,
     depth: 0,
     pagination: false,
+    where: ctxGroupIds
+      ? { or: [{ scope: { not_equals: 'group' } }, { group: { in: ctxGroupIds } }] }
+      : {},
     user,
     overrideAccess: false,
   })
@@ -59,6 +69,7 @@ const CoachAnnouncementsPage = async () => {
 
   return (
     <AppShell title="Объявления" tabs={COACH_TABS} active="announcements">
+      {ctxBranches && <BranchSwitcher branches={ctxBranches} current={ctx} />}
       {groupOptions.length === 0 && !branchOptions ? (
         <div className="empty-state">
           <span className="ic" aria-hidden>

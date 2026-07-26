@@ -5,10 +5,12 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import { isOwner, isCoach } from '@/access/roles'
+import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { resolveMatchViews } from '@/lib/matches'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { MatchCard } from '../../components/MatchCard'
 import { MatchComposer } from './MatchComposer'
 
@@ -23,6 +25,9 @@ const CoachMatchesPage = async () => {
   if (!user) redirect('/login')
   if (!(isCoach(user) || isOwner(user))) redirect('/')
 
+  // Контекст филиала владельца (M5 PR-D).
+  const { branches, ctx, ctxGroupIds } = await loadOwnerBranch(payload, user)
+
   // Группы тренера (scoped) — для селектора.
   const groups = await payload.find({
     collection: 'groups',
@@ -30,6 +35,7 @@ const CoachMatchesPage = async () => {
     limit: 200,
     depth: 0,
     pagination: false,
+    where: ctx != null ? { branch: { equals: ctx } } : {},
     user,
     overrideAccess: false,
   })
@@ -59,6 +65,7 @@ const CoachMatchesPage = async () => {
     limit: 50,
     depth: 0,
     pagination: false,
+    where: ctxGroupIds ? { group: { in: ctxGroupIds } } : {},
     user,
     overrideAccess: false,
   })
@@ -66,6 +73,7 @@ const CoachMatchesPage = async () => {
 
   return (
     <AppShell title="Результаты" tabs={COACH_TABS} active="matches">
+      {branches && <BranchSwitcher branches={branches} current={ctx} />}
       {groupOptions.length === 0 ? (
         <div className="empty-state">
           <span className="ic" aria-hidden>
