@@ -9,6 +9,8 @@ import React from 'react'
 import { isPending } from '@/access/roles'
 import { homePathForUser } from '@/lib/auth/home'
 
+import { SectionCards, sectionsForRoles } from '../components/SectionCards'
+
 // Экран ожидания модерации (M5 PR-B): самореги видят его до подтверждения
 // владельцем/админом филиала. Подтверждённого (или гостя) уводим по назначению.
 export const dynamic = 'force-dynamic'
@@ -39,6 +41,10 @@ const PendingPage = async () => {
           Если вы родитель — сообщите тренеру, что зарегистрировались: он свяжет вас с вашим
           ребёнком, и вам откроются расписание и уведомления группы.
         </span>
+      </div>
+      {/* M7: плашки разделов видны, но под замком до подтверждения (видение v2 §2). */}
+      <div style={{ textAlign: 'left', marginTop: '1.5rem' }}>
+        <SectionCards sections={sectionsForRoles(user)} locked />
       </div>
       <p className="note" style={{ marginTop: '1.5rem' }}>
         <Link href="/">← На главную</Link>
