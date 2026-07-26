@@ -40,3 +40,8 @@ coverage/
 
 # Claude Code — личные оверрайды прав не коммитим (общий конфиг — .claude/settings.json)
 .claude/settings.local.json
+
+# Codex-зеркала CLAUDE.md и .claude/commands — генерируются конвертером на машине.
+# В репо не держим: две копии одного текста разъезжаются при первой же правке правил.
+AGENTS.md
+.agents/
