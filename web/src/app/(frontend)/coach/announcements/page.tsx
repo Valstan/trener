@@ -32,6 +32,19 @@ const CoachAnnouncementsPage = async () => {
   })
   const groupOptions = groups.docs.map((g) => ({ id: g.id, name: g.name }))
 
+  // M5 PR-C: владельцу — список филиалов для охвата branch/network.
+  const branchOptions = isOwner(user)
+    ? (
+        await payload.find({
+          collection: 'branches',
+          sort: 'name',
+          limit: 200,
+          pagination: false,
+          overrideAccess: true,
+        })
+      ).docs.map((b) => ({ id: b.id, name: b.name }))
+    : null
+
   // Прошлые объявления (scoped read), свежие сверху.
   const announcements = await payload.find({
     collection: 'announcements',
@@ -46,7 +59,7 @@ const CoachAnnouncementsPage = async () => {
 
   return (
     <AppShell title="Объявления" tabs={COACH_TABS} active="announcements">
-      {groupOptions.length === 0 ? (
+      {groupOptions.length === 0 && !branchOptions ? (
         <div className="empty-state">
           <span className="ic" aria-hidden>
             📣
@@ -54,7 +67,7 @@ const CoachAnnouncementsPage = async () => {
           У вас пока нет групп — объявление отправить некому.
         </div>
       ) : (
-        <AnnouncementComposer groups={groupOptions} />
+        <AnnouncementComposer groups={groupOptions} branches={branchOptions} />
       )}
 
       <h2 className="section-title">Отправленные</h2>
@@ -71,7 +84,12 @@ const CoachAnnouncementsPage = async () => {
                 </span>
               </div>
               <div className="muted small">
-                {groupNameById.get(relId(a.group) ?? -1) ?? 'Группа'}
+                {a.scope === 'network'
+                  ? '🌐 Вся сеть'
+                  : a.scope === 'branch'
+                    ? '🏢 Филиалы'
+                    : (groupNameById.get(relId(a.group) ?? -1) ?? 'Группа')}
+                {a.pinned ? ' · 📌 закреплено' : ''}
                 {a.triggersPush ? ' · 🔔 с пушем' : ''}
               </div>
               <p className="pre">{a.body}</p>

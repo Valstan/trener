@@ -385,7 +385,7 @@ export interface Rsvp {
   createdAt: string;
 }
 /**
- * Новости тренера группе. Не ack-очередь (coverage не затрагивает). Пуш — только по флагу.
+ * Новости тренера группе / владельца сети. Не ack-очередь. Пуш — только по флагу.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "announcements".
@@ -393,7 +393,19 @@ export interface Rsvp {
 export interface Announcement {
   id: number;
   author?: (number | null) | User;
-  group: number | Group;
+  /**
+   * Филиалы/сеть — только владелец. Группа — классическое объявление тренера.
+   */
+  scope: 'group' | 'branch' | 'network';
+  /**
+   * Кому адресовано при охвате «Выбранные филиалы».
+   */
+  branches?: (number | Branch)[] | null;
+  /**
+   * Закреплённое объявление показывается сверху ленты. Только владелец.
+   */
+  pinned?: boolean | null;
+  group?: (number | null) | Group;
   title: string;
   /**
    * 152-ФЗ: массовая рассылка — без персональных данных детей в тексте.
@@ -758,6 +770,9 @@ export interface RsvpsSelect<T extends boolean = true> {
  */
 export interface AnnouncementsSelect<T extends boolean = true> {
   author?: T;
+  scope?: T;
+  branches?: T;
+  pinned?: T;
   group?: T;
   title?: T;
   body?: T;
