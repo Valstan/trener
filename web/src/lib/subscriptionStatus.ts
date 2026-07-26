@@ -2,7 +2,7 @@
 // нечему протухать. Порог «заканчивается» — 7 дней (напоминание заранее).
 export type SubscriptionStatus = 'active' | 'expiring' | 'expired' | 'none'
 
-export const SOON_DAYS = 7
+const SOON_DAYS = 7
 
 export const subscriptionStatus = (paidUntil: string | null | undefined, now: Date): SubscriptionStatus => {
   if (!paidUntil) return 'none'
