@@ -42,9 +42,10 @@ export const AppShell = ({
           ‹
         </Link>
       ) : (
-        <span className="brand">
+        // ⚽ — вход на главную-карточки (M7): обзор всех разделов приложения.
+        <Link href="/home" className="brand" aria-label="Главная">
           <span aria-hidden>⚽</span>
-        </span>
+        </Link>
       )}
       {title && <span className="app-title">{title}</span>}
       <span className="spacer" />
