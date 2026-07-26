@@ -105,9 +105,9 @@ export const findOrLinkRadarUser = async (
           // этого пользователя — через VK (и magic-link, если email реальный).
           password: generateRawToken(),
           roles: ['parent'],
-          // PR-A: самореги через VK пока approved; гейт модерации входа
-          // (pending до подтверждения владельцем/админом) включается в PR-B.
-          status: 'approved',
+          // Модерация входа (M5 PR-B): саморег через VK ждёт подтверждения
+          // владельцем/админом (экран /pending). Инвайт-путь остаётся approved.
+          status: 'pending',
           authProvider: 'radar',
           externalId: claims.sub,
           ...(claims.name ? { name: claims.name } : {}),

@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { isCoach, isParent } from '@/access/roles'
+import { isCoach, isParent, isPending } from '@/access/roles'
 
 import { AppShell, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
 import { ServicesCatalogLink } from '../components/ServicesCatalogLink'
@@ -18,6 +18,7 @@ const AccountPage = async () => {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
+  if (isPending(user)) redirect('/pending')
 
   // Таб-бар по роли (админ работает в staff-оболочке тренера).
   const tabs: Tab[] = isParent(user) && !isCoach(user) ? PARENT_TABS : COACH_TABS

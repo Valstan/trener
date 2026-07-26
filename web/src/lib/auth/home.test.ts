@@ -20,6 +20,20 @@ describe('homePathForUser', () => {
     expect(homePathForUser({ roles: ['parent', 'coach'] })).toBe('/coach/schedule')
   })
 
+  it('owner → админка (M5)', () => {
+    expect(homePathForUser({ roles: ['owner'] })).toBe('/admin')
+  })
+
+  it('pending → экран ожидания модерации (M5 PR-B), роль не важна', () => {
+    expect(homePathForUser({ roles: ['parent'], status: 'pending' })).toBe('/pending')
+    expect(homePathForUser({ roles: ['coach'], status: 'pending' })).toBe('/pending')
+  })
+
+  it('старый JWT без status = approved (не запираем действующих)', () => {
+    expect(homePathForUser({ roles: ['parent'] })).toBe('/parent')
+    expect(homePathForUser({ roles: ['parent'], status: 'approved' })).toBe('/parent')
+  })
+
   it('гость / пустая роль → лендинг (без петли редиректа)', () => {
     expect(homePathForUser(null)).toBe('/')
     expect(homePathForUser(undefined)).toBe('/')
