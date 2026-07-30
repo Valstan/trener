@@ -11,20 +11,26 @@ export type Tab = { key: string; href: string; label: string; icon: string }
 //
 // «Оплата» — таб, а не только карточка на /home: до аудита 30.07 раздел достигался
 // ИСКЛЮЧИТЕЛЬНО через неподписанный ⚽ в шапке, то есть родитель с вопросом «сколько
-// платить» его не находил. Пять табов на 375px помещаются (`.tab-bar a` — flex 1 1 0,
-// шрифт 0.7rem), самый длинный ярлык «Объявления» ≈ 56px при доступных ~67px.
+// платить» его не находил.
+//
+// Шесть табов на 375px — по ~62px на таб (`.tab-bar a` — flex 1 1 0, шрифт 0.7rem).
+// Поэтому ярлыки короче заголовков экранов: «Новости» вместо «Объявления», «Матчи»
+// вместо «Результаты». Заголовки внутри экранов остались прежними — в узкой полосе
+// важнее попасть пальцем, чем повторить заголовок дословно.
 export const COACH_TABS: Tab[] = [
   { key: 'schedule', href: '/coach/schedule', label: 'Расписание', icon: '📅' },
-  { key: 'announcements', href: '/coach/announcements', label: 'Объявления', icon: '📣' },
-  { key: 'matches', href: '/coach/matches', label: 'Результаты', icon: '🏆' },
+  { key: 'announcements', href: '/coach/announcements', label: 'Новости', icon: '📣' },
+  { key: 'chat', href: '/chat', label: 'Чат', icon: '👥' },
+  { key: 'matches', href: '/coach/matches', label: 'Матчи', icon: '🏆' },
   { key: 'questions', href: '/coach/questions', label: 'Вопросы', icon: '💬' },
   { key: 'payments', href: '/coach/payments', label: 'Оплата', icon: '💳' },
 ]
 
 export const PARENT_TABS: Tab[] = [
   { key: 'changes', href: '/parent', label: 'Изменения', icon: '🔔' },
-  { key: 'announcements', href: '/parent/announcements', label: 'Объявления', icon: '📣' },
-  { key: 'matches', href: '/parent/matches', label: 'Результаты', icon: '🏆' },
+  { key: 'announcements', href: '/parent/announcements', label: 'Новости', icon: '📣' },
+  { key: 'chat', href: '/chat', label: 'Чат', icon: '👥' },
+  { key: 'matches', href: '/parent/matches', label: 'Матчи', icon: '🏆' },
   { key: 'ask', href: '/parent/ask', label: 'Вопрос', icon: '💬' },
   { key: 'payments', href: '/parent/payments', label: 'Оплата', icon: '💳' },
 ]

@@ -429,6 +429,58 @@ if (existingAnn.totalDocs === 0) {
   log('announcements ✔ (уже есть) — пропуск')
 }
 
+// ─── Комнаты чатов (M9, ТОЛЬКО если тем ещё нет) ───────────────────────────────
+// Тема с живой перепиской + пустая тема + закрытая: на стенде видно все три
+// состояния списка, включая замок.
+const existingTopics = await payload.find({ collection: 'chat-topics', limit: 1, overrideAccess: true })
+if (existingTopics.totalDocs === 0) {
+  const say = async (topicId: number, author: typeof coach, role: 'coach' | 'parent', body: string, when: string) => {
+    await payload.create({
+      collection: 'chat-messages',
+      data: {
+        topic: topicId,
+        group: gSenior.id,
+        author: author.id,
+        authorName: author.name || author.email,
+        authorRole: role,
+        body,
+        createdAt: when,
+      },
+      overrideAccess: true,
+    })
+  }
+
+  const tTrip = await payload.create({
+    collection: 'chat-topics',
+    data: { title: 'Едем на соревнования 12 сентября', group: gSenior.id, createdBy: coach.id },
+    overrideAccess: true,
+  })
+  await say(tTrip.id, coach, 'coach', 'Выезжаем в 7:00 от стадиона. С собой форма, щитки, вода и перекус.', at(-1, 9, 0))
+  await say(tTrip.id, p1, 'parent', 'Мы будем. Артём и Мария едут вдвоём, я подвезу к 6:45.', at(-1, 9, 30))
+  await say(tTrip.id, p2, 'parent', 'А во сколько примерно назад? Нужно понимать, когда встречать.', at(-1, 10, 15))
+  await say(tTrip.id, coach, 'coach', 'Ориентировочно к 18:00, напишу здесь, когда будем выезжать обратно.', at(-1, 10, 40))
+  await payload.update({
+    collection: 'chat-topics',
+    id: tTrip.id,
+    data: { lastMessageAt: at(-1, 10, 40) },
+    overrideAccess: true,
+  })
+
+  await payload.create({
+    collection: 'chat-topics',
+    data: { title: 'Форма на сезон', group: gJunior.id, createdBy: coach.id },
+    overrideAccess: true,
+  })
+  await payload.create({
+    collection: 'chat-topics',
+    data: { title: 'Фотосессия в июне (завершено)', group: gSenior.id, createdBy: coach.id, closed: true },
+    overrideAccess: true,
+  })
+  log('chat-topics + созданы (3 темы, 4 сообщения)')
+} else {
+  log('chat-topics ✔ (уже есть) — пропуск')
+}
+
 // ─── Вопросы тренеру (ТОЛЬКО если их ещё нет) ──────────────────────────────────
 const existingQ = await payload.find({ collection: 'questions', limit: 1, overrideAccess: true })
 if (existingQ.totalDocs === 0) {

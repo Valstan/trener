@@ -7,6 +7,7 @@ import * as migration_20260726_134752_m5_branches_roles from './20260726_134752_
 import * as migration_20260726_143618_m5_announcement_scopes from './20260726_143618_m5_announcement_scopes';
 import * as migration_20260726_152037_m8_subscriptions from './20260726_152037_m8_subscriptions';
 import * as migration_20260730_173921_m9_monthly_fee from './20260730_173921_m9_monthly_fee';
+import * as migration_20260730_182709_m9_chat_rooms from './20260730_182709_m9_chat_rooms';
 
 export const migrations = [
   {
@@ -52,6 +53,11 @@ export const migrations = [
   {
     up: migration_20260730_173921_m9_monthly_fee.up,
     down: migration_20260730_173921_m9_monthly_fee.down,
-    name: '20260730_173921_m9_monthly_fee'
+    name: '20260730_173921_m9_monthly_fee',
+  },
+  {
+    up: migration_20260730_182709_m9_chat_rooms.up,
+    down: migration_20260730_182709_m9_chat_rooms.down,
+    name: '20260730_182709_m9_chat_rooms'
   },
 ];
