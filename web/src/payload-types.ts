@@ -82,6 +82,8 @@ export interface Config {
     'question-messages': QuestionMessage;
     matches: Match;
     subscriptions: Subscription;
+    'chat-topics': ChatTopic;
+    'chat-messages': ChatMessage;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -104,6 +106,8 @@ export interface Config {
     'question-messages': QuestionMessagesSelect<false> | QuestionMessagesSelect<true>;
     matches: MatchesSelect<false> | MatchesSelect<true>;
     subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
+    'chat-topics': ChatTopicsSelect<false> | ChatTopicsSelect<true>;
+    'chat-messages': ChatMessagesSelect<false> | ChatMessagesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -524,6 +528,54 @@ export interface Subscription {
   createdAt: string;
 }
 /**
+ * Темы общих чатов групп: тренеры и родители одной группы. Тему заводит тренер, писать в неё могут все участники группы.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chat-topics".
+ */
+export interface ChatTopic {
+  id: number;
+  /**
+   * О чём разговор — например, «Едем на соревнования 12 сентября».
+   */
+  title: string;
+  group: number | Group;
+  createdBy?: (number | null) | User;
+  /**
+   * Проставляется сама при новом сообщении — по ней темы идут сверху вниз.
+   */
+  lastMessageAt?: string | null;
+  /**
+   * Закрытую тему видно, но написать в неё нельзя. Удобно для разъехавшихся разговоров.
+   */
+  closed?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Сообщения в темах общих чатов. Заводить и править вручную не нужно — пишутся из приложения.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chat-messages".
+ */
+export interface ChatMessage {
+  id: number;
+  topic: number | ChatTopic;
+  /**
+   * Копируется с темы — по ней считается видимость.
+   */
+  group: number | Group;
+  author?: (number | null) | User;
+  /**
+   * Снимок имени на момент отправки — переписка переживает удаление аккаунта.
+   */
+  authorName?: string | null;
+  authorRole?: ('coach' | 'staff' | 'parent') | null;
+  body: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -606,6 +658,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'subscriptions';
         value: number | Subscription;
+      } | null)
+    | ({
+        relationTo: 'chat-topics';
+        value: number | ChatTopic;
+      } | null)
+    | ({
+        relationTo: 'chat-messages';
+        value: number | ChatMessage;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -888,6 +948,33 @@ export interface SubscriptionsSelect<T extends boolean = true> {
   paidUntil?: T;
   amount?: T;
   note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chat-topics_select".
+ */
+export interface ChatTopicsSelect<T extends boolean = true> {
+  title?: T;
+  group?: T;
+  createdBy?: T;
+  lastMessageAt?: T;
+  closed?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chat-messages_select".
+ */
+export interface ChatMessagesSelect<T extends boolean = true> {
+  topic?: T;
+  group?: T;
+  author?: T;
+  authorName?: T;
+  authorRole?: T;
+  body?: T;
   updatedAt?: T;
   createdAt?: T;
 }
