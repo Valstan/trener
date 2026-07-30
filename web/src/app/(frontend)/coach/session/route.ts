@@ -3,7 +3,8 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { isOwner, isCoach } from '@/access/roles'
-import { parseSessionCreate, parseSessionPatch } from '@/lib/sessionInput'
+import { MAX_OCCURRENCES } from '@/lib/repeatSchedule'
+import { parseSessionBatch, parseSessionCreate, parseSessionPatch } from '@/lib/sessionInput'
 
 // Фронтовый composer расписания (дорожная карта после #64): тренер заводит/правит/
 // отменяет тренировки без Payload-админки.
@@ -30,7 +31,12 @@ export const POST = async (req: Request): Promise<Response> => {
     } catch {
       // ниже 400
     }
-    const input = parseSessionCreate(raw)
+    // Форма с повторами шлёт `occurrences[]`; одиночное создание — прежний контракт.
+    const hasOccurrences =
+      typeof raw === 'object' && raw !== null && Array.isArray((raw as Record<string, unknown>).occurrences)
+    const single = hasOccurrences ? null : parseSessionCreate(raw)
+    const batch = hasOccurrences ? parseSessionBatch(raw, MAX_OCCURRENCES) : null
+    const input = batch ?? (single ? { ...single, occurrences: [{ startDate: single.startDate, endDate: single.endDate }] } : null)
     if (!input) return NextResponse.json({ ok: false }, { status: 400 })
 
     if (!isOwner(user)) {
@@ -45,20 +51,24 @@ export const POST = async (req: Request): Promise<Response> => {
       if (!owned.docs.length) return NextResponse.json({ ok: false }, { status: 403 })
     }
 
-    await payload.create({
-      collection: 'training-sessions',
-      data: {
-        group: input.groupId,
-        startDate: input.startDate,
-        endDate: input.endDate,
-        location: input.location,
-        note: input.note,
-        status: 'planned',
-      },
-      overrideAccess: true,
-    })
+    // Последовательно, а не Promise.all: сотня параллельных create на одном ядре
+    // Бокса 1 — ровно тот спайк, которого мы избегаем (аудит 30.07 §3).
+    for (const occ of input.occurrences) {
+      await payload.create({
+        collection: 'training-sessions',
+        data: {
+          group: input.groupId,
+          startDate: occ.startDate,
+          endDate: occ.endDate,
+          location: input.location,
+          note: input.note,
+          status: 'planned',
+        },
+        overrideAccess: true,
+      })
+    }
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({ ok: true, created: input.occurrences.length })
   } catch (err) {
     console.error('[coach/session POST]', err)
     return NextResponse.json({ ok: false }, { status: 500 })
