@@ -54,7 +54,7 @@ export const QuestionMessages: CollectionConfig = {
   admin: {
     defaultColumns: ['question', 'authorRole', 'createdAt'],
     useAsTitle: 'id',
-    description: 'Нитки чата M4: голова — «Вопрос тренеру», здесь — ответы и реплики.',
+    description: 'Переписка внутри вопроса: сам вопрос — в разделе «Вопросы», здесь — ответы и реплики.',
   },
   hooks: {
     afterChange: [fanOutQuestionReply],

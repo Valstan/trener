@@ -123,7 +123,7 @@ export const Groups: CollectionConfig = {
       relationTo: 'branches',
       required: true,
       admin: {
-        description: 'Филиал группы — граница видимости всего её контента (M5).',
+        description: 'Филиал группы. Определяет, кто вообще видит её расписание, объявления и детей.',
       },
     },
   ],

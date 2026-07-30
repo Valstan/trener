@@ -58,7 +58,7 @@ export const Matches: CollectionConfig = {
   admin: {
     defaultColumns: ['matchDate', 'group', 'opponent', 'homeAway'],
     useAsTitle: 'opponent',
-    description: 'Результаты игр. Информационный канал (coverage не затрагивает). Голы детей — 152-ФЗ: только имя.',
+    description: 'Результаты игр — информационный раздел: подтверждения от родителей здесь не запрашиваются.',
   },
   fields: [
     {
@@ -126,7 +126,7 @@ export const Matches: CollectionConfig = {
       label: 'Авторы голов',
       labels: { singular: 'Гол', plural: 'Голы' },
       admin: {
-        description: '152-ФЗ: только имя ребёнка (из справочника Дети). Виден родителям группы.',
+        description: 'Только имя ребёнка — из справочника «Дети». Видно родителям группы.',
       },
       fields: [
         {

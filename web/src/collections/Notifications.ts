@@ -74,7 +74,7 @@ export const Notifications: CollectionConfig = {
     defaultColumns: ['session', 'parent', 'type', 'status', 'changedAt'],
     useAsTitle: 'id',
     description:
-      'Очередь «непринятых» + ack. Первичный гарант доведения (не зависит от пуша). Источник coverage «N из M».',
+      'Очередь неподтверждённых изменений у родителя. Главная гарантия, что до родителя дошло: работает и без пуш-уведомлений. Отсюда же сводка тренеру «приняли N из M».',
   },
   fields: [
     {
@@ -102,7 +102,7 @@ export const Notifications: CollectionConfig = {
       hasMany: true,
       required: true,
       admin: {
-        description: 'Какие дети этого родителя затронуты. Имена в payload пуша НЕ уходят (152-ФЗ).',
+        description: 'Какие дети этого родителя затронуты. В текст пуш-уведомления имена детей не попадают.',
       },
     },
     {
@@ -129,7 +129,7 @@ export const Notifications: CollectionConfig = {
         { label: 'Устарело', value: 'superseded' }, // перекрыто новой волной изменения
       ],
       admin: {
-        description: 'delivered→seen→acked. Родитель двигает только вперёд (ack). superseded ставит фан-аут.',
+        description: 'Доставлено → открыто → подтверждено. Родитель может только подтвердить; «устарело» проставляется само, когда приходит более свежее изменение по той же тренировке.',
       },
     },
     {

@@ -54,7 +54,7 @@ const HomeCardsPage = async () => {
       <SectionCards sections={sectionsForRoles(user)} />
       {isOwner(user) && (
         <p className="note" style={{ marginTop: '1rem' }}>
-          <Link href="/admin">Панель координатора →</Link>
+          <Link href="/admin">Панель управления школой →</Link>
         </p>
       )}
     </AppShell>

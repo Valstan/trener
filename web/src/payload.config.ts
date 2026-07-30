@@ -1,6 +1,7 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { ru } from '@payloadcms/translations/languages/ru'
 import sharp from 'sharp'
 import path from 'path'
 import { buildConfig } from 'payload'
@@ -96,8 +97,14 @@ export default buildConfig({
   sharp,
   // Админка на русском (тренеры/админ — русскоязычные). Локализация контента
   // (мультиязычные поля) не нужна — проект одноязычный, в отличие от Sabantuy.
+  //
+  // ⚠️ Одного fallbackLanguage мало: он срабатывает, лишь когда язык браузера НЕ
+  // поддержан, а Payload из коробки поддерживает английский — владелец с английской
+  // локалью в браузере получал английскую панель («Collections», «Create New») вперемешку
+  // с русскими полями (п.13 аудита 30.07). supportedLanguages оставляет ровно русский.
   i18n: {
     fallbackLanguage: 'ru',
+    supportedLanguages: { ru },
   },
   typescript: {
     outputFile: path.resolve(dirname, 'payload-types.ts'),

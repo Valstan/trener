@@ -57,7 +57,7 @@ export const Questions: CollectionConfig = {
   admin: {
     defaultColumns: ['group', 'parent', 'status', 'createdAt'],
     useAsTitle: 'id',
-    description: 'Суррогат чата (M4 — полный чат). Односторонне: родитель спросил → тренер прочитал/ответил. Вне coverage.',
+    description: 'Личные вопросы родителей тренеру: родитель спрашивает — тренер читает и отвечает.',
   },
   hooks: {
     afterChange: [fanOutQuestion],

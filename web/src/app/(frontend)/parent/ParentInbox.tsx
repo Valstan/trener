@@ -90,7 +90,7 @@ export const ParentInbox = ({ items: initial }: { items: InboxItem[] }) => {
     <div className="stack">
       {unacked > 0 && (
         <div className="muted small">
-          Непринятых: <strong style={{ color: 'var(--fg)' }}>{unacked}</strong>
+          Не подтверждено: <strong style={{ color: 'var(--fg)' }}>{unacked}</strong>
         </div>
       )}
       {items.map((i) => {
@@ -106,7 +106,8 @@ export const ParentInbox = ({ items: initial }: { items: InboxItem[] }) => {
 
             {i.type === 'cancelled'
               ? i.children.length > 0 && (
-                  <div className="muted small">Касается: {i.children.map((c) => c.name).join(', ')}</div>
+                  <div className="muted small">{i.children.length === 1 ? 'Ребёнок: ' : 'Дети: '}
+                  {i.children.map((c) => c.name).join(', ')}</div>
                 )
               : i.children.length > 0 && (
                   <div className="stack-sm">
