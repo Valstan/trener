@@ -57,8 +57,26 @@ const DEV_PASSWORD = 'devpass1234'
 
 type Role = 'owner' | 'admin' | 'coach' | 'parent'
 
-// ─── Филиал (M5): весь demo-контент живёт в филиале «Малмыж» ────────────────
+// ─── Филиалы (M5) ────────────────────────────────────────────────────────────
+// ДВА филиала, а не один: с единственным филиалом переключателю владельца нечего
+// переключать, и флагман M5 на стенде не виден (аудит 30.07, п.14). Реквизиты
+// оплаты заполняем сразу — иначе экран «Оплата» родителя показывает «уточните у
+// тренера» и помощник оплаты выглядит недоделанным.
+const PAYMENT_DETAILS: Record<string, string> = {
+  Малмыж: [
+    'Перевод по номеру телефона +7 999 100-20-30 (Сбербанк, Иван П.).',
+    'В сообщении к переводу укажите имя ребёнка и месяц: «Артём Смирнов, август».',
+    'Абонемент на месяц — 2 500 ₽, разовое занятие — 400 ₽.',
+  ].join('\n'),
+  'Вятские Поляны': [
+    'Перевод по номеру телефона +7 999 400-50-60 (Т-Банк, Сергей Л.).',
+    'В сообщении укажите имя ребёнка и месяц.',
+    'Абонемент на месяц — 2 200 ₽, разовое занятие — 350 ₽.',
+  ].join('\n'),
+}
+
 const findOrCreateBranch = async (name: string, city: string) => {
+  const paymentDetails = PAYMENT_DETAILS[name]
   const found = await payload.find({
     collection: 'branches',
     where: { name: { equals: name } },
@@ -66,20 +84,39 @@ const findOrCreateBranch = async (name: string, city: string) => {
     overrideAccess: true,
   })
   if (found.docs[0]) {
+    // Бэкфилл реквизитов на уже засеянной БД: прогон сида не должен оставлять
+    // «Оплату» пустой только потому, что филиал завели раньше.
+    if (!found.docs[0].paymentDetails && paymentDetails) {
+      const filled = await payload.update({
+        collection: 'branches',
+        id: found.docs[0].id,
+        data: { paymentDetails },
+        overrideAccess: true,
+      })
+      log(`branch ✔ ${name} (реквизиты дозаполнены)`)
+      return filled
+    }
     log(`branch ✔ ${name}`)
     return found.docs[0]
   }
   const b = await payload.create({
     collection: 'branches',
-    data: { name, city, active: true },
+    data: { name, city, active: true, paymentDetails },
     overrideAccess: true,
   })
   log(`branch + ${name}`)
   return b
 }
 const branch = await findOrCreateBranch('Малмыж', 'Малмыж')
+const branch2 = await findOrCreateBranch('Вятские Поляны', 'Вятские Поляны')
 
-const findOrCreateUser = async (email: string, name: string, roles: Role[], phone?: string) => {
+const findOrCreateUser = async (
+  email: string,
+  name: string,
+  roles: Role[],
+  phone?: string,
+  userBranchId: number = branch.id,
+) => {
   const e = email.toLowerCase()
   const found = await payload.find({
     collection: 'users',
@@ -100,7 +137,7 @@ const findOrCreateUser = async (email: string, name: string, roles: Role[], phon
       roles,
       phone,
       password: DEV_PASSWORD,
-      branch: roles.includes('owner') ? undefined : branch.id,
+      branch: roles.includes('owner') ? undefined : userBranchId,
       status: 'approved',
     },
     overrideAccess: true,
@@ -116,10 +153,30 @@ const coach = await findOrCreateUser('coach@trener.local', 'Иван Петро�
 const p1 = await findOrCreateUser('parent1@trener.local', 'Ольга Смирнова', ['parent'], '+7 999 111-11-11')
 const p2 = await findOrCreateUser('parent2@trener.local', 'Дмитрий Кузнецов', ['parent'], '+7 999 222-22-22')
 const p3 = await findOrCreateUser('parent3@trener.local', 'Елена Васильева', ['parent'], '+7 999 333-33-33')
-void admin // создан для входа в /admin; в остальном скрипте не используется
+// Второй филиал: свой тренер и свой родитель — переключатель владельца показывает
+// РАЗНЫЕ данные, а не пустой экран.
+const coach2 = await findOrCreateUser(
+  'coach2@trener.local',
+  'Сергей Лебедев',
+  ['coach'],
+  '+7 999 400-50-60',
+  branch2.id,
+)
+const p4 = await findOrCreateUser(
+  'parent4@trener.local',
+  'Марина Орлова',
+  ['parent'],
+  '+7 999 444-44-44',
+  branch2.id,
+)
 
 // ─── Группы ──────────────────────────────────────────────────────────────────
-const findOrCreateGroup = async (name: string, description: string) => {
+const findOrCreateGroup = async (
+  name: string,
+  description: string,
+  groupCoachId: number = coach.id,
+  groupBranchId: number = branch.id,
+) => {
   const found = await payload.find({
     collection: 'groups',
     where: { name: { equals: name } },
@@ -132,7 +189,7 @@ const findOrCreateGroup = async (name: string, description: string) => {
   }
   const g = await payload.create({
     collection: 'groups',
-    data: { name, description, coaches: [coach.id], branch: branch.id },
+    data: { name, description, coaches: [groupCoachId], branch: groupBranchId },
     overrideAccess: true,
   })
   log(`group + ${name}`)
@@ -140,6 +197,12 @@ const findOrCreateGroup = async (name: string, description: string) => {
 }
 const gSenior = await findOrCreateGroup('Старшая группа (2014)', 'Дети 2014 г.р. Тренировки на стадионе «Юность».')
 const gJunior = await findOrCreateGroup('Младшая группа (2017)', 'Дети 2017 г.р. Тренировки в спортзале.')
+const gPolyany = await findOrCreateGroup(
+  'Вятские Поляны (2015)',
+  'Дети 2015 г.р. Тренировки в ФОК «Электрон».',
+  coach2.id,
+  branch2.id,
+)
 
 // ─── Дети ────────────────────────────────────────────────────────────────────
 const findOrCreatePlayer = async (name: string, groupId: number, parentId: number | null) => {
@@ -169,6 +232,9 @@ const plSofia = await findOrCreatePlayer('София Васильева', gJunio
 const plLev = await findOrCreatePlayer('Лев Кузнецов', gJunior.id, p2.id)
 // Ребёнок без привязанного родителя — видно в coverage как «некому слать».
 await findOrCreatePlayer('Дарья Иванова', gJunior.id, null)
+// Второй филиал.
+const plKirill = await findOrCreatePlayer('Кирилл Орлов', gPolyany.id, p4.id)
+const plVera = await findOrCreatePlayer('Вера Орлова', gPolyany.id, p4.id)
 
 // ─── Согласия (152-ФЗ) ─────────────────────────────────────────────────────────
 const ensureConsent = async (parentId: number, playerIds: number[]): Promise<void> => {
@@ -198,6 +264,33 @@ const ensureConsent = async (parentId: number, playerIds: number[]): Promise<voi
 await ensureConsent(p1.id, [plArtem.id, plMaria.id])
 await ensureConsent(p2.id, [plNikita.id, plLev.id])
 await ensureConsent(p3.id, [plSofia.id])
+await ensureConsent(p4.id, [plKirill.id, plVera.id])
+
+// ─── Абонементы (M8) ───────────────────────────────────────────────────────────
+// Все четыре состояния экрана «Оплата» на одном стенде: оплачен / заканчивается /
+// просрочен / нет записи. Без них раздел, который продаётся как ответ «сколько
+// платить и куда», на демо пуст у каждого ребёнка (аудит 30.07, п.3).
+const existingSubs = await payload.find({ collection: 'subscriptions', limit: 1, overrideAccess: true })
+if (existingSubs.totalDocs === 0) {
+  const sub = async (playerId: number, fromDays: number, untilDays: number, amount: number): Promise<void> => {
+    await payload.create({
+      collection: 'subscriptions',
+      data: { player: playerId, paidFrom: at(fromDays, 12), paidUntil: at(untilDays, 12), amount },
+      overrideAccess: true,
+    })
+  }
+  await sub(plArtem.id, -10, 20, 2500) // оплачен
+  await sub(plMaria.id, -10, 20, 2500) // оплачен
+  await sub(plNikita.id, -25, 3, 2500) // заканчивается (порог 7 дней)
+  await sub(plLev.id, -40, -5, 2500) // просрочен
+  await sub(plKirill.id, -5, 25, 2200) // оплачен (второй филиал)
+  // София и Вера — намеренно без записи: «Нет записи» тоже надо показать.
+  // Продление = НОВАЯ запись (журнал): у Артёма их две, экран берёт max(paidUntil).
+  await sub(plArtem.id, -40, -10, 2500)
+  log('subscriptions + созданы (6 шт.: оплачен / заканчивается / просрочен / журнал продления)')
+} else {
+  log('subscriptions ✔ (уже есть) — пропуск')
+}
 
 // ─── Расписание + волны изменения (ТОЛЬКО на пустом расписании) ────────────────
 // Создаём planned-сессии, затем РЕАЛЬНО правим одну (перенос → волна 'changed') и
@@ -230,7 +323,17 @@ if (existingSessions.totalDocs === 0) {
     data: { group: gJunior.id, startDate: at(4, 17, 0), endDate: at(4, 18, 0), location: 'Спортзал школы №3', status: 'planned' },
     overrideAccess: true,
   })
-  log('training-sessions + созданы (5 шт.)')
+  await payload.create({
+    collection: 'training-sessions',
+    data: { group: gPolyany.id, startDate: at(2, 17, 30), endDate: at(2, 19, 0), location: 'ФОК «Электрон», зал 2', status: 'planned' },
+    overrideAccess: true,
+  })
+  await payload.create({
+    collection: 'training-sessions',
+    data: { group: gPolyany.id, startDate: at(4, 17, 30), endDate: at(4, 19, 0), location: 'ФОК «Электрон», зал 2', status: 'planned' },
+    overrideAccess: true,
+  })
+  log('training-sessions + созданы (7 шт., из них 2 во втором филиале)')
 
   // ВОЛНА 1: перенос s1 на 19:30 → trackSessionChange авто-выставит status=changed и
   // поднимет волну → fanOutScheduleChange разошлёт уведомления родителям старшей.
@@ -303,7 +406,23 @@ if (existingAnn.totalDocs === 0) {
     data: { author: coach.id, scope: 'group' as const, group: gJunior.id, title: 'Командная фотосессия', body: 'В пятницу после тренировки — общая фотография команды. Форма парадная.', triggersPush: false, publishedAt: at(0, 10, 0) },
     overrideAccess: true,
   })
-  log('announcements + созданы (3 шт.)')
+  await payload.create({
+    collection: 'announcements',
+    data: { author: coach2.id, scope: 'group' as const, group: gPolyany.id, title: 'Открытие сезона в ФОК «Электрон»', body: 'Первая тренировка после каникул — во вторник в 17:30. Форма — синяя.', triggersPush: false, publishedAt: at(-1, 15, 0) },
+    overrideAccess: true,
+  })
+  // Закреплённое общесетевое объявление владельца → баннер на /home. Без него
+  // главная-карточки на стенде выглядит так, будто баннера в продукте нет.
+  // ⚠️ Гейт охвата живёт в beforeValidate и смотрит на `req.user`, а не на access:
+  // с одним overrideAccess он валит create («создаёт только владелец»), поэтому
+  // передаём владельца явно через `user` — как это делает реальный серверный путь.
+  await payload.create({
+    collection: 'announcements',
+    data: { author: admin.id, scope: 'network' as const, pinned: true, title: 'Летний турнир сети 15 августа', body: 'Все филиалы едут в Малмыж на общий турнир. Подробности — у тренера группы.', triggersPush: false, publishedAt: at(-2, 11, 0) },
+    user: admin,
+    overrideAccess: true,
+  })
+  log('announcements + созданы (5 шт., включая закреплённое общесетевое)')
 } else {
   log('announcements ✔ (уже есть) — пропуск')
 }
@@ -333,6 +452,8 @@ const linkFor = async (email: string): Promise<string> => {
   return raw ? `${base}/auth/verify?token=${encodeURIComponent(raw)}` : '(не удалось создать токен)'
 }
 const coachLink = await linkFor('coach@trener.local')
+const coach2Link = await linkFor('coach2@trener.local')
+const p4Link = await linkFor('parent4@trener.local')
 const p1Link = await linkFor('parent1@trener.local')
 const p2Link = await linkFor('parent2@trener.local')
 const p3Link = await linkFor('parent3@trener.local')
@@ -342,17 +463,21 @@ const out: string[] = [
   '',
   '═══════════════════ ВХОД (magic-link, действует 30 минут) ═══════════════════',
   '',
-  'ТРЕНЕР — Иван Петров (расписание, coverage, объявления, вопросы):',
+  'ТРЕНЕР — Иван Петров, филиал «Малмыж» (расписание, coverage, объявления, вопросы):',
   `  ${coachLink}`,
+  'ТРЕНЕР — Сергей Лебедев, филиал «Вятские Поляны» (второй филиал сети):',
+  `  ${coach2Link}`,
   '',
-  'РОДИТЕЛЬ — Ольга Смирнова (двое детей в старшей, приняла перенос):',
+  'РОДИТЕЛЬ — Ольга Смирнова (двое детей в старшей, приняла перенос; абонемент оплачен):',
   `  ${p1Link}`,
-  'РОДИТЕЛЬ — Дмитрий Кузнецов (дети в обеих группах, НЕ принял):',
+  'РОДИТЕЛЬ — Дмитрий Кузнецов (дети в обеих группах, НЕ принял; заканчивается + просрочен):',
   `  ${p2Link}`,
-  'РОДИТЕЛЬ — Елена Васильева (дочь в младшей):',
+  'РОДИТЕЛЬ — Елена Васильева (дочь в младшей; абонемента нет):',
   `  ${p3Link}`,
+  'РОДИТЕЛЬ — Марина Орлова, «Вятские Поляны» (двое детей: оплачен + нет записи):',
+  `  ${p4Link}`,
   '',
-  'КООРДИНАТОР — админка Payload:',
+  'ВЛАДЕЛЕЦ СЕТИ — переключатель филиалов + админка Payload:',
   `  ${adminLink}`,
   `  (или ${base}/admin  →  admin@trener.local  /  ${DEV_PASSWORD})`,
   '',

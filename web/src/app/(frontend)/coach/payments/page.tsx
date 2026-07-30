@@ -82,7 +82,7 @@ const CoachPaymentsPage = async () => {
   })
 
   return (
-    <AppShell title="Оплата" tabs={COACH_TABS} back={{ href: '/home' }}>
+    <AppShell title="Оплата" tabs={COACH_TABS} active="payments">
       {branches && <BranchSwitcher branches={branches} current={ctx} />}
       {canWrite &&
         (players.docs.length ? (
