@@ -62,6 +62,8 @@ type Role = 'owner' | 'admin' | 'coach' | 'parent'
 // переключать, и флагман M5 на стенде не виден (аудит 30.07, п.14). Реквизиты
 // оплаты заполняем сразу — иначе экран «Оплата» родителя показывает «уточните у
 // тренера» и помощник оплаты выглядит недоделанным.
+const MONTHLY_FEE: Record<string, number> = { 'Малмыж': 2500, 'Вятские Поляны': 2200 }
+
 const PAYMENT_DETAILS: Record<string, string> = {
   Малмыж: [
     'Перевод по номеру телефона +7 999 100-20-30 (Сбербанк, Иван П.).',
@@ -90,7 +92,7 @@ const findOrCreateBranch = async (name: string, city: string) => {
       const filled = await payload.update({
         collection: 'branches',
         id: found.docs[0].id,
-        data: { paymentDetails },
+        data: { paymentDetails, monthlyFee: found.docs[0].monthlyFee ?? MONTHLY_FEE[name] },
         overrideAccess: true,
       })
       log(`branch ✔ ${name} (реквизиты дозаполнены)`)
@@ -101,7 +103,7 @@ const findOrCreateBranch = async (name: string, city: string) => {
   }
   const b = await payload.create({
     collection: 'branches',
-    data: { name, city, active: true, paymentDetails },
+    data: { name, city, active: true, paymentDetails, monthlyFee: MONTHLY_FEE[name] },
     overrideAccess: true,
   })
   log(`branch + ${name}`)

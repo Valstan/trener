@@ -193,7 +193,7 @@ export interface Branch {
   name: string;
   city?: string | null;
   /**
-   * Реквизиты и инструкция для родителей (M8): куда и как платить. Показываются на экране «Оплата».
+   * Реквизиты и инструкция для родителей: куда и как платить, сколько стоит абонемент. Показываются родителю на экране «Оплата».
    */
   paymentDetails?: string | null;
   /**
@@ -220,7 +220,7 @@ export interface Group {
   coaches?: (number | User)[] | null;
   description?: string | null;
   /**
-   * Филиал группы — граница видимости всего её контента (M5).
+   * Филиал группы. Определяет, кто вообще видит её расписание, объявления и детей.
    */
   branch: number | Branch;
   updatedAt: string;
@@ -237,7 +237,7 @@ export interface Player {
   name: string;
   group: number | Group;
   /**
-   * Аккаунт родителя — контакт и адресат уведомлений. Привязывается при онбординге по magic-link (PR2).
+   * Аккаунт родителя — контакт и адресат уведомлений. Привязывается сам, когда родитель принимает приглашение по ссылке.
    */
   parent?: (number | null) | User;
   updatedAt: string;
@@ -254,7 +254,7 @@ export interface TrainingSession {
   endDate?: string | null;
   location?: string | null;
   /**
-   * Изменение/отмена запускает уведомление родителям (этап M2).
+   * Изменение или отмена сразу рассылает уведомление родителям группы.
    */
   status: 'planned' | 'changed' | 'cancelled';
   note?: string | null;
@@ -343,7 +343,7 @@ export interface Device {
   createdAt: string;
 }
 /**
- * Очередь «непринятых» + ack. Первичный гарант доведения (не зависит от пуша). Источник coverage «N из M».
+ * Очередь неподтверждённых изменений у родителя. Главная гарантия, что до родителя дошло: работает и без пуш-уведомлений. Отсюда же сводка тренеру «приняли N из M».
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "notifications".
@@ -353,12 +353,12 @@ export interface Notification {
   session: number | TrainingSession;
   parent: number | User;
   /**
-   * Какие дети этого родителя затронуты. Имена в payload пуша НЕ уходят (152-ФЗ).
+   * Какие дети этого родителя затронуты. В текст пуш-уведомления имена детей не попадают.
    */
   players: (number | Player)[];
   type: 'changed' | 'cancelled';
   /**
-   * delivered→seen→acked. Родитель двигает только вперёд (ack). superseded ставит фан-аут.
+   * Доставлено → открыто → подтверждено. Родитель может только подтвердить; «устарело» проставляется само, когда приходит более свежее изменение по той же тренировке.
    */
   status: 'delivered' | 'seen' | 'acked' | 'superseded';
   /**
@@ -376,7 +376,7 @@ export interface Notification {
   createdAt: string;
 }
 /**
- * Кто придёт на тренировку. Один ответ на (тренировка × ребёнок). Сводка — на coverage-экране.
+ * Кто придёт на тренировку: один ответ на каждого ребёнка. Сводка — на экране тренера.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "rsvps".
@@ -388,7 +388,7 @@ export interface Rsvp {
   parent: number | User;
   response: 'going' | 'not_going';
   /**
-   * Для cron-напоминания только нереспондентам (PR9).
+   * Служебное: по нему напоминание уходит только тем, кто ещё не ответил.
    */
   respondedAt?: string | null;
   updatedAt: string;
@@ -430,7 +430,7 @@ export interface Announcement {
   createdAt: string;
 }
 /**
- * Суррогат чата (M4 — полный чат). Односторонне: родитель спросил → тренер прочитал/ответил. Вне coverage.
+ * Личные вопросы родителей тренеру: родитель спрашивает — тренер читает и отвечает.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "questions".
@@ -451,7 +451,7 @@ export interface Question {
   createdAt: string;
 }
 /**
- * Нитки чата M4: голова — «Вопрос тренеру», здесь — ответы и реплики.
+ * Переписка внутри вопроса: сам вопрос — в разделе «Вопросы», здесь — ответы и реплики.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "question-messages".
@@ -468,7 +468,7 @@ export interface QuestionMessage {
   createdAt: string;
 }
 /**
- * Результаты игр. Информационный канал (coverage не затрагивает). Голы детей — 152-ФЗ: только имя.
+ * Результаты игр — информационный раздел: подтверждения от родителей здесь не запрашиваются.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "matches".
@@ -483,7 +483,7 @@ export interface Match {
   scoreOur: number;
   scoreOpponent: number;
   /**
-   * 152-ФЗ: только имя ребёнка (из справочника Дети). Виден родителям группы.
+   * Только имя ребёнка — из справочника «Дети». Видно родителям группы.
    */
   scorers?:
     | {
