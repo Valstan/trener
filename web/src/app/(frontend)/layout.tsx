@@ -6,7 +6,7 @@ import { InstallPrompt } from './components/InstallPrompt'
 import { ServiceWorkerRegister } from './components/ServiceWorkerRegister'
 
 export const metadata: Metadata = {
-  title: 'Футбольная школа — координатор',
+  title: 'Футбольная школа',
   description:
     'Расписание, уведомления об изменениях и подтверждения для родителей детской футбольной школы.',
   // PWA (PR3): manifest Next впрыскивает сам из app/manifest.ts. apple-touch —

@@ -91,7 +91,7 @@ const HomePage = async () => {
       <ServicesCatalogLink style={{ marginBottom: '0.5rem' }} />
       <Link href="/privacy">Политика обработки персональных данных</Link>
       <Link href="/admin" style={{ color: 'var(--faint)' }}>
-        Панель координатора →
+        Панель управления школой →
       </Link>
     </footer>
   </main>

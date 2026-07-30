@@ -12,7 +12,7 @@ import type { MetadataRoute } from 'next'
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Футбольная школа — координатор',
+    name: 'Футбольная школа',
     short_name: 'Футбол',
     description:
       'Расписание тренировок, уведомления об изменениях и подтверждения для родителей детской футбольной школы.',

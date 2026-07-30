@@ -62,7 +62,7 @@ export const Rsvps: CollectionConfig = {
   admin: {
     defaultColumns: ['session', 'player', 'parent', 'response'],
     useAsTitle: 'id',
-    description: 'Кто придёт на тренировку. Один ответ на (тренировка × ребёнок). Сводка — на coverage-экране.',
+    description: 'Кто придёт на тренировку: один ответ на каждого ребёнка. Сводка — на экране тренера.',
   },
   fields: [
     {
@@ -104,7 +104,7 @@ export const Rsvps: CollectionConfig = {
       name: 'respondedAt',
       type: 'date',
       label: 'Ответ дан в',
-      admin: { readOnly: true, position: 'sidebar', description: 'Для cron-напоминания только нереспондентам (PR9).' },
+      admin: { readOnly: true, position: 'sidebar', description: 'Служебное: по нему напоминание уходит только тем, кто ещё не ответил.' },
     },
   ],
   timestamps: true,

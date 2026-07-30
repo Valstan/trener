@@ -118,7 +118,7 @@ export const TrainingSessions: CollectionConfig = {
       ],
       admin: {
         position: 'sidebar',
-        description: 'Изменение/отмена запускает уведомление родителям (этап M2).',
+        description: 'Изменение или отмена сразу рассылает уведомление родителям группы.',
       },
     },
     {

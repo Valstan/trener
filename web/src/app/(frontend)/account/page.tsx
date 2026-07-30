@@ -5,6 +5,8 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import { isCoach, isParent, isPending } from '@/access/roles'
+import { ECOSYSTEM_CITY } from '@/lib/ecosystem'
+import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
 import { ServicesCatalogLink } from '../components/ServicesCatalogLink'
@@ -24,15 +26,29 @@ const AccountPage = async () => {
   // Таб-бар по роли (админ работает в staff-оболочке тренера).
   const tabs: Tab[] = isParent(user) && !isCoach(user) ? PARENT_TABS : COACH_TABS
 
+  // Каталог сервисов — городской, а сеть межгородская: показываем только своим.
+  // Владелец сети филиала не имеет — ему показываем (он в городе экосистемы).
+  // Служебный find (G90): филиал читаем с overrideAccess.
+  const branchId = relId(user.branch)
+  const branch =
+    branchId != null
+      ? await payload.findByID({ collection: 'branches', id: branchId, depth: 0, overrideAccess: true })
+      : null
+  const showCityServices = branch == null || branch.city === ECOSYSTEM_CITY
+
   return (
     <AppShell title="Аккаунт" tabs={tabs} active="account" back={{ href: '/', label: 'Назад' }}>
       <AccountForm email={user.email} />
 
-      <h2 className="section-title">Другие сервисы города</h2>
-      <p className="muted small" style={{ marginTop: 0 }}>
-        Общий каталог сайтов Малмыжа — вход туда тот же, что и сюда.
-      </p>
-      <ServicesCatalogLink />
+      {showCityServices && (
+        <>
+          <h2 className="section-title">Другие сервисы города</h2>
+          <p className="muted small" style={{ marginTop: 0 }}>
+            Общий каталог сайтов Малмыжа — вход туда тот же, что и сюда.
+          </p>
+          <ServicesCatalogLink />
+        </>
+      )}
 
       <h2 className="section-title">Выход</h2>
       <p className="muted small" style={{ marginTop: 0 }}>
