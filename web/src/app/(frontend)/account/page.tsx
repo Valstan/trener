@@ -9,6 +9,7 @@ import { isCoach, isParent, isPending } from '@/access/roles'
 import { AppShell, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
 import { ServicesCatalogLink } from '../components/ServicesCatalogLink'
 import { AccountForm } from './AccountForm'
+import { LogoutButton } from './LogoutButton'
 
 // Экран «Аккаунт» любого вошедшего: логин (email) + установка постоянного пароля.
 // Кросс-ролевой — набор табов подбираем по роли, чтобы нижняя навигация не пропадала.
@@ -32,6 +33,12 @@ const AccountPage = async () => {
         Общий каталог сайтов Малмыжа — вход туда тот же, что и сюда.
       </p>
       <ServicesCatalogLink />
+
+      <h2 className="section-title">Выход</h2>
+      <p className="muted small" style={{ marginTop: 0 }}>
+        Пригодится, если телефон общий на семью или нужно войти под другим аккаунтом.
+      </p>
+      <LogoutButton />
     </AppShell>
   )
 }

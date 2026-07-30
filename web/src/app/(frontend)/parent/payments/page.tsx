@@ -82,7 +82,7 @@ const ParentPaymentsPage = async () => {
   const now = new Date()
 
   return (
-    <AppShell title="Оплата" tabs={PARENT_TABS} back={{ href: '/home' }}>
+    <AppShell title="Оплата" tabs={PARENT_TABS} active="payments">
       {players.docs.length === 0 ? (
         <div className="empty-state">
           <span className="ic" aria-hidden>
