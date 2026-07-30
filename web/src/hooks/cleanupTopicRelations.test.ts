@@ -9,18 +9,20 @@ import { cleanupTopicRelations } from './cleanupTopicRelations'
 type AnyArgs = Record<string, unknown>
 
 describe('cleanupTopicRelations', () => {
-  it('удаляет сообщения темы, overrideAccess', async () => {
+  it('удаляет сообщения И отметки прочтения темы, overrideAccess', async () => {
     const del = vi.fn(async (_args: AnyArgs) => ({ docs: [] }))
     const logger = { error: vi.fn() }
     const req = { payload: { delete: del, logger } } as unknown as PayloadRequest
 
     await cleanupTopicRelations({ id: 7, req } as never)
 
-    expect(del).toHaveBeenCalledTimes(1)
-    const args = del.mock.calls[0]![0] as AnyArgs
-    expect(args.collection).toBe('chat-messages')
-    expect(args.where).toEqual({ topic: { equals: 7 } })
-    expect(args.overrideAccess).toBe(true)
+    expect(del).toHaveBeenCalledTimes(2)
+    const colls = del.mock.calls.map((c) => (c[0] as AnyArgs).collection)
+    expect(colls).toEqual(['chat-messages', 'chat-reads'])
+    for (const c of del.mock.calls) {
+      expect((c[0] as AnyArgs).where).toEqual({ topic: { equals: 7 } })
+      expect((c[0] as AnyArgs).overrideAccess).toBe(true)
+    }
   })
 
   it('падение очистки не роняет удаление — только лог', async () => {
@@ -31,6 +33,8 @@ describe('cleanupTopicRelations', () => {
     const req = { payload: { delete: del, logger } } as unknown as PayloadRequest
 
     await expect(cleanupTopicRelations({ id: 7, req } as never)).resolves.toBeUndefined()
-    expect(logger.error).toHaveBeenCalledOnce()
+    // Обе коллекции пробуются независимо: падение первой не отменяет вторую.
+    expect(del).toHaveBeenCalledTimes(2)
+    expect(logger.error).toHaveBeenCalledTimes(2)
   })
 })

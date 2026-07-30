@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 
-import { buildAnnouncementMessage, buildPushMessage, buildQuestionMessage, buildQuestionReplyMessage } from './message'
+import {
+  buildAnnouncementMessage,
+  buildChatMessage,
+  buildPushMessage,
+  buildQuestionMessage,
+  buildQuestionReplyMessage,
+} from './message'
 import { isDeadSubscription } from './send'
 
 // R4: payload пуша не несёт ПДн ребёнка — только неидентифицирующий текст + /parent.
@@ -66,5 +72,14 @@ describe('isDeadSubscription', () => {
     expect(isDeadSubscription(500)).toBe(false)
     expect(isDeadSubscription(429)).toBe(false)
     expect(isDeadSubscription(undefined)).toBe(false)
+  })
+})
+
+describe('buildChatMessage', () => {
+  it('ссылка на /chat, без текста сообщения, имени автора и названия темы', () => {
+    const m = buildChatMessage()
+    expect(m.url).toBe('/chat')
+    expect(m.title).not.toMatch(/[«»]/)
+    expect(`${m.title} ${m.body}`).not.toMatch(/\d/)
   })
 })

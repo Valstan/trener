@@ -84,6 +84,7 @@ export interface Config {
     subscriptions: Subscription;
     'chat-topics': ChatTopic;
     'chat-messages': ChatMessage;
+    'chat-reads': ChatRead;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -108,6 +109,7 @@ export interface Config {
     subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
     'chat-topics': ChatTopicsSelect<false> | ChatTopicsSelect<true>;
     'chat-messages': ChatMessagesSelect<false> | ChatMessagesSelect<true>;
+    'chat-reads': ChatReadsSelect<false> | ChatReadsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -576,6 +578,20 @@ export interface ChatMessage {
   createdAt: string;
 }
 /**
+ * Служебное: кто до какого момента прочитал тему. Заполняется само при открытии темы.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chat-reads".
+ */
+export interface ChatRead {
+  id: number;
+  user: number | User;
+  topic: number | ChatTopic;
+  lastReadAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -666,6 +682,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'chat-messages';
         value: number | ChatMessage;
+      } | null)
+    | ({
+        relationTo: 'chat-reads';
+        value: number | ChatRead;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -975,6 +995,17 @@ export interface ChatMessagesSelect<T extends boolean = true> {
   authorName?: T;
   authorRole?: T;
   body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "chat-reads_select".
+ */
+export interface ChatReadsSelect<T extends boolean = true> {
+  user?: T;
+  topic?: T;
+  lastReadAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }

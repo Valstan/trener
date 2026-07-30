@@ -8,6 +8,7 @@ import { isCoach, isOwner, isParent, isPending } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS, PARENT_TABS, type Tab } from '../../components/AppShell'
+import { MarkTopicRead } from './MarkTopicRead'
 import { MessageComposer } from './MessageComposer'
 
 // Тема комнаты: лента сообщений + форма ответа (M9). Тему читаем ПОД ролью
@@ -74,6 +75,7 @@ const TopicPage = async ({ params }: { params: Promise<{ id: string }> }) => {
 
   return (
     <AppShell title={topic.title} tabs={tabs} back={{ href: '/chat', label: 'К темам' }}>
+      <MarkTopicRead topicId={topic.id} />
       <p className="muted small" style={{ margin: '0 0 1rem' }}>
         {group?.name ?? 'Группа'}
         {topic.closed ? ' · тема закрыта' : ''}

@@ -11,7 +11,8 @@ import type { CollectionBeforeDeleteHook } from 'payload'
 //   • consents.parent — цифровая ЗАПИСЬ согласия удаляется с аккаунтом
 //     (источник юридической истины — бумажное согласие, kickoff §5; удаление
 //     аккаунта = отзыв, факт логируем);
-//   • login-tokens.user — nullable (не блокирует), но токены мертвы — гасим.
+//   • login-tokens.user — nullable (не блокирует), но токены мертвы — гасим;
+//   • chat-reads.user — служебные отметки прочтения, без владельца бессмысленны.
 //
 // НЕ трогаем: players.parent (nullable → SET NULL сам; ребёнок остаётся в группе,
 // тренер приглашает родителя заново); groups.coaches (hasMany → *_rels, каскад БД).
@@ -26,6 +27,7 @@ export const cleanupUserRelations: CollectionBeforeDeleteHook = async ({
     { collection: 'questions', field: 'parent' },
     { collection: 'consents', field: 'parent' },
     { collection: 'login-tokens', field: 'user' },
+    { collection: 'chat-reads', field: 'user' },
   ] as const
 
   for (const { collection, field } of targets) {
