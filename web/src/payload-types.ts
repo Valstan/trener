@@ -197,6 +197,10 @@ export interface Branch {
    */
   paymentDetails?: string | null;
   /**
+   * Цена по умолчанию для всех групп филиала. Родитель видит её как «к оплате», когда абонемент кончается или уже просрочен. У отдельной группы цену можно задать свою.
+   */
+  monthlyFee?: number | null;
+  /**
    * Необязательно: ссылка/QR-цель, открывающая форму оплаты с реквизитами.
    */
   paymentUrl?: string | null;
@@ -223,6 +227,10 @@ export interface Group {
    * Филиал группы. Определяет, кто вообще видит её расписание, объявления и детей.
    */
   branch: number | Branch;
+  /**
+   * Цена именно этой группы. Пусто — берётся цена филиала. Родитель видит её как «к оплате».
+   */
+  monthlyFee?: number | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -678,6 +686,7 @@ export interface BranchesSelect<T extends boolean = true> {
   name?: T;
   city?: T;
   paymentDetails?: T;
+  monthlyFee?: T;
   paymentUrl?: T;
   active?: T;
   updatedAt?: T;
@@ -692,6 +701,7 @@ export interface GroupsSelect<T extends boolean = true> {
   coaches?: T;
   description?: T;
   branch?: T;
+  monthlyFee?: T;
   updatedAt?: T;
   createdAt?: T;
 }

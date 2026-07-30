@@ -74,6 +74,19 @@ jobs:
       - name: Generate Payload import map
         run: pnpm generate:importmap
 
+      # Гейт «типы в репозитории свежие» (заведён 30.07 после красного прод-деплоя).
+      # CI сам генерит payload-types.ts перед проверками, поэтому УСТАРЕВШИЙ файл в
+      # коммите проходил здесь зелёным — и падал только на `next build` в деплое, уже
+      # после мержа и наката миграции на прод. Сравниваем сгенерённое с закоммиченным
+      # (пробелы игнорируем: генератор пишет CRLF на Windows-машине разработчика).
+      - name: Payload types в коммите совпадают со сгенерёнными
+        run: |
+          if ! git diff --quiet --ignore-all-space -- src/payload-types.ts; then
+            echo "::error::src/payload-types.ts устарел — выполните 'pnpm -C web generate:types' и закоммитьте результат"
+            git diff --ignore-all-space -- src/payload-types.ts | head -40
+            exit 1
+          fi
+
       - name: Lint
         run: pnpm lint
 
