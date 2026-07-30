@@ -59,3 +59,38 @@ export const sendInviteAcceptEmail = async (
     payload.logger.error(`[magic-link] не удалось отправить письмо привязки: ${(err as Error).message}`)
   }
 }
+
+// Письмо-приглашение сотруднику (п.5 аудита 30.07). Отличается от обычного входа
+// только текстом: человек не запрашивал ссылку сам, ему надо объяснить, откуда она.
+// Та же verify-ссылка → кнопка → вход. Пароль не заводим и не передаём: сотрудник
+// при желании задаст свой в «Аккаунте».
+export const sendStaffInviteEmail = async (
+  payload: Payload,
+  to: string,
+  rawToken: string,
+  roleLabel: string,
+): Promise<void> => {
+  const url = buildVerifyUrl(rawToken)
+
+  if (process.env.NODE_ENV !== 'production') {
+    payload.logger.info(`[magic-link] ссылка приглашения для ${to} (${roleLabel}): ${url}`)
+  }
+
+  try {
+    await payload.sendEmail({
+      to,
+      subject: 'Приглашение в Футбольную школу',
+      text: `Здравствуйте!
+
+Вас пригласили в приложение футбольной школы — роль: ${roleLabel}. Чтобы войти, перейдите по ссылке (действует ${LOGIN_TOKEN_TTL_MINUTES} минут):
+${url}
+
+Пароль не нужен: вход по ссылке. Постоянный пароль можно задать потом в разделе «Аккаунт».
+
+Если вы не ожидали этого письма — просто проигнорируйте его.`,
+      html: `<p>Здравствуйте!</p><p>Вас пригласили в приложение футбольной школы — роль: <strong>${roleLabel}</strong>. Чтобы войти, нажмите на ссылку (действует ${LOGIN_TOKEN_TTL_MINUTES} минут):</p><p><a href="${url}">Войти в Футбольную школу</a></p><p>Пароль не нужен: вход по ссылке. Постоянный пароль можно задать потом в разделе «Аккаунт».</p><p style="color:#888;font-size:13px">Если вы не ожидали этого письма — просто проигнорируйте его.</p>`,
+    })
+  } catch (err) {
+    payload.logger.error(`[magic-link] не удалось отправить приглашение сотруднику: ${(err as Error).message}`)
+  }
+}
