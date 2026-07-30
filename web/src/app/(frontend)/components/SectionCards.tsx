@@ -36,10 +36,22 @@ const STAFF_SECTIONS: Section[] = [
   { key: 'gallery', href: '#', icon: '📷', title: 'Фотогалерея', text: 'Фото и видео с матчей — скоро', soon: true },
 ]
 
+// «Сотрудники» — только тем, кто вправе приглашать: владелец сети и админ филиала.
+// Тренеру карточка не нужна и экран ему всё равно ответит редиректом.
+const MANAGER_SECTION: Section = {
+  key: 'staff',
+  href: '/coach/staff',
+  icon: '🧑‍🏫',
+  title: 'Сотрудники',
+  text: 'Пригласить тренера или администратора',
+}
+
 export const sectionsForRoles = (user: { roles?: string[] | null } | null | undefined): Section[] => {
   const roles = Array.isArray(user?.roles) ? user!.roles! : []
   const staff = roles.includes('owner') || roles.includes('admin') || roles.includes('coach')
-  return staff ? STAFF_SECTIONS : PARENT_SECTIONS
+  if (!staff) return PARENT_SECTIONS
+  const manager = roles.includes('owner') || roles.includes('admin')
+  return manager ? [...STAFF_SECTIONS, MANAGER_SECTION] : STAFF_SECTIONS
 }
 
 // locked: режим /pending — карточки видны, переходы закрыты (замок).
