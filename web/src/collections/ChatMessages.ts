@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
 import { groupParticipantRead } from '../access/byGroup'
+import { fanOutChatMessage } from '../hooks/fanOutChatMessage'
 
 // Сообщение в теме общей комнаты (M9). Пишет любой участник группы — но только
 // через маршрут /chat/message: он проверяет, что тема автору видна и не закрыта.
@@ -24,6 +25,9 @@ export const ChatMessages: CollectionConfig = {
     read: groupParticipantRead,
     update: adminOnly,
     delete: adminOnly,
+  },
+  hooks: {
+    afterChange: [fanOutChatMessage],
   },
   admin: {
     defaultColumns: ['topic', 'authorName', 'createdAt'],

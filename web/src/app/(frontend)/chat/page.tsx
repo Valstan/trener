@@ -50,6 +50,30 @@ const ChatPage = async () => {
     overrideAccess: false,
   })
 
+  // Мои отметки прочтения. Одним запросом на весь список: «есть новое» = у темы
+  // lastMessageAt свежее моего lastReadAt. Считать непрочитанные ШТУКАМИ значило бы
+  // тянуть сами сообщения — на 1 vCPU это лишняя работа ради цифры, которую всё
+  // равно читают как «есть или нет».
+  const reads = await payload.find({
+    collection: 'chat-reads',
+    where: { user: { equals: user.id } },
+    limit: 500,
+    depth: 0,
+    pagination: false,
+    user,
+    overrideAccess: false,
+  })
+  const readAtByTopic = new Map(
+    reads.docs.map((r) => [relId(r.topic) ?? -1, r.lastReadAt ? Date.parse(r.lastReadAt) : 0]),
+  )
+  const hasNews = (t: { id: number; lastMessageAt?: string | null }): boolean => {
+    if (!t.lastMessageAt) return false
+    const last = Date.parse(t.lastMessageAt)
+    if (Number.isNaN(last)) return false
+    // Темы, которую не открывали ни разу, отметки нет → всё, что в ней есть, новое.
+    return last > (readAtByTopic.get(t.id) ?? 0)
+  }
+
   // Названия групп — служебно (G90): сами группы читаются под ролью, но нам нужен
   // только их заголовок для подписи темы.
   const groupIds = [...new Set(topics.docs.map((t) => relId(t.group)).filter((v): v is number => v != null))]
@@ -82,6 +106,8 @@ const ChatPage = async () => {
       ).docs.map((g) => ({ id: g.id, name: g.name }))
     : []
 
+  const newsCount = topics.docs.filter((t) => hasNews(t)).length
+
   return (
     <AppShell title="Чат" tabs={tabs} active="chat">
       <p className="muted" style={{ margin: '0 0 1rem' }}>
@@ -89,6 +115,12 @@ const ChatPage = async () => {
       </p>
 
       {canStartTopic && ownGroups.length > 0 && <TopicComposer groups={ownGroups} />}
+
+      {newsCount > 0 && (
+        <p className="muted small" style={{ margin: '0 0 0.75rem' }}>
+          Новое в {newsCount === 1 ? 'одной теме' : `${newsCount} темах`}.
+        </p>
+      )}
 
       {topics.docs.length === 0 ? (
         <div className="empty-state">
@@ -107,7 +139,14 @@ const ChatPage = async () => {
                 {t.closed ? '🔒' : '💬'}
               </span>
               <div style={{ minWidth: 0 }}>
-                <strong style={{ display: 'block', marginBottom: '0.15rem' }}>{t.title}</strong>
+                <strong style={{ display: 'block', marginBottom: '0.15rem' }}>
+                  {t.title}
+                  {hasNews(t) && (
+                    <span className="badge badge-ok" style={{ marginLeft: '0.4rem' }}>
+                      новое
+                    </span>
+                  )}
+                </strong>
                 <span className="muted small">
                   {groupNameById.get(relId(t.group) ?? -1) ?? 'Группа'} · {fmtWhen(t.lastMessageAt)}
                   {t.closed ? ' · закрыта' : ''}

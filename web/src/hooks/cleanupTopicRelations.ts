@@ -7,13 +7,15 @@ import type { CollectionBeforeDeleteHook } from 'payload'
 // при живых сообщениях → БД пытается занулить topic_id → нарушает NOT NULL → весь
 // DELETE откатывается. Поэтому чистим детей ПЕРЕД удалением родителя.
 export const cleanupTopicRelations: CollectionBeforeDeleteHook = async ({ id, req: { payload } }) => {
-  try {
-    await payload.delete({
-      collection: 'chat-messages',
-      where: { topic: { equals: id } },
-      overrideAccess: true,
-    })
-  } catch (err) {
-    payload.logger.error({ err, topicId: id }, '[cleanup] не удалось очистить сообщения удалённой темы')
+  for (const collection of ['chat-messages', 'chat-reads'] as const) {
+    try {
+      await payload.delete({
+        collection,
+        where: { topic: { equals: id } },
+        overrideAccess: true,
+      })
+    } catch (err) {
+      payload.logger.error({ err, topicId: id, collection }, '[cleanup] не удалось очистить связи удалённой темы')
+    }
   }
 }

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 
 import { adminBranchId, isCoach, isOwner } from '@/access/roles'
 import { parseMessageCreate } from '@/lib/chatInput'
+import { markTopicRead } from '@/lib/chatRead'
 import { relId } from '@/lib/relId'
 
 // POST { topicId, body } → реплика в тему (M9). Писать может любой участник группы,
@@ -69,6 +70,10 @@ export const POST = async (req: Request): Promise<Response> => {
       data: { lastMessageAt: new Date().toISOString() },
       overrideAccess: true,
     })
+
+    // Своя реплика не должна гореть у автора как непрочитанная — она же и подняла
+    // lastMessageAt. Без этого индикатору перестают верить с первого же сообщения.
+    await markTopicRead(payload, user.id, topic.id)
 
     return NextResponse.json({ ok: true })
   } catch (err) {
