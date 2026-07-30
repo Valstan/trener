@@ -45,6 +45,45 @@ export const parseSessionCreate = (raw: unknown): SessionCreateInput | null => {
   }
 }
 
+export type SessionBatchInput = {
+  groupId: number
+  occurrences: { startDate: string; endDate?: string }[]
+  location?: string
+  note?: string
+}
+
+// Пачка занятий одним запросом — приходит из формы «повторять по дням недели»
+// (разворот считает клиент: у сервера нет его часового пояса — см. lib/repeatSchedule).
+// Валидируем КАЖДОЕ занятие теми же правилами, что одиночное: клиенту здесь не верим,
+// в POST можно постучаться и мимо формы.
+export const parseSessionBatch = (raw: unknown, maxOccurrences: number): SessionBatchInput | null => {
+  if (typeof raw !== 'object' || raw === null) return null
+  const r = raw as Record<string, unknown>
+  const groupId = r.groupId
+  if (typeof groupId !== 'number' || !Number.isInteger(groupId)) return null
+  if (!Array.isArray(r.occurrences) || r.occurrences.length === 0) return null
+  if (r.occurrences.length > maxOccurrences) return null
+
+  const occurrences: SessionBatchInput['occurrences'] = []
+  for (const item of r.occurrences) {
+    if (typeof item !== 'object' || item === null) return null
+    const o = item as Record<string, unknown>
+    const startDate = parseDate(o.startDate)
+    if (!startDate) return null
+    const endDate = o.endDate == null || o.endDate === '' ? undefined : parseDate(o.endDate)
+    if (o.endDate != null && o.endDate !== '' && !endDate) return null
+    if (endDate && Date.parse(endDate) <= Date.parse(startDate)) return null
+    occurrences.push({ startDate, endDate: endDate ?? undefined })
+  }
+
+  return {
+    groupId,
+    occurrences,
+    location: parseText(r.location, MAX_LOCATION),
+    note: parseText(r.note, MAX_NOTE),
+  }
+}
+
 export type SessionPatchInput = {
   sessionId: number
   data: {
