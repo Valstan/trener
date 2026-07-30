@@ -5,12 +5,23 @@ import React, { useState } from 'react'
 
 // Форма записи оплаты (M8): ребёнок + «оплачено по» (+ с, сумма, заметка).
 // Продление = новая запись; таблица ниже показывает актуальное состояние.
-export const PaymentForm = ({ players }: { players: { id: number; name: string }[] }) => {
+//
+// Сумма подставляется из цены абонемента группы/филиала — администратор вбивает
+// одно и то же число по сто раз в месяц, и это ровно та рутина, из-за которой
+// таблицу ведут в тетрадке, а не в приложении.
+export const PaymentForm = ({
+  players,
+}: {
+  players: { id: number; name: string; fee: number | null }[]
+}) => {
   const router = useRouter()
   const [playerId, setPlayerId] = useState<number>(players[0]?.id ?? -1)
   const [paidFrom, setPaidFrom] = useState('')
   const [paidUntil, setPaidUntil] = useState('')
-  const [amount, setAmount] = useState('')
+  const [amount, setAmount] = useState(() => {
+    const first = players[0]
+    return first?.fee != null ? String(first.fee) : ''
+  })
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -40,7 +51,10 @@ export const PaymentForm = ({ players }: { players: { id: number; name: string }
       if (res.ok && data.ok) {
         setPaidFrom('')
         setPaidUntil('')
-        setAmount('')
+        setAmount(() => {
+          const fee = players.find((p) => p.id === playerId)?.fee
+          return fee != null ? String(fee) : ''
+        })
         setNote('')
         setDone(true)
         router.refresh()
@@ -62,7 +76,17 @@ export const PaymentForm = ({ players }: { players: { id: number; name: string }
           id="pay-player"
           className="select"
           value={playerId}
-          onChange={(e) => setPlayerId(Number(e.target.value))}
+          onChange={(e) => {
+            const id = Number(e.target.value)
+            setPlayerId(id)
+            // Смена ребёнка подставляет цену ЕГО группы, но не затирает сумму,
+            // которую администратор уже поправил руками.
+            const fee = players.find((p) => p.id === id)?.fee
+            const prevFee = players.find((p) => p.id === playerId)?.fee
+            if (amount === '' || amount === String(prevFee ?? '')) {
+              setAmount(fee != null ? String(fee) : '')
+            }
+          }}
         >
           {players.map((p) => (
             <option key={p.id} value={p.id}>
@@ -79,14 +103,18 @@ export const PaymentForm = ({ players }: { players: { id: number; name: string }
         <label htmlFor="pay-until">Оплачено по</label>
         <input id="pay-until" className="input" type="date" value={paidUntil} onChange={(e) => setPaidUntil(e.target.value)} />
       </div>
-      <input
-        className="input"
-        type="number"
-        min={0}
-        placeholder="Сумма, ₽ (необязательно)"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-      />
+      <div className="field">
+        <label htmlFor="pay-amount">Сумма, ₽ (необязательно)</label>
+        <input
+          id="pay-amount"
+          className="input"
+          type="number"
+          min={0}
+          placeholder="например, 2500"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+        />
+      </div>
       <input
         className="input"
         type="text"

@@ -126,6 +126,17 @@ export const Groups: CollectionConfig = {
         description: 'Филиал группы. Определяет, кто вообще видит её расписание, объявления и детей.',
       },
     },
+    {
+      name: 'monthlyFee',
+      type: 'number',
+      label: 'Абонемент на месяц, ₽',
+      min: 0,
+      max: 1000000,
+      admin: {
+        description:
+          'Цена именно этой группы. Пусто — берётся цена филиала. Родитель видит её как «к оплате».',
+      },
+    },
   ],
   timestamps: true,
 }

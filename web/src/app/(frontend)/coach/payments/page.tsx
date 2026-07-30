@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import { adminBranchId, isCoach, isOwner, isPending } from '@/access/roles'
+import { feeForGroup, formatFee } from '@/lib/fee'
 import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { relId } from '@/lib/relId'
 import { STATUS_VIEW, subscriptionStatus } from '@/lib/subscriptionStatus'
@@ -47,6 +48,28 @@ const CoachPaymentsPage = async () => {
     overrideAccess: false,
   })
   const groupNameById = new Map(groups.docs.map((g) => [g.id, g.name]))
+  const groupById = new Map(groups.docs.map((g) => [g.id, g]))
+
+  // Цены филиалов — для наследования «группа не задала → берём филиал».
+  // Служебный find (G90): филиалы читаем с overrideAccess.
+  const branchIds = [...new Set(groups.docs.map((g) => relId(g.branch)).filter((v): v is number => v != null))]
+  const branchFeeById = new Map(
+    branchIds.length
+      ? (
+          await payload.find({
+            collection: 'branches',
+            where: { id: { in: branchIds } },
+            depth: 0,
+            pagination: false,
+            overrideAccess: true,
+          })
+        ).docs.map((b) => [b.id, b.monthlyFee ?? null])
+      : [],
+  )
+  const feeForPlayerGroup = (groupId: number | null): number | null => {
+    const group = groupId != null ? groupById.get(groupId) : undefined
+    return feeForGroup(group?.monthlyFee, branchFeeById.get(relId(group?.branch) ?? -1))
+  }
   const players = await payload.find({
     collection: 'players',
     sort: 'name',
@@ -78,7 +101,7 @@ const CoachPaymentsPage = async () => {
   const rows = players.docs.map((p) => {
     const sub = latestByPlayer.get(p.id)
     const status = subscriptionStatus(sub?.paidUntil, now)
-    return { player: p, sub, status }
+    return { player: p, sub, status, fee: feeForPlayerGroup(relId(p.group)) }
   })
 
   return (
@@ -86,9 +109,15 @@ const CoachPaymentsPage = async () => {
       {branches && <BranchSwitcher branches={branches} current={ctx} />}
       {canWrite &&
         (players.docs.length ? (
-          <PaymentForm players={players.docs.map((p) => ({ id: p.id, name: p.name }))} />
+          <PaymentForm
+            players={players.docs.map((p) => ({
+              id: p.id,
+              name: p.name,
+              fee: feeForPlayerGroup(relId(p.group)),
+            }))}
+          />
         ) : (
-          <p className="muted">Детей в скоупе нет — записывать оплату некому.</p>
+          <p className="muted">В этом филиале ещё нет детей — записывать оплату некому.</p>
         ))}
 
       <h2 className="section-title">Абонементы</h2>
@@ -96,7 +125,7 @@ const CoachPaymentsPage = async () => {
         <p className="muted">Детей пока нет.</p>
       ) : (
         <div className="stack-sm">
-          {rows.map(({ player, sub, status }) => (
+          {rows.map(({ player, sub, status, fee }) => (
             <article key={player.id} className="card stack-sm">
               <div className="row-between" style={{ alignItems: 'baseline' }}>
                 <strong>{player.name}</strong>
@@ -104,9 +133,8 @@ const CoachPaymentsPage = async () => {
               </div>
               <div className="muted small">
                 {groupNameById.get(relId(player.group) ?? -1) ?? 'Группа'}
-                {' · оплачено по '}
-                {fmtDate(sub?.paidUntil)}
-                {sub?.amount != null ? ` · ${sub.amount} ₽` : ''}
+                {status === 'none' ? ' · оплата не отмечена' : ` · оплачено по ${fmtDate(sub?.paidUntil)}`}
+                {fee != null ? ` · абонемент ${formatFee(fee)}` : ''}
               </div>
               {sub?.note && <div className="muted small">{sub.note}</div>}
             </article>

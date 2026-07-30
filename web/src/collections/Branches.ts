@@ -46,6 +46,17 @@ export const Branches: CollectionConfig = {
       },
     },
     {
+      name: 'monthlyFee',
+      type: 'number',
+      label: 'Абонемент на месяц, ₽',
+      min: 0,
+      max: 1000000,
+      admin: {
+        description:
+          'Цена по умолчанию для всех групп филиала. Родитель видит её как «к оплате», когда абонемент кончается или уже просрочен. У отдельной группы цену можно задать свою.',
+      },
+    },
+    {
       name: 'paymentUrl',
       type: 'text',
       label: 'Ссылка на форму оплаты',
