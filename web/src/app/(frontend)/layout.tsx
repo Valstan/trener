@@ -16,11 +16,19 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#0b1f17',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f5f7f2' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a1813' },
+  ],
 }
 
+const themeBoot = `try{var t=localStorage.getItem('trener-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}`
+
 const RootLayout = ({ children }: { children: React.ReactNode }) => (
-  <html lang="ru">
+  <html lang="ru" suppressHydrationWarning>
+    <head>
+      <script dangerouslySetInnerHTML={{ __html: themeBoot }} />
+    </head>
     <body>
       <ServiceWorkerRegister />
       {children}

@@ -22,8 +22,8 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: 'portrait',
     lang: 'ru',
     dir: 'ltr',
-    background_color: '#0b1f17',
-    theme_color: '#0b1f17',
+    background_color: '#f5f7f2',
+    theme_color: '#f5f7f2',
     categories: ['sports', 'education', 'productivity'],
     icons: [
       { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
