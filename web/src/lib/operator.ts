@@ -1,45 +1,58 @@
-// Реквизиты оператора ПДн — единый источник для Политики обработки ПДн и текста
-// согласия (152-ФЗ, ст.18.1 требует указать оператора). Вынесено в один файл,
-// чтобы перед go-live вписать реальные данные в ОДНОМ месте.
-//
-// ⚠️ ПЕРЕД ЗАПУСКОМ (go-live, после уведомления РКН — kickoff §5.1):
-//   1. Подставить реальные реквизиты ниже (название/ФИО ИП, ИНН, адрес, контакты).
-//   2. Указать дату уведомления РКН (notifiedRknDate).
-//   3. Выставить OPERATOR_FINALIZED = true — это уберёт черновик-плашку со страницы
-//      политики. Пока false — публиковать политику как боевую НЕЛЬЗЯ.
-//
-// Формальное назначение ответственного за обработку ПДн можно отложить (kickoff §5
-// «можно отложить») — поле responsiblePerson опционально.
+// 152-ФЗ: оператор — конкретная школа (филиал), платформа обрабатывает данные
+// по её поручению (ст. 6 ч. 3). Глобального оператора нет: реквизиты берутся из
+// Branches, чтобы родитель никогда не соглашался с оператором другой школы.
 
-export const OPERATOR_FINALIZED = false
+export const PROCESSOR_NAME = 'Платформа «Футбольная школа»'
+
+export interface OperatorBranch {
+  id: number
+  name: string
+  operatorName?: string | null
+  operatorLegalForm?: string | null
+  operatorInn?: string | null
+  operatorAddress?: string | null
+  operatorEmail?: string | null
+  operatorPhone?: string | null
+  operatorResponsiblePerson?: string | null
+  processorAgreementSignedAt?: string | null
+  rknNotifiedAt?: string | null
+}
 
 export interface OperatorDetails {
-  /** Полное наименование / ФИО индивидуального предпринимателя. */
   name: string
-  /** Организационно-правовая форма (ИП / самозанятый / ООО). */
   legalForm: string
-  /** ИНН оператора. */
   inn: string
-  /** Почтовый адрес для обращений субъектов ПДн. */
   address: string
-  /** Email для запросов по обработке ПДн (доступ, уточнение, отзыв согласия). */
   email: string
-  /** Контактный телефон. */
   phone: string
-  /** Дата уведомления Роскомнадзора (ISO `YYYY-MM-DD`) — заполняется перед go-live. */
-  notifiedRknDate: string | null
-  /** Ответственный за обработку ПДн (можно отложить — kickoff §5). */
   responsiblePerson: string | null
 }
 
-// Плейсхолдеры. Реальные значения — перед go-live (см. шапку файла).
-export const OPERATOR: OperatorDetails = {
-  name: 'Детская футбольная школа',
-  legalForm: 'индивидуальный предприниматель',
-  inn: '—',
-  address: '—',
-  email: 'privacy@example.com',
-  phone: '—',
-  notifiedRknDate: null,
-  responsiblePerson: null,
+const clean = (value: string | null | undefined): string => value?.trim() ?? ''
+
+export const operatorFromBranch = (branch: OperatorBranch): OperatorDetails => ({
+  name: clean(branch.operatorName) || branch.name,
+  legalForm: clean(branch.operatorLegalForm),
+  inn: clean(branch.operatorInn),
+  address: clean(branch.operatorAddress),
+  email: clean(branch.operatorEmail),
+  phone: clean(branch.operatorPhone),
+  responsiblePerson: clean(branch.operatorResponsiblePerson) || null,
+})
+
+// Пер-филиальный эквивалент прежнего OPERATOR_FINALIZED. Он вычисляемый: одной
+// галочкой нельзя объявить документ действующим при пустых реквизитах.
+export const isOperatorFinalized = (branch: OperatorBranch): boolean => {
+  const operator = operatorFromBranch(branch)
+  return Boolean(
+    operator.name &&
+    operator.legalForm &&
+    operator.inn &&
+    operator.address &&
+    operator.email &&
+    operator.phone &&
+    branch.processorAgreementSignedAt,
+  )
 }
+
+export const branchPrivacyHref = (branchId: number): string => `/privacy?branch=${branchId}`

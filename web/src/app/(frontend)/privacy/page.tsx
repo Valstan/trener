@@ -1,21 +1,33 @@
+import config from '@payload-config'
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { getPayload } from 'payload'
 import React from 'react'
 
 import { CONSENT_POLICY_VERSION } from '@/lib/consent'
-import { OPERATOR, OPERATOR_FINALIZED } from '@/lib/operator'
+import {
+  branchPrivacyHref,
+  isOperatorFinalized,
+  operatorFromBranch,
+  PROCESSOR_NAME,
+} from '@/lib/operator'
 
-// Политика обработки персональных данных (152-ФЗ, ст.18.1) — публичная статическая
-// страница, доступная из приложения без авторизации. Текст — единый источник целей,
-// состава данных, сроков и прав; на ту же редакцию (CONSENT_POLICY_VERSION) ссылается
-// запись согласия. Без обращения к БД — собирается статически.
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Политика обработки персональных данных',
-  description:
-    'Как детская футбольная школа обрабатывает персональные данные ребёнка и родителя (152-ФЗ).',
+  description: 'Как футбольная школа обрабатывает данные ребёнка и родителя.',
 }
 
-const Section = ({ n, title, children }: { n: number; title: string; children: React.ReactNode }) => (
+const Section = ({
+  n,
+  title,
+  children,
+}: {
+  n: number
+  title: string
+  children: React.ReactNode
+}) => (
   <section style={{ marginTop: '1.75rem' }}>
     <h2 style={{ fontSize: '1.15rem', marginBottom: '0.4rem' }}>
       {n}. {title}
@@ -24,130 +36,141 @@ const Section = ({ n, title, children }: { n: number; title: string; children: R
   </section>
 )
 
-const PrivacyPage = () => (
-  <main className="page" style={{ maxWidth: 760 }}>
-    <p className="note" style={{ marginBottom: '0.5rem' }}>
-      <Link href="/">← На главную</Link>
-    </p>
-    <h1 style={{ fontSize: '1.6rem', marginBottom: '0.25rem' }}>
-      Политика обработки персональных данных
-    </h1>
-    <p className="muted" style={{ marginTop: 0 }}>Редакция {CONSENT_POLICY_VERSION}</p>
+const PrivacyPage = async ({ searchParams }: { searchParams: Promise<{ branch?: string }> }) => {
+  const payload = await getPayload({ config })
+  const requested = Number((await searchParams).branch)
+  const branches = await payload.find({
+    collection: 'branches',
+    where: { active: { equals: true } },
+    sort: 'name',
+    limit: 100,
+    depth: 0,
+    pagination: false,
+    overrideAccess: true,
+  })
+  const branch = Number.isInteger(requested)
+    ? branches.docs.find((item) => item.id === requested)
+    : undefined
 
-    {!OPERATOR_FINALIZED && (
-      <div role="note" className="card" style={{ marginTop: '1rem', borderColor: '#5a4d1f', background: '#2c2710' }}>
-        <span className="badge badge-warn" style={{ marginBottom: '0.5rem' }}>
-          ⚠️ Черновик
-        </span>
-        <p style={{ margin: 0, color: 'var(--warning)', fontSize: '0.92rem' }}>
-          Реквизиты оператора и дата уведомления Роскомнадзора вносятся перед запуском — до этого
-          документ не является действующим.
+  if (!branch) {
+    return (
+      <main className="page" style={{ maxWidth: 760 }}>
+        <p className="note">
+          <Link href="/">← На главную</Link>
         </p>
-      </div>
-    )}
+        <h1 className="page-title">Политика обработки данных</h1>
+        <p className="muted">
+          Оператором данных является школа. Выберите филиал, чтобы открыть его реквизиты и редакцию
+          документа.
+        </p>
+        <div className="stack-sm" style={{ marginTop: '1.25rem' }}>
+          {branches.docs.map((item) => (
+            <Link key={item.id} href={branchPrivacyHref(item.id)} className="card row-between">
+              <span>
+                <strong>{item.name}</strong>
+                {item.city ? <span className="muted small"> · {item.city}</span> : null}
+              </span>
+              <span aria-hidden>›</span>
+            </Link>
+          ))}
+        </div>
+      </main>
+    )
+  }
 
-    <Section n={1} title="Оператор">
-      <p>
-        Обработку персональных данных осуществляет {OPERATOR.legalForm} «{OPERATOR.name}» (далее —
-        «Оператор», «школа»), ИНН {OPERATOR.inn}, адрес: {OPERATOR.address}. Контакт для обращений по
-        вопросам обработки персональных данных: {OPERATOR.email}
-        {OPERATOR.phone !== '—' ? `, тел. ${OPERATOR.phone}` : ''}.
-      </p>
-      <p>
-        Политика разработана в соответствии с Федеральным законом от 27.07.2006 № 152-ФЗ «О
-        персональных данных» и определяет порядок обработки и меры по защите персональных данных.
-      </p>
-    </Section>
+  const operator = operatorFromBranch(branch)
+  const finalized = isOperatorFinalized(branch)
 
-    <Section n={2} title="Какие данные мы обрабатываем (минимизация)">
-      <p>Школа обрабатывает только данные, необходимые для организации тренировок:</p>
-      <ul>
-        <li>имя ребёнка и его группа (команда);</li>
-        <li>имя родителя (законного представителя) и его контакт — телефон и/или адрес электронной почты.</li>
-      </ul>
-      <p style={{ color: 'var(--muted)' }}>
-        Мы не собираем СНИЛС, паспортные данные, адрес проживания, данные о здоровье и иные
-        избыточные сведения.
+  return (
+    <main className="page" style={{ maxWidth: 760 }}>
+      <p className="note">
+        <Link href="/privacy">← Выбрать филиал</Link>
       </p>
-      <p style={{ color: 'var(--muted)' }}>
-        Имя ребёнка по общему правилу видно только его родителю. Исключение — публикация
-        результатов матчей: имя ребёнка, забившего гол, отображается родителям той же группы
-        (см. цели обработки, п. 3).
+      <h1 style={{ fontSize: '1.6rem', marginBottom: '0.25rem' }}>
+        Политика обработки персональных данных
+      </h1>
+      <p className="muted" style={{ marginTop: 0 }}>
+        {branch.name} · редакция {CONSENT_POLICY_VERSION}
       </p>
-    </Section>
 
-    <Section n={3} title="Цели обработки">
-      <ul>
-        <li>ведение расписания тренировок и информирование об его изменениях;</li>
-        <li>отправка уведомлений и сбор подтверждений участия от родителей;</li>
-        <li>связь школы с родителем по вопросам участия ребёнка;</li>
-        <li>
-          публикация результатов матчей команды (счёт, соперник, дата) и имён детей — авторов
-          голов среди родителей той же группы.
-        </li>
-      </ul>
-    </Section>
+      {!finalized && (
+        <div role="note" className="card card-muted" style={{ marginTop: '1rem' }}>
+          <span className="badge badge-warn" style={{ marginBottom: '0.5rem' }}>
+            ⚠️ Тестовый контур
+          </span>
+          <p style={{ margin: 0 }}>
+            Карточка оператора или договор поручения ещё не завершены; документ пока не является
+            действующим.
+          </p>
+        </div>
+      )}
 
-    <Section n={4} title="Правовое основание">
-      <p>
-        Основание обработки данных ребёнка — согласие его родителя (законного представителя),
-        оформленное отдельным осознанным актом при подключении к приложению (152-ФЗ). Согласие даётся
-        на эту редакцию политики ({CONSENT_POLICY_VERSION}).
-      </p>
-    </Section>
-
-    <Section n={5} title="Действия с данными и хранение">
-      <p>
-        Обработка включает сбор, запись, хранение, уточнение, использование и удаление данных, без
-        раскрытия неограниченному кругу лиц. Данные хранятся на серверах, расположенных на территории
-        Российской Федерации (ст.18 ч.5 152-ФЗ).
-      </p>
-      <p>
-        Срок хранения — на период участия ребёнка в школе и до отзыва согласия. После отзыва согласия
-        или прекращения участия данные удаляются в течение 30 дней, за исключением сведений, хранение
-        которых предписано законом.
-      </p>
-    </Section>
-
-    <Section n={6} title="Передача третьим лицам">
-      <p>
-        Школа не продаёт и не передаёт персональные данные третьим лицам в маркетинговых целях. Для
-        доставки push-уведомлений используются сервисы операционных систем (Apple, Google): им
-        передаётся только непрозрачный токен устройства и неидентифицирующее содержание уведомления;
-        имена и контакты при этом серверы школы не покидают.
-      </p>
-    </Section>
-
-    <Section n={7} title="Права родителя (законного представителя)">
-      <p>Вы вправе:</p>
-      <ul>
-        <li>получить информацию об обработке данных вашего ребёнка;</li>
-        <li>требовать уточнения, блокирования или удаления данных;</li>
-        <li>отозвать согласие в любой момент — это влечёт прекращение обработки и удаление данных.</li>
-      </ul>
-      <p>
-        Для реализации прав направьте обращение на {OPERATOR.email}. Школа отвечает в сроки,
-        установленные законом.
-      </p>
-    </Section>
-
-    <Section n={8} title="Меры защиты">
-      <p>
-        Доступ к данным разграничен по ролям (родитель видит только своего ребёнка — за
-        исключением имён авторов голов в опубликованных результатах матчей, видимых родителям той
-        же группы, п. 3), данные передаются по защищённому каналу и хранятся в зашифрованном виде
-        на стороне инфраструктуры, доступ к учётным секретам изолирован. Ведётся журнал доступа.
-      </p>
-    </Section>
-
-    <Section n={9} title="Изменения политики">
-      <p>
-        Актуальная редакция всегда доступна на этой странице. При существенном изменении состава
-        данных или целей обработки запрашивается новое согласие. Текущая редакция —{' '}
-        {CONSENT_POLICY_VERSION}.
-      </p>
-    </Section>
-  </main>
-)
+      <Section n={1} title="Оператор и обработчик по поручению">
+        <p>
+          Оператор персональных данных — {operator.legalForm ? `${operator.legalForm} ` : ''}«
+          {operator.name}», ИНН {operator.inn || 'не указан'}, адрес:{' '}
+          {operator.address || 'не указан'}. Контакт: {operator.email || 'не указан'}
+          {operator.phone ? `, тел. ${operator.phone}` : ''}.
+        </p>
+        <p>
+          {PROCESSOR_NAME} обрабатывает данные по поручению школы-оператора в пределах целей и
+          действий, перечисленных в договоре поручения.
+        </p>
+      </Section>
+      <Section n={2} title="Какие данные обрабатываются">
+        <p>
+          Только имя и группа ребёнка, имя родителя и его контакт — телефон и/или email. Паспортные
+          данные, адрес проживания и сведения о здоровье приложению не нужны.
+        </p>
+      </Section>
+      <Section n={3} title="Цели обработки">
+        <ul>
+          <li>расписание и уведомления об изменениях;</li>
+          <li>подтверждения участия;</li>
+          <li>связь школы с родителем;</li>
+          <li>результаты матчей внутри группы.</li>
+        </ul>
+      </Section>
+      <Section n={4} title="Правовое основание">
+        <p>
+          Согласие законного представителя ребёнка на редакцию {CONSENT_POLICY_VERSION}. Договор
+          поручения определяет обработку данных платформой от имени школы.
+        </p>
+      </Section>
+      <Section n={5} title="Действия и хранение">
+        <p>
+          Сбор, запись, хранение, уточнение, использование и удаление. Первая запись и хранение
+          выполняются на серверах в РФ. Срок — период участия ребёнка и до отзыва согласия; после
+          отзыва данные удаляются в течение 30 дней, если закон не требует иного.
+        </p>
+      </Section>
+      <Section n={6} title="Передача и уведомления">
+        <p>
+          Данные не продаются и не передаются для маркетинга. Push-сервисам Apple и Google
+          передаётся непрозрачный токен устройства и уведомление без имён и контактов.
+        </p>
+      </Section>
+      <Section n={7} title="Права родителя">
+        <p>
+          Запрос на доступ, уточнение, блокирование, выгрузку или удаление направляется
+          школе-оператору: {operator.email || 'контакт указан в карточке школы'}. Платформа
+          предоставляет школе техническую возможность исполнить запрос.
+        </p>
+      </Section>
+      <Section n={8} title="Защита данных">
+        <p>
+          Доступ разграничен по ролям и филиалам, передача идёт по защищённому каналу, секреты
+          изолированы, действия администраторов контролируются.
+        </p>
+      </Section>
+      <Section n={9} title="Изменения политики">
+        <p>
+          При существенном изменении состава данных или целей школа запросит новое согласие. Текущая
+          редакция — {CONSENT_POLICY_VERSION}.
+        </p>
+      </Section>
+    </main>
+  )
+}
 
 export default PrivacyPage

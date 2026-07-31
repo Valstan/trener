@@ -5,7 +5,13 @@ import React, { useState } from 'react'
 
 // Галка осознанного согласия (152-ФЗ §5.3 — отдельный акт, не предзаполнено) → POST.
 // Сервер берёт parent/детей из сессии; здесь только подтверждение и версия политики.
-export const ConsentForm = ({ policyVersion }: { policyVersion: string }) => {
+export const ConsentForm = ({
+  policyVersion,
+  privacyHref,
+}: {
+  policyVersion: string
+  privacyHref: string
+}) => {
   const [agreed, setAgreed] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -39,7 +45,7 @@ export const ConsentForm = ({ policyVersion }: { policyVersion: string }) => {
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
         <span>
           Я подтверждаю, что являюсь законным представителем ребёнка, ознакомлен(а) с{' '}
-          <Link href="/privacy" target="_blank">
+          <Link href={privacyHref} target="_blank">
             политикой обработки данных
           </Link>{' '}
           (редакция {policyVersion}) и даю согласие на обработку его персональных данных в указанных

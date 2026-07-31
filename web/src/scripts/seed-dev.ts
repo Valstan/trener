@@ -62,7 +62,7 @@ type Role = 'owner' | 'admin' | 'coach' | 'parent'
 // переключать, и флагман M5 на стенде не виден (аудит 30.07, п.14). Реквизиты
 // оплаты заполняем сразу — иначе экран «Оплата» родителя показывает «уточните у
 // тренера» и помощник оплаты выглядит недоделанным.
-const MONTHLY_FEE: Record<string, number> = { 'Малмыж': 2500, 'Вятские Поляны': 2200 }
+const MONTHLY_FEE: Record<string, number> = { Малмыж: 2500, 'Вятские Поляны': 2200 }
 
 const PAYMENT_DETAILS: Record<string, string> = {
   Малмыж: [
@@ -75,6 +75,16 @@ const PAYMENT_DETAILS: Record<string, string> = {
     'В сообщении укажите имя ребёнка и месяц.',
     'Абонемент на месяц — 2 200 ₽, разовое занятие — 350 ₽.',
   ].join('\n'),
+}
+
+const DEMO_OPERATOR = {
+  operatorLegalForm: 'ИП',
+  operatorInn: '000000000000',
+  operatorAddress: 'Демо-адрес, данные вымышлены',
+  operatorEmail: 'privacy@demo.local',
+  operatorPhone: '+7 000 000-00-00',
+  operatorResponsiblePerson: 'Демо-ответственный',
+  processorAgreementSignedAt: '2026-07-31T00:00:00.000Z',
 }
 
 const findOrCreateBranch = async (name: string, city: string) => {
@@ -92,7 +102,12 @@ const findOrCreateBranch = async (name: string, city: string) => {
       const filled = await payload.update({
         collection: 'branches',
         id: found.docs[0].id,
-        data: { paymentDetails, monthlyFee: found.docs[0].monthlyFee ?? MONTHLY_FEE[name] },
+        data: {
+          paymentDetails,
+          monthlyFee: found.docs[0].monthlyFee ?? MONTHLY_FEE[name],
+          operatorName: `Детская футбольная школа «${name}» (демо)`,
+          ...DEMO_OPERATOR,
+        },
         overrideAccess: true,
       })
       log(`branch ✔ ${name} (реквизиты дозаполнены)`)
@@ -103,7 +118,15 @@ const findOrCreateBranch = async (name: string, city: string) => {
   }
   const b = await payload.create({
     collection: 'branches',
-    data: { name, city, active: true, paymentDetails, monthlyFee: MONTHLY_FEE[name] },
+    data: {
+      name,
+      city,
+      active: true,
+      paymentDetails,
+      monthlyFee: MONTHLY_FEE[name],
+      operatorName: `Детская футбольная школа «${name}» (демо)`,
+      ...DEMO_OPERATOR,
+    },
     overrideAccess: true,
   })
   log(`branch + ${name}`)
@@ -151,10 +174,30 @@ const findOrCreateUser = async (
 // Первым создаём владельца: на пустой БД хук ensureFirstUserAdmin повышает первого
 // пользователя до owner — пусть это будет именно owner-аккаунт.
 const admin = await findOrCreateUser('admin@trener.local', 'Владелец школы', ['owner'])
-const coach = await findOrCreateUser('coach@trener.local', 'Иван Петров', ['coach'], '+7 999 100-20-30')
-const p1 = await findOrCreateUser('parent1@trener.local', 'Ольга Смирнова', ['parent'], '+7 999 111-11-11')
-const p2 = await findOrCreateUser('parent2@trener.local', 'Дмитрий Кузнецов', ['parent'], '+7 999 222-22-22')
-const p3 = await findOrCreateUser('parent3@trener.local', 'Елена Васильева', ['parent'], '+7 999 333-33-33')
+const coach = await findOrCreateUser(
+  'coach@trener.local',
+  'Иван Петров',
+  ['coach'],
+  '+7 999 100-20-30',
+)
+const p1 = await findOrCreateUser(
+  'parent1@trener.local',
+  'Ольга Смирнова',
+  ['parent'],
+  '+7 999 111-11-11',
+)
+const p2 = await findOrCreateUser(
+  'parent2@trener.local',
+  'Дмитрий Кузнецов',
+  ['parent'],
+  '+7 999 222-22-22',
+)
+const p3 = await findOrCreateUser(
+  'parent3@trener.local',
+  'Елена Васильева',
+  ['parent'],
+  '+7 999 333-33-33',
+)
 // Второй филиал: свой тренер и свой родитель — переключатель владельца показывает
 // РАЗНЫЕ данные, а не пустой экран.
 const coach2 = await findOrCreateUser(
@@ -197,8 +240,14 @@ const findOrCreateGroup = async (
   log(`group + ${name}`)
   return g
 }
-const gSenior = await findOrCreateGroup('Старшая группа (2014)', 'Дети 2014 г.р. Тренировки на стадионе «Юность».')
-const gJunior = await findOrCreateGroup('Младшая группа (2017)', 'Дети 2017 г.р. Тренировки в спортзале.')
+const gSenior = await findOrCreateGroup(
+  'Старшая группа (2014)',
+  'Дети 2014 г.р. Тренировки на стадионе «Юность».',
+)
+const gJunior = await findOrCreateGroup(
+  'Младшая группа (2017)',
+  'Дети 2017 г.р. Тренировки в спортзале.',
+)
 const gPolyany = await findOrCreateGroup(
   'Вятские Поляны (2015)',
   'Дети 2015 г.р. Тренировки в ФОК «Электрон».',
@@ -272,9 +321,18 @@ await ensureConsent(p4.id, [plKirill.id, plVera.id])
 // Все четыре состояния экрана «Оплата» на одном стенде: оплачен / заканчивается /
 // просрочен / нет записи. Без них раздел, который продаётся как ответ «сколько
 // платить и куда», на демо пуст у каждого ребёнка (аудит 30.07, п.3).
-const existingSubs = await payload.find({ collection: 'subscriptions', limit: 1, overrideAccess: true })
+const existingSubs = await payload.find({
+  collection: 'subscriptions',
+  limit: 1,
+  overrideAccess: true,
+})
 if (existingSubs.totalDocs === 0) {
-  const sub = async (playerId: number, fromDays: number, untilDays: number, amount: number): Promise<void> => {
+  const sub = async (
+    playerId: number,
+    fromDays: number,
+    untilDays: number,
+    amount: number,
+  ): Promise<void> => {
     await payload.create({
       collection: 'subscriptions',
       data: { player: playerId, paidFrom: at(fromDays, 12), paidUntil: at(untilDays, 12), amount },
@@ -298,41 +356,87 @@ if (existingSubs.totalDocs === 0) {
 // Создаём planned-сессии, затем РЕАЛЬНО правим одну (перенос → волна 'changed') и
 // отменяем другую (волна 'cancelled') через Local API — хуки сами создадут
 // уведомления родителям. Это и наполняет очередь родителя + coverage тренера.
-const existingSessions = await payload.find({ collection: 'training-sessions', limit: 1, overrideAccess: true })
+const existingSessions = await payload.find({
+  collection: 'training-sessions',
+  limit: 1,
+  overrideAccess: true,
+})
 if (existingSessions.totalDocs === 0) {
   const s1 = await payload.create({
     collection: 'training-sessions',
-    data: { group: gSenior.id, startDate: at(1, 18, 0), endDate: at(1, 19, 30), location: 'Стадион «Юность», поле 1', status: 'planned' },
+    data: {
+      group: gSenior.id,
+      startDate: at(1, 18, 0),
+      endDate: at(1, 19, 30),
+      location: 'Стадион «Юность», поле 1',
+      status: 'planned',
+    },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'training-sessions',
-    data: { group: gSenior.id, startDate: at(3, 18, 0), endDate: at(3, 19, 30), location: 'Стадион «Юность», поле 1', status: 'planned' },
+    data: {
+      group: gSenior.id,
+      startDate: at(3, 18, 0),
+      endDate: at(3, 19, 30),
+      location: 'Стадион «Юность», поле 1',
+      status: 'planned',
+    },
     overrideAccess: true,
   })
   const s3 = await payload.create({
     collection: 'training-sessions',
-    data: { group: gSenior.id, startDate: at(5, 18, 0), endDate: at(5, 19, 30), location: 'Стадион «Юность», поле 2', status: 'planned' },
+    data: {
+      group: gSenior.id,
+      startDate: at(5, 18, 0),
+      endDate: at(5, 19, 30),
+      location: 'Стадион «Юность», поле 2',
+      status: 'planned',
+    },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'training-sessions',
-    data: { group: gJunior.id, startDate: at(2, 17, 0), endDate: at(2, 18, 0), location: 'Спортзал школы №3', status: 'planned' },
+    data: {
+      group: gJunior.id,
+      startDate: at(2, 17, 0),
+      endDate: at(2, 18, 0),
+      location: 'Спортзал школы №3',
+      status: 'planned',
+    },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'training-sessions',
-    data: { group: gJunior.id, startDate: at(4, 17, 0), endDate: at(4, 18, 0), location: 'Спортзал школы №3', status: 'planned' },
+    data: {
+      group: gJunior.id,
+      startDate: at(4, 17, 0),
+      endDate: at(4, 18, 0),
+      location: 'Спортзал школы №3',
+      status: 'planned',
+    },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'training-sessions',
-    data: { group: gPolyany.id, startDate: at(2, 17, 30), endDate: at(2, 19, 0), location: 'ФОК «Электрон», зал 2', status: 'planned' },
+    data: {
+      group: gPolyany.id,
+      startDate: at(2, 17, 30),
+      endDate: at(2, 19, 0),
+      location: 'ФОК «Электрон», зал 2',
+      status: 'planned',
+    },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'training-sessions',
-    data: { group: gPolyany.id, startDate: at(4, 17, 30), endDate: at(4, 19, 0), location: 'ФОК «Электрон», зал 2', status: 'planned' },
+    data: {
+      group: gPolyany.id,
+      startDate: at(4, 17, 30),
+      endDate: at(4, 19, 0),
+      location: 'ФОК «Электрон», зал 2',
+      status: 'planned',
+    },
     overrideAccess: true,
   })
   log('training-sessions + созданы (7 шт., из них 2 во втором филиале)')
@@ -377,12 +481,24 @@ if (existingSessions.totalDocs === 0) {
   // RSVP по перенесённой s1: Артём придёт, Мария — нет.
   await payload.create({
     collection: 'rsvps',
-    data: { session: s1.id, player: plArtem.id, parent: p1.id, response: 'going', respondedAt: iso() },
+    data: {
+      session: s1.id,
+      player: plArtem.id,
+      parent: p1.id,
+      response: 'going',
+      respondedAt: iso(),
+    },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'rsvps',
-    data: { session: s1.id, player: plMaria.id, parent: p1.id, response: 'not_going', respondedAt: iso() },
+    data: {
+      session: s1.id,
+      player: plMaria.id,
+      parent: p1.id,
+      response: 'not_going',
+      respondedAt: iso(),
+    },
     overrideAccess: true,
   })
   log('rsvps + по s1 (going / not_going)')
@@ -391,26 +507,62 @@ if (existingSessions.totalDocs === 0) {
 }
 
 // ─── Объявления (ТОЛЬКО если их ещё нет) ───────────────────────────────────────
-const existingAnn = await payload.find({ collection: 'announcements', limit: 1, overrideAccess: true })
+const existingAnn = await payload.find({
+  collection: 'announcements',
+  limit: 1,
+  overrideAccess: true,
+})
 if (existingAnn.totalDocs === 0) {
   await payload.create({
     collection: 'announcements',
-    data: { author: coach.id, scope: 'group' as const, group: gSenior.id, title: 'Форма на следующую неделю', body: 'На тренировки приносим тёмную форму и щитки. Бутсы — по погоде.', triggersPush: false, publishedAt: at(-1, 12, 0) },
+    data: {
+      author: coach.id,
+      scope: 'group' as const,
+      group: gSenior.id,
+      title: 'Форма на следующую неделю',
+      body: 'На тренировки приносим тёмную форму и щитки. Бутсы — по погоде.',
+      triggersPush: false,
+      publishedAt: at(-1, 12, 0),
+    },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'announcements',
-    data: { author: coach.id, scope: 'group' as const, group: gSenior.id, title: 'Товарищеский матч в субботу', body: 'В субботу в 11:00 играем со школой «Динамо» на домашнем поле. Приходим за 30 минут до начала.', triggersPush: true, publishedAt: at(0, 9, 0) },
+    data: {
+      author: coach.id,
+      scope: 'group' as const,
+      group: gSenior.id,
+      title: 'Товарищеский матч в субботу',
+      body: 'В субботу в 11:00 играем со школой «Динамо» на домашнем поле. Приходим за 30 минут до начала.',
+      triggersPush: true,
+      publishedAt: at(0, 9, 0),
+    },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'announcements',
-    data: { author: coach.id, scope: 'group' as const, group: gJunior.id, title: 'Командная фотосессия', body: 'В пятницу после тренировки — общая фотография команды. Форма парадная.', triggersPush: false, publishedAt: at(0, 10, 0) },
+    data: {
+      author: coach.id,
+      scope: 'group' as const,
+      group: gJunior.id,
+      title: 'Командная фотосессия',
+      body: 'В пятницу после тренировки — общая фотография команды. Форма парадная.',
+      triggersPush: false,
+      publishedAt: at(0, 10, 0),
+    },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'announcements',
-    data: { author: coach2.id, scope: 'group' as const, group: gPolyany.id, title: 'Открытие сезона в ФОК «Электрон»', body: 'Первая тренировка после каникул — во вторник в 17:30. Форма — синяя.', triggersPush: false, publishedAt: at(-1, 15, 0) },
+    data: {
+      author: coach2.id,
+      scope: 'group' as const,
+      group: gPolyany.id,
+      title: 'Открытие сезона в ФОК «Электрон»',
+      body: 'Первая тренировка после каникул — во вторник в 17:30. Форма — синяя.',
+      triggersPush: false,
+      publishedAt: at(-1, 15, 0),
+    },
     overrideAccess: true,
   })
   // Закреплённое общесетевое объявление владельца → баннер на /home. Без него
@@ -420,7 +572,15 @@ if (existingAnn.totalDocs === 0) {
   // передаём владельца явно через `user` — как это делает реальный серверный путь.
   await payload.create({
     collection: 'announcements',
-    data: { author: admin.id, scope: 'network' as const, pinned: true, title: 'Летний турнир сети 15 августа', body: 'Все филиалы едут в Малмыж на общий турнир. Подробности — у тренера группы.', triggersPush: false, publishedAt: at(-2, 11, 0) },
+    data: {
+      author: admin.id,
+      scope: 'network' as const,
+      pinned: true,
+      title: 'Летний турнир сети 15 августа',
+      body: 'Все филиалы едут в Малмыж на общий турнир. Подробности — у тренера группы.',
+      triggersPush: false,
+      publishedAt: at(-2, 11, 0),
+    },
     user: admin,
     overrideAccess: true,
   })
@@ -432,9 +592,19 @@ if (existingAnn.totalDocs === 0) {
 // ─── Комнаты чатов (M9, ТОЛЬКО если тем ещё нет) ───────────────────────────────
 // Тема с живой перепиской + пустая тема + закрытая: на стенде видно все три
 // состояния списка, включая замок.
-const existingTopics = await payload.find({ collection: 'chat-topics', limit: 1, overrideAccess: true })
+const existingTopics = await payload.find({
+  collection: 'chat-topics',
+  limit: 1,
+  overrideAccess: true,
+})
 if (existingTopics.totalDocs === 0) {
-  const say = async (topicId: number, author: typeof coach, role: 'coach' | 'parent', body: string, when: string) => {
+  const say = async (
+    topicId: number,
+    author: typeof coach,
+    role: 'coach' | 'parent',
+    body: string,
+    when: string,
+  ) => {
     await payload.create({
       collection: 'chat-messages',
       data: {
@@ -455,10 +625,34 @@ if (existingTopics.totalDocs === 0) {
     data: { title: 'Едем на соревнования 12 сентября', group: gSenior.id, createdBy: coach.id },
     overrideAccess: true,
   })
-  await say(tTrip.id, coach, 'coach', 'Выезжаем в 7:00 от стадиона. С собой форма, щитки, вода и перекус.', at(-1, 9, 0))
-  await say(tTrip.id, p1, 'parent', 'Мы будем. Артём и Мария едут вдвоём, я подвезу к 6:45.', at(-1, 9, 30))
-  await say(tTrip.id, p2, 'parent', 'А во сколько примерно назад? Нужно понимать, когда встречать.', at(-1, 10, 15))
-  await say(tTrip.id, coach, 'coach', 'Ориентировочно к 18:00, напишу здесь, когда будем выезжать обратно.', at(-1, 10, 40))
+  await say(
+    tTrip.id,
+    coach,
+    'coach',
+    'Выезжаем в 7:00 от стадиона. С собой форма, щитки, вода и перекус.',
+    at(-1, 9, 0),
+  )
+  await say(
+    tTrip.id,
+    p1,
+    'parent',
+    'Мы будем. Артём и Мария едут вдвоём, я подвезу к 6:45.',
+    at(-1, 9, 30),
+  )
+  await say(
+    tTrip.id,
+    p2,
+    'parent',
+    'А во сколько примерно назад? Нужно понимать, когда встречать.',
+    at(-1, 10, 15),
+  )
+  await say(
+    tTrip.id,
+    coach,
+    'coach',
+    'Ориентировочно к 18:00, напишу здесь, когда будем выезжать обратно.',
+    at(-1, 10, 40),
+  )
   await payload.update({
     collection: 'chat-topics',
     id: tTrip.id,
@@ -473,7 +667,12 @@ if (existingTopics.totalDocs === 0) {
   })
   await payload.create({
     collection: 'chat-topics',
-    data: { title: 'Фотосессия в июне (завершено)', group: gSenior.id, createdBy: coach.id, closed: true },
+    data: {
+      title: 'Фотосессия в июне (завершено)',
+      group: gSenior.id,
+      createdBy: coach.id,
+      closed: true,
+    },
     overrideAccess: true,
   })
   log('chat-topics + созданы (3 темы, 4 сообщения)')
@@ -486,12 +685,23 @@ const existingQ = await payload.find({ collection: 'questions', limit: 1, overri
 if (existingQ.totalDocs === 0) {
   await payload.create({
     collection: 'questions',
-    data: { parent: p1.id, group: gSenior.id, body: 'Здравствуйте! Будет ли тренировка, если будет сильный дождь?', status: 'new' },
+    data: {
+      parent: p1.id,
+      group: gSenior.id,
+      body: 'Здравствуйте! Будет ли тренировка, если будет сильный дождь?',
+      status: 'new',
+    },
     overrideAccess: true,
   })
   await payload.create({
     collection: 'questions',
-    data: { parent: p2.id, group: gSenior.id, body: 'Можно привести Никиту на 10 минут позже? Заберём с продлёнки.', status: 'read', readAt: iso() },
+    data: {
+      parent: p2.id,
+      group: gSenior.id,
+      body: 'Можно привести Никиту на 10 минут позже? Заберём с продлёнки.',
+      status: 'read',
+      readAt: iso(),
+    },
     overrideAccess: true,
   })
   log('questions + созданы (2 шт.)')
