@@ -1,14 +1,15 @@
-import * as migration_20260627_055816_baseline from './20260627_055816_baseline';
-import * as migration_20260627_140438_dedup_unique_indexes from './20260627_140438_dedup_unique_indexes';
-import * as migration_20260710_052545_radar_sso_identity from './20260710_052545_radar_sso_identity';
-import * as migration_20260711_123550_matches from './20260711_123550_matches';
-import * as migration_20260716_112725_m4_chat_messages from './20260716_112725_m4_chat_messages';
-import * as migration_20260726_134752_m5_branches_roles from './20260726_134752_m5_branches_roles';
-import * as migration_20260726_143618_m5_announcement_scopes from './20260726_143618_m5_announcement_scopes';
-import * as migration_20260726_152037_m8_subscriptions from './20260726_152037_m8_subscriptions';
-import * as migration_20260730_173921_m9_monthly_fee from './20260730_173921_m9_monthly_fee';
-import * as migration_20260730_182709_m9_chat_rooms from './20260730_182709_m9_chat_rooms';
-import * as migration_20260730_190934_m9_chat_reads from './20260730_190934_m9_chat_reads';
+import * as migration_20260627_055816_baseline from './20260627_055816_baseline'
+import * as migration_20260627_140438_dedup_unique_indexes from './20260627_140438_dedup_unique_indexes'
+import * as migration_20260710_052545_radar_sso_identity from './20260710_052545_radar_sso_identity'
+import * as migration_20260711_123550_matches from './20260711_123550_matches'
+import * as migration_20260716_112725_m4_chat_messages from './20260716_112725_m4_chat_messages'
+import * as migration_20260726_134752_m5_branches_roles from './20260726_134752_m5_branches_roles'
+import * as migration_20260726_143618_m5_announcement_scopes from './20260726_143618_m5_announcement_scopes'
+import * as migration_20260726_152037_m8_subscriptions from './20260726_152037_m8_subscriptions'
+import * as migration_20260730_173921_m9_monthly_fee from './20260730_173921_m9_monthly_fee'
+import * as migration_20260730_182709_m9_chat_rooms from './20260730_182709_m9_chat_rooms'
+import * as migration_20260730_190934_m9_chat_reads from './20260730_190934_m9_chat_reads'
+import * as migration_20260731_080000_branch_operator from './20260731_080000_branch_operator'
 
 export const migrations = [
   {
@@ -64,6 +65,11 @@ export const migrations = [
   {
     up: migration_20260730_190934_m9_chat_reads.up,
     down: migration_20260730_190934_m9_chat_reads.down,
-    name: '20260730_190934_m9_chat_reads'
+    name: '20260730_190934_m9_chat_reads',
   },
-];
+  {
+    up: migration_20260731_080000_branch_operator.up,
+    down: migration_20260731_080000_branch_operator.down,
+    name: '20260731_080000_branch_operator',
+  },
+]

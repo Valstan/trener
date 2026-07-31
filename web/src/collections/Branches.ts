@@ -36,6 +36,54 @@ export const Branches: CollectionConfig = {
       maxLength: 120,
     },
     {
+      type: 'collapsible',
+      label: 'Оператор персональных данных',
+      admin: {
+        description:
+          'Оператор — сама школа. Платформа обрабатывает данные по её поручению. Документы становятся действующими после заполнения карточки и подписания договора поручения.',
+        initCollapsed: true,
+      },
+      fields: [
+        {
+          name: 'operatorName',
+          type: 'text',
+          label: 'Полное наименование / ФИО ИП',
+          maxLength: 240,
+        },
+        {
+          name: 'operatorLegalForm',
+          type: 'text',
+          label: 'Организационно-правовая форма',
+          maxLength: 120,
+        },
+        { name: 'operatorInn', type: 'text', label: 'ИНН', maxLength: 12 },
+        { name: 'operatorAddress', type: 'textarea', label: 'Почтовый адрес', maxLength: 500 },
+        { name: 'operatorEmail', type: 'email', label: 'Email по вопросам ПДн' },
+        { name: 'operatorPhone', type: 'text', label: 'Телефон', maxLength: 40 },
+        {
+          name: 'operatorResponsiblePerson',
+          type: 'text',
+          label: 'Ответственный за обработку ПДн',
+          maxLength: 240,
+        },
+        {
+          name: 'processorAgreementSignedAt',
+          type: 'date',
+          label: 'Договор поручения подписан',
+          admin: { date: { pickerAppearance: 'dayOnly' } },
+        },
+        {
+          name: 'rknNotifiedAt',
+          type: 'date',
+          label: 'Уведомление РКН подано школой',
+          admin: {
+            date: { pickerAppearance: 'dayOnly' },
+            description: 'Справочная дата. Уведомление подаёт школа-оператор, не платформа.',
+          },
+        },
+      ],
+    },
+    {
       name: 'paymentDetails',
       type: 'textarea',
       label: 'Реквизиты оплаты',

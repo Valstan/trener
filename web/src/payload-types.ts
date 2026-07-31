@@ -198,6 +198,18 @@ export interface Branch {
   id: number;
   name: string;
   city?: string | null;
+  operatorName?: string | null;
+  operatorLegalForm?: string | null;
+  operatorInn?: string | null;
+  operatorAddress?: string | null;
+  operatorEmail?: string | null;
+  operatorPhone?: string | null;
+  operatorResponsiblePerson?: string | null;
+  processorAgreementSignedAt?: string | null;
+  /**
+   * Справочная дата. Уведомление подаёт школа-оператор, не платформа.
+   */
+  rknNotifiedAt?: string | null;
   /**
    * Реквизиты и инструкция для родителей: куда и как платить, сколько стоит абонемент. Показываются родителю на экране «Оплата».
    */
@@ -765,6 +777,15 @@ export interface UsersSelect<T extends boolean = true> {
 export interface BranchesSelect<T extends boolean = true> {
   name?: T;
   city?: T;
+  operatorName?: T;
+  operatorLegalForm?: T;
+  operatorInn?: T;
+  operatorAddress?: T;
+  operatorEmail?: T;
+  operatorPhone?: T;
+  operatorResponsiblePerson?: T;
+  processorAgreementSignedAt?: T;
+  rknNotifiedAt?: T;
   paymentDetails?: T;
   monthlyFee?: T;
   paymentUrl?: T;
