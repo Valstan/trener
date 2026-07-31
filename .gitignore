@@ -38,10 +38,10 @@ Thumbs.db
 coverage/
 .nyc_output/
 
-# Claude Code — личные оверрайды прав не коммитим (общий конфиг — .claude/settings.json)
+# AI-агенты — общие команды/настройки коммитим, локальные кэши и сессии нет
 .claude/settings.local.json
+.codex/
+.gemini/
 
-# Codex-зеркала CLAUDE.md и .claude/commands — генерируются конвертером на машине.
-# В репо не держим: две копии одного текста разъезжаются при первой же правке правил.
-AGENTS.md
+# Локальные зеркала навыков Codex; канон проектных правил — отслеживаемый AGENTS.md.
 .agents/
