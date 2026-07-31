@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import React from 'react'
 
+import { ThemeToggle } from './ThemeToggle'
+
 // Оболочка экрана за логином: липкая шапка + контент + нижние табы (нативный
 // мобильный паттерн). Активный таб подсвечивается через aria-current — страница
 // знает свой маршрут и передаёт `active`, поэтому клиентский роутер не нужен.
@@ -62,6 +64,7 @@ export const AppShell = ({
       )}
       {title && <span className="app-title">{title}</span>}
       <span className="spacer" />
+      <ThemeToggle />
       {tabs && (
         <Link
           href="/account"
