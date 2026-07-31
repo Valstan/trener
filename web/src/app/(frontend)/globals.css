@@ -282,6 +282,84 @@ button {
   font-weight: 500;
   text-decoration: none;
 }
+.tab-more {
+  position: relative;
+  flex: 1 1 0;
+  max-width: 110px;
+  min-width: 0;
+}
+.tab-more summary {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0.5rem 0.25rem;
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+  border-radius: 14px;
+  -webkit-tap-highlight-color: transparent;
+}
+.tab-more summary::-webkit-details-marker {
+  display: none;
+}
+.tab-more summary .ic {
+  font-size: 1.15rem;
+  line-height: 1;
+  letter-spacing: 0.08em;
+}
+.tab-more summary[aria-current='page'],
+.tab-more[open] summary {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.tab-more-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 0.65rem);
+  width: min(260px, calc(100vw - 2rem));
+  padding: 0.75rem;
+  display: grid;
+  gap: 0.35rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+}
+.tab-more-menu > strong {
+  padding: 0.25rem 0.45rem;
+  color: var(--muted);
+}
+.tab-more-menu a {
+  max-width: none;
+  min-height: 48px;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 0.7rem;
+  padding: 0.65rem 0.75rem;
+  color: var(--fg);
+  font-size: 0.92rem;
+  border-radius: var(--r-md);
+}
+.tab-more-menu a:hover {
+  background: var(--surface-hover);
+}
+.tab-more-menu a[aria-current='page'] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.tab-more-menu .ic {
+  font-size: 1.25rem;
+}
+.tab-more-arrow {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: 1.3rem;
+}
 .tab-bar a .ic {
   font-size: 1.35rem;
   line-height: 1;

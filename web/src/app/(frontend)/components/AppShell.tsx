@@ -7,7 +7,7 @@ import { ThemeToggle } from './ThemeToggle'
 // мобильный паттерн). Активный таб подсвечивается через aria-current — страница
 // знает свой маршрут и передаёт `active`, поэтому клиентский роутер не нужен.
 
-export type Tab = { key: string; href: string; label: string; icon: string }
+export type Tab = { key: string; href: string; label: string; icon: string; items?: Tab[] }
 
 // Наборы вкладок по ролям. Иконки — эмодзи в тон остальному приложению.
 //
@@ -21,20 +21,36 @@ export type Tab = { key: string; href: string; label: string; icon: string }
 // важнее попасть пальцем, чем повторить заголовок дословно.
 export const COACH_TABS: Tab[] = [
   { key: 'schedule', href: '/coach/schedule', label: 'Расписание', icon: '📅' },
-  { key: 'announcements', href: '/coach/announcements', label: 'Новости', icon: '📣' },
   { key: 'chat', href: '/chat', label: 'Чат', icon: '👥' },
-  { key: 'matches', href: '/coach/matches', label: 'Матчи', icon: '🏆' },
   { key: 'questions', href: '/coach/questions', label: 'Вопросы', icon: '💬' },
   { key: 'payments', href: '/coach/payments', label: 'Оплата', icon: '💳' },
+  {
+    key: 'more',
+    href: '#more',
+    label: 'Ещё',
+    icon: '•••',
+    items: [
+      { key: 'announcements', href: '/coach/announcements', label: 'Новости', icon: '📣' },
+      { key: 'matches', href: '/coach/matches', label: 'Матчи', icon: '🏆' },
+    ],
+  },
 ]
 
 export const PARENT_TABS: Tab[] = [
   { key: 'changes', href: '/parent', label: 'Изменения', icon: '🔔' },
   { key: 'announcements', href: '/parent/announcements', label: 'Новости', icon: '📣' },
   { key: 'chat', href: '/chat', label: 'Чат', icon: '👥' },
-  { key: 'matches', href: '/parent/matches', label: 'Матчи', icon: '🏆' },
-  { key: 'ask', href: '/parent/ask', label: 'Вопрос', icon: '💬' },
   { key: 'payments', href: '/parent/payments', label: 'Оплата', icon: '💳' },
+  {
+    key: 'more',
+    href: '#more',
+    label: 'Ещё',
+    icon: '•••',
+    items: [
+      { key: 'matches', href: '/parent/matches', label: 'Матчи', icon: '🏆' },
+      { key: 'ask', href: '/parent/ask', label: 'Вопрос тренеру', icon: '💬' },
+    ],
+  },
 ]
 
 export const AppShell = ({
@@ -81,14 +97,47 @@ export const AppShell = ({
 
     {tabs && (
       <nav className="tab-bar" aria-label="Разделы">
-        {tabs.map((t) => (
-          <Link key={t.key} href={t.href} aria-current={t.key === active ? 'page' : undefined}>
-            <span className="ic" aria-hidden>
-              {t.icon}
-            </span>
-            {t.label}
-          </Link>
-        ))}
+        {tabs.map((t) => {
+          if (t.items) {
+            const moreActive = t.items.some((item) => item.key === active)
+            return (
+              <details key={t.key} className="tab-more">
+                <summary aria-current={moreActive ? 'page' : undefined}>
+                  <span className="ic" aria-hidden>
+                    {t.icon}
+                  </span>
+                  {t.label}
+                </summary>
+                <div className="tab-more-menu">
+                  <strong className="small">Другие разделы</strong>
+                  {t.items.map((item) => (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      aria-current={item.key === active ? 'page' : undefined}
+                    >
+                      <span className="ic" aria-hidden>
+                        {item.icon}
+                      </span>
+                      <span>{item.label}</span>
+                      <span className="tab-more-arrow" aria-hidden>
+                        ›
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </details>
+            )
+          }
+          return (
+            <Link key={t.key} href={t.href} aria-current={t.key === active ? 'page' : undefined}>
+              <span className="ic" aria-hidden>
+                {t.icon}
+              </span>
+              {t.label}
+            </Link>
+          )
+        })}
       </nav>
     )}
   </>
