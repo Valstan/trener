@@ -49,4 +49,3 @@
 
 - `shots/landing-mobile.png` — публичная витрина, 390×844.
 - `shots/login-mobile.png` — вход, 390×844.
-
