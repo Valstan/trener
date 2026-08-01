@@ -4,14 +4,15 @@ import type { MatchView } from '@/app/(frontend)/components/MatchCard'
 import { relId } from './relId'
 
 // Минимальная форма match-дока (depth:0), которую отдаёт scoped-find на страницах.
+// Счёт опционален: оба поля пустые = будущий матч (расписание, видение §3.1).
 type MatchDoc = {
   id: number
   matchDate?: string | null
   opponent: string
   homeAway?: string | null
   location?: string | null
-  scoreOur: number
-  scoreOpponent: number
+  scoreOur?: number | null
+  scoreOpponent?: number | null
   group?: unknown
   scorers?: { player?: unknown; goals?: number | null }[] | null
   note?: string | null
@@ -64,8 +65,9 @@ export const resolveMatchViews = async (
     opponent: m.opponent,
     homeAway: m.homeAway === 'away' ? 'away' : 'home',
     location: m.location ?? null,
-    scoreOur: m.scoreOur,
-    scoreOpponent: m.scoreOpponent,
+    scoreOur: m.scoreOur ?? null,
+    scoreOpponent: m.scoreOpponent ?? null,
+    groupId: relId(m.group) ?? null,
     groupName: groupNameById.get(relId(m.group) ?? -1) ?? null,
     scorers: (m.scorers ?? [])
       .map((s) => ({
@@ -75,4 +77,19 @@ export const resolveMatchViews = async (
       .filter((s): s is { name: string; goals: number } => s.name != null),
     note: m.note ?? null,
   }))
+}
+
+// Сыгран = счёт заполнен целиком. Вычисляется из данных, не из флага.
+const isPlayed = (m: Pick<MatchView, 'scoreOur' | 'scoreOpponent'>): boolean =>
+  m.scoreOur != null && m.scoreOpponent != null
+
+// Дележ ленты «-matchDate»: несыгранные — ближайшие сверху (разворот), сыгранные —
+// свежие сверху (порядок входа). Прошедший матч без счёта остаётся в «предстоящих» —
+// это напоминание тренеру внести результат, а не результат.
+export const splitMatchViews = (views: MatchView[]): { upcoming: MatchView[]; played: MatchView[] } => {
+  const upcoming: MatchView[] = []
+  const played: MatchView[] = []
+  for (const v of views) (isPlayed(v) ? played : upcoming).push(v)
+  upcoming.reverse()
+  return { upcoming, played }
 }

@@ -3,10 +3,14 @@ import type { Access, CollectionConfig, Where } from 'payload'
 import { adminOrCoachOwnGroup } from '../access/byGroup'
 import { adminBranchId, branchGroupIds, coachGroupIds, isOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
 
-// Результат матча (дорожная карта §4, после M3). Информационный канал поверх ядра
+// Матчи (дорожная карта §4, после M3): расписание будущих игр (видение §3.1 —
+// «когда, во сколько, где») и результаты сыгранных. Информационный канал поверх ядра
 // M2 — как Announcements: НЕ ack-очередь, НЕ создаёт Notifications, НЕ влияет на
 // coverage «N из M» (F1: ров = только изменения расписания, kickoff §1). Родитель
-// видит результаты групп СВОИХ детей; тренер заводит результаты своих групп.
+// видит матчи групп СВОИХ детей; тренер заводит матчи своих групп.
+//
+// «Сыгран» вычисляется из данных, а не из флага: счёт заполнен (оба поля) = сыгран,
+// оба пусты = предстоит. Половина счёта — всегда ошибка ввода (валидация ниже).
 //
 // ⚠️ 152-ФЗ — МИНИМИЗАЦИЯ (kickoff §5, day-1 floor). Авторы голов (`scorers`) —
 // relationship → players, хранит ТОЛЬКО имя ребёнка. Показывается всем родителям
@@ -43,11 +47,22 @@ const readMatches: Access = async ({ req }) => {
   return false
 }
 
+// Счёт вводится парой: оба поля пустые (будущий матч) или оба заполнены (сыгранный).
+const scorePairValidate = (
+  value: number | null | undefined,
+  otherValue: number | null | undefined,
+): true | string => {
+  if ((value == null) !== (otherValue == null)) {
+    return 'Счёт вводится целиком: заполните оба поля или оставьте оба пустыми (будущий матч).'
+  }
+  return true
+}
+
 export const Matches: CollectionConfig = {
   slug: 'matches',
   labels: {
     singular: 'Матч',
-    plural: 'Результаты матчей',
+    plural: 'Матчи',
   },
   access: {
     create: adminOrCoachOwnGroup,
@@ -58,7 +73,7 @@ export const Matches: CollectionConfig = {
   admin: {
     defaultColumns: ['matchDate', 'group', 'opponent', 'homeAway'],
     useAsTitle: 'opponent',
-    description: 'Результаты игр — информационный раздел: подтверждения от родителей здесь не запрашиваются.',
+    description: 'Расписание игр и результаты — информационный раздел: подтверждения от родителей здесь не запрашиваются. Счёт пуст = будущий матч.',
   },
   fields: [
     {
@@ -108,17 +123,17 @@ export const Matches: CollectionConfig = {
       name: 'scoreOur',
       type: 'number',
       label: 'Голов наши',
-      required: true,
       min: 0,
-      defaultValue: 0,
+      validate: (value: number | null | undefined, { siblingData }: { siblingData: Partial<{ scoreOpponent?: number | null }> }) =>
+        scorePairValidate(value, siblingData?.scoreOpponent),
     },
     {
       name: 'scoreOpponent',
       type: 'number',
       label: 'Голов соперник',
-      required: true,
       min: 0,
-      defaultValue: 0,
+      validate: (value: number | null | undefined, { siblingData }: { siblingData: Partial<{ scoreOur?: number | null }> }) =>
+        scorePairValidate(value, siblingData?.scoreOur),
     },
     {
       name: 'scorers',
@@ -126,7 +141,13 @@ export const Matches: CollectionConfig = {
       label: 'Авторы голов',
       labels: { singular: 'Гол', plural: 'Голы' },
       admin: {
-        description: 'Только имя ребёнка — из справочника «Дети». Видно родителям группы.',
+        description: 'Только имя ребёнка — из справочника «Дети». Видно родителям группы. Заполняется у сыгранного матча.',
+      },
+      validate: (value: unknown, { siblingData }: { siblingData: Partial<{ scoreOur?: number | null; scoreOpponent?: number | null }> }) => {
+        if (Array.isArray(value) && value.length > 0 && (siblingData?.scoreOur == null || siblingData?.scoreOpponent == null)) {
+          return 'Авторы голов — только у сыгранного матча: сначала введите счёт.'
+        }
+        return true
       },
       fields: [
         {

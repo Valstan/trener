@@ -494,7 +494,7 @@ export interface QuestionMessage {
   createdAt: string;
 }
 /**
- * Результаты игр — информационный раздел: подтверждения от родителей здесь не запрашиваются.
+ * Расписание игр и результаты — информационный раздел: подтверждения от родителей здесь не запрашиваются. Счёт пуст = будущий матч.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "matches".
@@ -506,10 +506,10 @@ export interface Match {
   opponent: string;
   homeAway: 'home' | 'away';
   location?: string | null;
-  scoreOur: number;
-  scoreOpponent: number;
+  scoreOur?: number | null;
+  scoreOpponent?: number | null;
   /**
-   * Только имя ребёнка — из справочника «Дети». Видно родителям группы.
+   * Только имя ребёнка — из справочника «Дети». Видно родителям группы. Заполняется у сыгранного матча.
    */
   scorers?:
     | {
