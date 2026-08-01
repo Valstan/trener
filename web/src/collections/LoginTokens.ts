@@ -47,7 +47,15 @@ export const LoginTokens: CollectionConfig = {
     {
       name: 'email',
       type: 'text',
-      required: true,
+      // Обязателен только для purpose 'login' (вход существующего юзера). У invite-токена
+      // родителя ещё нет — email пуст до привязки (createInviteToken пишет ''). Раньше
+      // поле было required: true, и required-валидация Payload режет пустую строку —
+      // из-за этого createInviteToken (кнопка «ссылка-приглашение» в админке и массовый
+      // импорт) падал «Следующее поле недействительно: Email».
+      validate: (value: string | null | undefined, { siblingData }: { siblingData: Partial<{ purpose?: string | null }> }) => {
+        if (siblingData?.purpose !== 'invite' && !value) return 'Email обязателен для login-токена.'
+        return true
+      },
     },
     {
       name: 'user',
