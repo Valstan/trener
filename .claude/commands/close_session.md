@@ -19,7 +19,7 @@ git status --short
 git log --oneline -10
 gh pr list --state open
 ```
-Плюс TaskList (если велась) и прочитать текущий `docs/SESSION_HANDOFF.md` — что было в начале.
+Плюс список задач сессии (если вёлся — любым инструментом) и прочитать текущий `docs/SESSION_HANDOFF.md` — что было в начале.
 
 ## Шаг 2. Уточнить у пользователя (если развилка)
 
@@ -38,7 +38,7 @@ gh pr list --state open
 ## Шаг 4. Шеринг находки в brain (условный, pool #009)
 
 Был **переносимый** инсайт (новый паттерн / обход бага фреймворка / security-приём)? 3-фильтр: значимость / переносимость / неочевидность.
-- Да → создать `mailbox/to-brain/YYYY-MM-DD-slug.md` (`kind: idea|feedback`, `compliance`, `urgency`) **в этом репо**. См. `CLAUDE.md` §📬 и `mailbox/README.md`.
+- Да → создать `mailbox/to-brain/YYYY-MM-DD-slug.md` (`kind: idea|feedback`, `compliance`, `urgency`) **в этом репо**. См. `AGENTS.md` §📬 и `mailbox/README.md`.
 - ❌ Никогда не писать/коммитить в `../brain_matrica/` (read-only). **Тишина = норма** (рутинный фикс/бамп/доменная правка → молчим).
 
 ## Шаг 5. Записать `docs/SESSION_HANDOFF.md`
