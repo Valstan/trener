@@ -7,6 +7,7 @@ import React from 'react'
 
 import { homePathForUser } from '@/lib/auth/home'
 
+import { AuthorCredit } from './components/AuthorCredit'
 import { ServicesCatalogLink } from './components/ServicesCatalogLink'
 
 // Публичный лендинг для гостя. Залогиненного сразу уводим на его экран по роли —
@@ -166,6 +167,7 @@ const HomePage = async () => {
     >
       <ServicesCatalogLink style={{ marginBottom: '0.5rem' }} />
       <span style={{ color: 'var(--faint)' }}>Работает на платформе «Тренер»</span>
+      <AuthorCredit />
       <Link href="/privacy">Политика обработки персональных данных</Link>
       <Link href="/admin" style={{ color: 'var(--faint)' }}>
         Панель управления школой →
