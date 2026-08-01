@@ -9,6 +9,7 @@ import { ECOSYSTEM_CITY } from '@/lib/ecosystem'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
+import { AuthorCredit } from '../components/AuthorCredit'
 import { ServicesCatalogLink } from '../components/ServicesCatalogLink'
 import { AccountForm } from './AccountForm'
 import { LogoutButton } from './LogoutButton'
@@ -55,6 +56,10 @@ const AccountPage = async () => {
         Пригодится, если телефон общий на семью или нужно войти под другим аккаунтом.
       </p>
       <LogoutButton />
+
+      <div style={{ marginTop: '1.75rem', textAlign: 'center', fontSize: '0.85rem' }}>
+        <AuthorCredit />
+      </div>
     </AppShell>
   )
 }
