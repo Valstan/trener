@@ -32,6 +32,7 @@ export const COACH_TABS: Tab[] = [
     items: [
       { key: 'announcements', href: '/coach/announcements', label: 'Новости', icon: '📣' },
       { key: 'matches', href: '/coach/matches', label: 'Матчи', icon: '🏆' },
+      { key: 'import', href: '/coach/import', label: 'Импорт детей', icon: '📥' },
     ],
   },
 ]

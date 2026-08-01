@@ -46,12 +46,22 @@ const MANAGER_SECTION: Section = {
   text: 'Пригласить тренера или администратора',
 }
 
+// «Импорт детей» — всем, кто создаёт players (owner/admin/coach): тренер, перевёзший
+// свою группу сам, — валидный сценарий. Сервер скоупит группы по роли.
+const IMPORT_SECTION: Section = {
+  key: 'import',
+  href: '/coach/import',
+  icon: '📥',
+  title: 'Импорт детей',
+  text: 'Список из Excel → ссылки-приглашения родителям',
+}
+
 export const sectionsForRoles = (user: { roles?: string[] | null } | null | undefined): Section[] => {
   const roles = Array.isArray(user?.roles) ? user!.roles! : []
   const staff = roles.includes('owner') || roles.includes('admin') || roles.includes('coach')
   if (!staff) return PARENT_SECTIONS
   const manager = roles.includes('owner') || roles.includes('admin')
-  return manager ? [...STAFF_SECTIONS, MANAGER_SECTION] : STAFF_SECTIONS
+  return manager ? [...STAFF_SECTIONS, MANAGER_SECTION, IMPORT_SECTION] : [...STAFF_SECTIONS, IMPORT_SECTION]
 }
 
 // locked: режим /pending — карточки видны, переходы закрыты (замок).

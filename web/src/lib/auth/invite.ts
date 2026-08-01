@@ -3,7 +3,8 @@ import type { Payload } from 'payload'
 import { generateRawToken, hashToken } from './tokens'
 
 // Invite-ссылка (join) живёт дольше login'а — тренер выдаёт её заранее. 14 дней.
-const INVITE_TOKEN_TTL_DAYS = 14
+// Экспорт — для текста письма массового импорта (sendPlayerJoinEmail).
+export const INVITE_TOKEN_TTL_DAYS = 14
 // Письмо-подтверждение привязки — короткое окно, как у обычного входа.
 export const INVITE_ACCEPT_TTL_MINUTES = 30
 
