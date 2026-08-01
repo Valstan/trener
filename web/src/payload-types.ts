@@ -335,7 +335,7 @@ export interface LoginToken {
   id: number;
   tokenHash: string;
   purpose: 'login' | 'invite';
-  email: string;
+  email?: string | null;
   user?: (number | null) | User;
   player?: (number | null) | Player;
   expiresAt: string;
