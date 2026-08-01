@@ -8,6 +8,7 @@ import React from 'react'
 import { homePathForUser } from '@/lib/auth/home'
 
 import { AuthorCredit } from './components/AuthorCredit'
+import { SalesContacts } from './components/SalesContacts'
 import { ServicesCatalogLink } from './components/ServicesCatalogLink'
 
 // Публичный лендинг для гостя. Залогиненного сразу уводим на его экран по роли —
@@ -57,11 +58,6 @@ const HomePage = async () => {
     const home = homePathForUser(user)
     if (home !== '/') redirect(home)
   }
-
-  // Контакт для подключения школ. mailto: или https-ссылка из env — email/телефон
-  // в код не зашиваем (реквизиты живут в окружении, не в репо). Пусто → кнопки нет,
-  // отправляем в каталог сервисов Малмыжа.
-  const salesContact = process.env.NEXT_PUBLIC_SALES_CONTACT?.trim() ?? ''
 
   return (
   <main className="page" style={{ display: 'flex', flexDirection: 'column' }}>
@@ -127,28 +123,9 @@ const HomePage = async () => {
             </li>
           ))}
         </ul>
-        <div style={{ marginTop: '1rem' }}>
-          {salesContact ? (
-            // mailto открываем в той же вкладке (уйдёт в почтовый клиент), внешнюю
-            // ссылку — в новой + noopener, как в ServicesCatalogLink.
-            <a
-              href={salesContact}
-              className="btn btn-primary btn-block"
-              {...(salesContact.startsWith('mailto:')
-                ? {}
-                : { target: '_blank', rel: 'noopener noreferrer' })}
-            >
-              Связаться →
-            </a>
-          ) : (
-            <>
-              <p className="note" style={{ margin: '0 0 0.6rem' }}>
-                Напишите нам через каталог сервисов Малмыжа:
-              </p>
-              <ServicesCatalogLink className="btn btn-ghost btn-sm btn-block" />
-            </>
-          )}
-        </div>
+        <div className="divider" style={{ margin: '1rem 0' }} />
+        <strong style={{ display: 'block', marginBottom: '0.6rem' }}>Связаться</strong>
+        <SalesContacts />
       </div>
     </section>
 
