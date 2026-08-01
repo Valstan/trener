@@ -6,7 +6,10 @@ import { bootstrapSecretsFromManager } from './secretsBootstrap'
 //  • happy-path (REQUIRED на месте) → НИ ОДНОГО сетевого вызова;
 //  • потеря секретов без токена → не ходим в сеть, мягкий отказ;
 //  • потеря секретов с токеном → GET, наполняем недостающее, НЕ перетираем заданное;
-//  • KARMAN недоступен → не валим старт.
+//  • KARMAN недоступен → не валим старт;
+//  • в env попадают ТОЛЬКО ключи из allowlist — цель выбирает клиент, а не хранилище
+//    (иначе комната могла бы подложить NODE_OPTIONS/LD_PRELOAD = RCE на проде);
+//  • запрос с таймаутом: висящий KARMAN не держит старт.
 
 describe('bootstrapSecretsFromManager', () => {
   afterEach(() => {
@@ -65,6 +68,71 @@ describe('bootstrapSecretsFromManager', () => {
       status: 503,
       json: async () => ({}),
     })) as unknown as typeof fetch
+    vi.stubGlobal('fetch', fetchSpy)
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
+
+    const res = await bootstrapSecretsFromManager(env)
+
+    expect(res).toEqual({ recovered: 0, reason: 'fetch-failed' })
+  })
+
+  it('НЕ кладёт в env ключи вне allowlist (негативный прогон #114)', async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        secrets: {
+          DATABASE_URL: 'db',
+          NODE_OPTIONS: '--require /tmp/evil.js',
+          LD_PRELOAD: '/tmp/evil.so',
+          SOME_FUTURE_KEY: 'x',
+        },
+      }),
+    })) as unknown as typeof fetch
+    vi.stubGlobal('fetch', fetchSpy)
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
+
+    const res = await bootstrapSecretsFromManager(env)
+
+    expect(env.DATABASE_URL).toBe('db')
+    expect(env.NODE_OPTIONS).toBeUndefined()
+    expect(env.LD_PRELOAD).toBeUndefined()
+    expect(env.SOME_FUTURE_KEY).toBeUndefined()
+    expect(res.recovered).toBe(1) // только DATABASE_URL
+  })
+
+  it('не принимает из KARMAN собственный bootstrap-конфиг (SECRETS_MANAGER_URL)', async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        secrets: { DATABASE_URL: 'db', PAYLOAD_SECRET: 'ps', SECRETS_MANAGER_URL: 'https://evil.example' },
+      }),
+    })) as unknown as typeof fetch
+    vi.stubGlobal('fetch', fetchSpy)
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
+
+    await bootstrapSecretsFromManager(env)
+
+    expect(env.SECRETS_MANAGER_URL).toBeUndefined()
+  })
+
+  it('передаёт AbortSignal (таймаут) в запрос к KARMAN', async () => {
+    const fetchSpy = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({ secrets: {} }),
+    })) as unknown as typeof fetch
+    vi.stubGlobal('fetch', fetchSpy)
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
+
+    await bootstrapSecretsFromManager(env)
+
+    const [, init] = (fetchSpy as unknown as ReturnType<typeof vi.fn>).mock.calls[0]
+    expect((init as RequestInit).signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('обрыв по таймауту не валит старт (fetch reject → fetch-failed)', async () => {
+    const fetchSpy = vi.fn(async () => {
+      throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
+    }) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchSpy)
     const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
 

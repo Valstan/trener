@@ -13,10 +13,41 @@
 
 const DEFAULT_MANAGER_URL = 'https://831d0ce99bdf.vps.myjino.ru/api/secrets'
 
+// Висящий KARMAN не должен держать старт: предупредили и пошли дальше
+// (без сигнала fetch ждал бы системный таймаут сокета).
+const FETCH_TIMEOUT_MS = 5_000
+
 // Ключи, без которых сервер всё равно не стартует. Их отсутствие = «локальная копия
 // потеряна» → триггер восстановления. Этого набора достаточно, чтобы отличить аварию
 // от нормального старта (в норме они всегда заданы).
 const REQUIRED = ['DATABASE_URL', 'PAYLOAD_SECRET'] as const
+
+// Какие имена клиент согласен принять из KARMAN. Всё прочее — игнорировать: авторизация
+// хранилища проверяет ИСТОЧНИК запроса, но цель (имя переменной) выбирает содержимое
+// комнаты. Без allowlist подложенный в комнату NODE_OPTIONS/LD_PRELOAD уехал бы прямо
+// в process.env = исполнение чужого кода на проде. Спека: brain_matrica
+// docs/specs/vault-client.md. SECRETS_TOKEN и SECRETS_MANAGER_URL здесь НЕ место:
+// bootstrap-конфиг не восстанавливают из хранилища, которое им же адресуется.
+// Новый рантайм-секрет в web/.env.example → добавить и сюда.
+const ALLOWED = new Set<string>([
+  ...REQUIRED,
+  'NEXT_PUBLIC_SERVER_URL',
+  'NEXT_PUBLIC_VAPID_PUBLIC_KEY',
+  'VAPID_PRIVATE_KEY',
+  'VAPID_SUBJECT',
+  'CRON_SECRET',
+  'SMTP_HOST',
+  'SMTP_PORT',
+  'SMTP_USER',
+  'SMTP_PASS',
+  'SMTP_FROM_ADDRESS',
+  'SMTP_FROM_NAME',
+  'SMTP_SECURE',
+  'RADAR_ISSUER_URL',
+  'RADAR_CLIENT_ID',
+  'RADAR_CLIENT_SECRET',
+  'RADAR_REDIRECT_URI',
+])
 
 export interface BootstrapResult {
   recovered: number
@@ -39,15 +70,27 @@ export async function bootstrapSecretsFromManager(
 
   const url = env.SECRETS_MANAGER_URL ?? DEFAULT_MANAGER_URL
   try {
-    const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    })
     if (!r.ok) throw new Error(`GET ${r.status}`)
     const body = (await r.json()) as { secrets?: Record<string, string> }
     let recovered = 0
+    const ignored: string[] = []
     for (const [k, v] of Object.entries(body.secrets ?? {})) {
+      if (!ALLOWED.has(k)) {
+        ignored.push(k)
+        continue
+      }
       if (env[k] === undefined) {
         env[k] = String(v) // не перетираем то, что уже дал systemd
         recovered++
       }
+    }
+    if (ignored.length > 0) {
+      // Только имена, не значения. Чужой ключ в комнате — сигнал разбираться, чей он.
+      console.warn(`[secrets] проигнорированы ключи вне allowlist: ${ignored.join(', ')}`)
     }
     console.warn(
       `[secrets] восстановлено из KARMAN: ${recovered} секрет(ов) (локальная копия отсутствовала)`,
