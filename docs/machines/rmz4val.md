@@ -11,7 +11,14 @@
 ## pnpm
 
 - **pnpm НЕ в PATH** (в отличие от PC40) → проектные команды строго через **`corepack pnpm`** (corepack сам тянет пин `pnpm@10.15.0`). Подсказку «update 10.15.0 → 11.9.0» **игнорировать** — проект пинит 10.15.
-- После pull PR, менявшего `web/pnpm-lock.yaml`: `cd web && corepack pnpm install` (иначе typecheck падает `Cannot find module`). Канарейка рассинхрона: нет `web/node_modules/web-push` → лок-файл новее node_modules (PR8 добавил `web-push`).
+- **Форма `corepack pnpm -C web <cmd>` НЕ работает** (2026-08-01, дважды): ломается
+  мохибейком + `ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL Command "web" not found` —
+  corepack-шим теряет `-C`. Только **`cd web && corepack pnpm <cmd>`**.
+- **`corepack.cmd`-шим глотает коды выхода** (2026-08-01): упавший `typecheck`/`build`
+  возвращает в Git Bash 0 → `set -e` НЕ прерывает цепочку, «зелёный» exit-код гейтов
+  ничего не доказывает. Гейты проверять **по выводу** (grep `error|failed|passed`),
+  а не по коду выхода / финальному echo.
+- После pull PR, менявшего `web/pnpm-lock.yaml`: `cd web && corepack pnpm install` (иначе typecheck падает `Cannot find module`). Канарейка рассинхрона: нет `web/node_modules/web-push` → лок-файл новее node_modules (PR8 добавил `web-push`); 2026-08-01 тем же симптомом (`Cannot find module '@payloadcms/translations/languages/ru'`) вылезло после чужого бампа Payload.
 
 ## Dev-БД для trener (сверено)
 
