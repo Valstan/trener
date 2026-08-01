@@ -6,17 +6,18 @@ import React from 'react'
 
 import { isOwner, isCoach } from '@/access/roles'
 import { loadOwnerBranch } from '@/lib/ownerBranch'
-import { resolveMatchViews } from '@/lib/matches'
+import { resolveMatchViews, splitMatchViews } from '@/lib/matches'
 import { relId } from '@/lib/relId'
 
 import { AppShell, COACH_TABS } from '../../components/AppShell'
 import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { MatchCard } from '../../components/MatchCard'
 import { MatchComposer } from './MatchComposer'
+import { ResultEntry } from './ResultEntry'
 
-// Результаты матчей тренера: компоновщик (группа + счёт + авторы голов) + лента прошлых
-// результатов. Всё scoped (тренер — свои группы/дети, #015). Информационный канал —
-// без coverage (F1).
+// Матчи тренера: компоновщик (результат или будущий матч, п.10) + «Предстоящие» с
+// формой «внести результат» + лента сыгранных. Всё scoped (тренер — свои группы/дети,
+// #015). Информационный канал — без coverage (F1).
 export const dynamic = 'force-dynamic'
 
 const CoachMatchesPage = async () => {
@@ -58,7 +59,7 @@ const CoachMatchesPage = async () => {
     ;(playersByGroup[gid] ??= []).push({ id: p.id, name: p.name })
   }
 
-  // Прошлые результаты (scoped), свежие сверху.
+  // Матчи (scoped), свежие сверху; дележ на предстоящие/сыгранные — по счёту.
   const matches = await payload.find({
     collection: 'matches',
     sort: '-matchDate',
@@ -70,27 +71,42 @@ const CoachMatchesPage = async () => {
     overrideAccess: false,
   })
   const views = await resolveMatchViews(payload, matches.docs)
+  const { upcoming, played } = splitMatchViews(views)
 
   return (
-    <AppShell title="Результаты" tabs={COACH_TABS} active="matches">
+    <AppShell title="Матчи" tabs={COACH_TABS} active="matches">
       {branches && <BranchSwitcher branches={branches} current={ctx} />}
       {groupOptions.length === 0 ? (
         <div className="empty-state">
           <span className="ic" aria-hidden>
             🏆
           </span>
-          У вас пока нет групп — результат добавить некому.
+          У вас пока нет групп — матч добавить некому.
         </div>
       ) : (
         <MatchComposer groups={groupOptions} playersByGroup={playersByGroup} />
       )}
 
-      <h2 className="section-title">Добавленные</h2>
-      {views.length === 0 ? (
+      {upcoming.length > 0 && (
+        <>
+          <h2 className="section-title">Предстоящие</h2>
+          <div className="stack-sm">
+            {upcoming.map((m) => (
+              <div key={m.id} className="stack-xs">
+                <MatchCard match={m} />
+                <ResultEntry matchId={m.id} players={(m.groupId != null && playersByGroup[m.groupId]) || []} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <h2 className="section-title">Сыгранные</h2>
+      {played.length === 0 ? (
         <p className="muted">Результатов пока нет.</p>
       ) : (
         <div className="stack-sm">
-          {views.map((m) => (
+          {played.map((m) => (
             <MatchCard key={m.id} match={m} />
           ))}
         </div>

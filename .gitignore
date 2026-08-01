@@ -45,3 +45,6 @@ coverage/
 
 # Локальные зеркала навыков Codex; канон проектных правил — отслеживаемый AGENTS.md.
 .agents/
+
+# worktree-каталоги фоновых агентов (isolation: worktree) — локальное, не для Git
+.claude/worktrees/

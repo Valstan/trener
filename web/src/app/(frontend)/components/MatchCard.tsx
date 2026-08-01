@@ -2,17 +2,19 @@ import React from 'react'
 
 import { formatDateTime } from '@/lib/notifications/describe'
 
-// Карточка результата матча — общий презентационный компонент для лент тренера и
-// родителя. Server-only (данные уже нормализованы вызывающей страницей: имена групп
-// и авторов голов разрезолвлены через overrideAccess, 152-ФЗ: только имя ребёнка).
+// Карточка матча (будущего или сыгранного) — общий презентационный компонент для лент
+// тренера и родителя. Server-only (данные уже нормализованы вызывающей страницей: имена
+// групп и авторов голов разрезолвлены через overrideAccess, 152-ФЗ: только имя ребёнка).
+// Счёт пуст (оба поля) = матч предстоит: вместо счёта и исхода — «Предстоит».
 export type MatchView = {
   id: number
   matchDate: string | null
   opponent: string
   homeAway: 'home' | 'away'
   location?: string | null
-  scoreOur: number
-  scoreOpponent: number
+  scoreOur: number | null
+  scoreOpponent: number | null
+  groupId: number | null
   groupName?: string | null
   scorers: { name: string; goals: number }[]
   note?: string | null
@@ -26,7 +28,8 @@ const outcome = (our: number, opp: number): { label: string; cls: string } => {
 }
 
 export const MatchCard = ({ match }: { match: MatchView }) => {
-  const res = outcome(match.scoreOur, match.scoreOpponent)
+  const played = match.scoreOur != null && match.scoreOpponent != null
+  const res = played ? outcome(match.scoreOur as number, match.scoreOpponent as number) : null
   return (
     <article className="card stack-sm">
       <div className="row-between" style={{ alignItems: 'baseline' }}>
@@ -41,12 +44,16 @@ export const MatchCard = ({ match }: { match: MatchView }) => {
 
       <div className="row-between" style={{ alignItems: 'center', gap: '0.75rem' }}>
         <strong style={{ flex: 1 }}>Наши</strong>
-        <span className={`match-score match-${res.cls}`}>
-          {match.scoreOur} : {match.scoreOpponent}
-        </span>
+        {res ? (
+          <span className={`match-score match-${res.cls}`}>
+            {match.scoreOur} : {match.scoreOpponent}
+          </span>
+        ) : (
+          <span className="match-score match-upcoming">vs</span>
+        )}
         <strong style={{ flex: 1, textAlign: 'right' }}>{match.opponent}</strong>
       </div>
-      <div className="muted small" style={{ textAlign: 'center' }}>{res.label}</div>
+      <div className="muted small" style={{ textAlign: 'center' }}>{res ? res.label : 'Предстоит'}</div>
 
       {match.location ? <div className="muted small">📍 {match.location}</div> : null}
 

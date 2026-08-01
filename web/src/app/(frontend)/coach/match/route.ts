@@ -4,8 +4,10 @@ import { NextResponse } from 'next/server'
 
 import { isOwner, isCoach } from '@/access/roles'
 
-// POST { groupId, matchDate, opponent, homeAway, location?, scoreOur, scoreOpponent,
-//        scorers: [{ playerId, goals }], note? } → результат матча (дорожная карта §4).
+// POST { groupId, matchDate, opponent, homeAway, location?, scoreOur?, scoreOpponent?,
+//        scorers: [{ playerId, goals }], note? } → матч (дорожная карта §4, видение §3.1).
+// Счёт — парой или никак: оба поля есть = сыгранный (результат), оба отсутствуют =
+// будущий матч (расписание); авторы голов допустимы только со счётом.
 // Информационный канал (как объявление): создаём через local API с overrideAccess,
 // но #015-владение проверяем руками — тренер заводит ТОЛЬКО свои группы, а каждый
 // автор гола ДОЛЖЕН принадлежать этой группе (152-ФЗ: не протащить чужого ребёнка).
@@ -42,8 +44,10 @@ export const POST = async (req: Request): Promise<Response> => {
     const homeAway = parsed.homeAway === 'away' ? 'away' : 'home'
     const location = typeof parsed.location === 'string' ? parsed.location.trim() : ''
     const note = typeof parsed.note === 'string' ? parsed.note.trim() : ''
-    const scoreOur = Number(parsed.scoreOur)
-    const scoreOpponent = Number(parsed.scoreOpponent)
+    // Счёт парой или никак: «есть» = хоть одно поле прислано непустым.
+    const hasScore = parsed.scoreOur != null || parsed.scoreOpponent != null
+    const scoreOur = hasScore ? Number(parsed.scoreOur) : null
+    const scoreOpponent = hasScore ? Number(parsed.scoreOpponent) : null
 
     const validScore = (n: number) => Number.isInteger(n) && n >= 0 && n <= 999
     if (
@@ -51,8 +55,7 @@ export const POST = async (req: Request): Promise<Response> => {
       !opponent ||
       !matchDate ||
       Number.isNaN(Date.parse(matchDate)) ||
-      !validScore(scoreOur) ||
-      !validScore(scoreOpponent)
+      (hasScore && (!validScore(scoreOur as number) || !validScore(scoreOpponent as number)))
     ) {
       return NextResponse.json({ ok: false }, { status: 400 })
     }
@@ -70,9 +73,9 @@ export const POST = async (req: Request): Promise<Response> => {
       if (!owned.docs.length) return NextResponse.json({ ok: false }, { status: 403 })
     }
 
-    // Авторы голов: только дети ЭТОЙ группы (иначе тихо отбрасываем — не 400, чтобы
-    // гонка «ребёнка перевели» не роняла сохранение результата).
-    const rawScorers = Array.isArray(parsed.scorers) ? (parsed.scorers as ScorerIn[]) : []
+    // Авторы голов: только у сыгранного матча и только дети ЭТОЙ группы (иначе тихо
+    // отбрасываем — не 400, чтобы гонка «ребёнка перевели» не роняла сохранение).
+    const rawScorers = hasScore && Array.isArray(parsed.scorers) ? (parsed.scorers as ScorerIn[]) : []
     let scorers: { player: number; goals: number }[] = []
     if (rawScorers.length) {
       const groupPlayers = await payload.find({
@@ -100,8 +103,8 @@ export const POST = async (req: Request): Promise<Response> => {
         opponent,
         homeAway,
         location: location || undefined,
-        scoreOur,
-        scoreOpponent,
+        scoreOur: scoreOur ?? undefined,
+        scoreOpponent: scoreOpponent ?? undefined,
         scorers,
         note: note || undefined,
       },

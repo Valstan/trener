@@ -3,13 +3,14 @@
 import { useRouter } from 'next/navigation'
 import React, { useMemo, useState } from 'react'
 
-type GroupOption = { id: number; name: string }
-type PlayerOption = { id: number; name: string }
-type ScorerRow = { playerId: number; goals: number }
+import { ScorersEditor, type PlayerOption, type ScorerRow } from './ScorersEditor'
 
-// Компоновщик результата матча: группа + соперник + дата + дом/гости + счёт + авторы
-// голов (динамический список из детей выбранной группы) + заметка. Status-машина формы,
-// как AnnouncementComposer. На успехе — router.refresh (свежий результат появится ниже).
+type GroupOption = { id: number; name: string }
+
+// Компоновщик матча: два режима — «результат» (счёт + авторы голов) и «будущий матч»
+// (только когда/где — расписание, видение §3.1; счёт вносится позже через ResultEntry).
+// Группа + соперник + дата + дом/гости общие. Status-машина формы, как
+// AnnouncementComposer. На успехе — router.refresh (запись появится в ленте ниже).
 export const MatchComposer = ({
   groups,
   playersByGroup,
@@ -18,6 +19,7 @@ export const MatchComposer = ({
   playersByGroup: Record<number, PlayerOption[]>
 }) => {
   const router = useRouter()
+  const [mode, setMode] = useState<'result' | 'upcoming'>('result')
   const [groupId, setGroupId] = useState<number>(groups[0]?.id ?? -1)
   const [opponent, setOpponent] = useState('')
   const [matchDate, setMatchDate] = useState('')
@@ -39,15 +41,6 @@ export const MatchComposer = ({
     setScorers([])
   }
 
-  const addScorer = () => {
-    const first = players[0]
-    if (!first) return
-    setScorers((prev) => [...prev, { playerId: first.id, goals: 1 }])
-  }
-  const updateScorer = (idx: number, patch: Partial<ScorerRow>) =>
-    setScorers((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)))
-  const removeScorer = (idx: number) => setScorers((prev) => prev.filter((_, i) => i !== idx))
-
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!opponent.trim() || !matchDate) {
@@ -57,6 +50,8 @@ export const MatchComposer = ({
     setBusy(true)
     setError('')
     try {
+      // Будущий матч — без счёта и авторов голов (сервер требует «парой или никак»).
+      const withScore = mode === 'result'
       const res = await fetch('/coach/match', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,9 +61,9 @@ export const MatchComposer = ({
           opponent: opponent.trim(),
           homeAway,
           location: location.trim() || undefined,
-          scoreOur,
-          scoreOpponent,
-          scorers,
+          scoreOur: withScore ? scoreOur : undefined,
+          scoreOpponent: withScore ? scoreOpponent : undefined,
+          scorers: withScore ? scorers : [],
           note: note.trim() || undefined,
         }),
       })
@@ -96,6 +91,19 @@ export const MatchComposer = ({
 
   return (
     <form onSubmit={submit} className="stack-sm card">
+      <div className="field">
+        <label htmlFor="m-mode">Что заводим</label>
+        <select
+          id="m-mode"
+          className="select"
+          value={mode}
+          onChange={(e) => setMode(e.target.value === 'upcoming' ? 'upcoming' : 'result')}
+        >
+          <option value="result">Результат сыгранного матча</option>
+          <option value="upcoming">Будущий матч (расписание)</option>
+        </select>
+      </div>
+
       {groups.length > 1 && (
         <div className="field">
           <label htmlFor="m-group">Группа</label>
@@ -156,82 +164,38 @@ export const MatchComposer = ({
         onChange={(e) => setLocation(e.target.value)}
       />
 
-      <div className="row-between" style={{ gap: '0.75rem', alignItems: 'end' }}>
-        <div className="field" style={{ flex: 1 }}>
-          <label htmlFor="m-our">Голов наши</label>
-          <input
-            id="m-our"
-            className="input"
-            type="number"
-            min={0}
-            max={999}
-            value={scoreOur}
-            onChange={(e) => setScoreOur(Math.max(0, Number(e.target.value) || 0))}
-          />
-        </div>
-        <div className="field" style={{ flex: 1 }}>
-          <label htmlFor="m-opp">Голов соперник</label>
-          <input
-            id="m-opp"
-            className="input"
-            type="number"
-            min={0}
-            max={999}
-            value={scoreOpponent}
-            onChange={(e) => setScoreOpponent(Math.max(0, Number(e.target.value) || 0))}
-          />
-        </div>
-      </div>
+      {mode === 'result' && (
+        <>
+          <div className="row-between" style={{ gap: '0.75rem', alignItems: 'end' }}>
+            <div className="field" style={{ flex: 1 }}>
+              <label htmlFor="m-our">Голов наши</label>
+              <input
+                id="m-our"
+                className="input"
+                type="number"
+                min={0}
+                max={999}
+                value={scoreOur}
+                onChange={(e) => setScoreOur(Math.max(0, Number(e.target.value) || 0))}
+              />
+            </div>
+            <div className="field" style={{ flex: 1 }}>
+              <label htmlFor="m-opp">Голов соперник</label>
+              <input
+                id="m-opp"
+                className="input"
+                type="number"
+                min={0}
+                max={999}
+                value={scoreOpponent}
+                onChange={(e) => setScoreOpponent(Math.max(0, Number(e.target.value) || 0))}
+              />
+            </div>
+          </div>
 
-      <div className="stack-xs">
-        <span className="muted small">Авторы голов (необязательно)</span>
-        {players.length === 0 ? (
-          <p className="muted small" style={{ margin: 0 }}>
-            В этой группе пока нет детей.
-          </p>
-        ) : (
-          <>
-            {scorers.map((s, i) => (
-              <div key={i} className="row-between" style={{ gap: '0.5rem', alignItems: 'center' }}>
-                <select
-                  className="select"
-                  style={{ flex: 1 }}
-                  value={s.playerId}
-                  onChange={(e) => updateScorer(i, { playerId: Number(e.target.value) })}
-                  aria-label="Игрок"
-                >
-                  {players.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="input"
-                  type="number"
-                  min={1}
-                  max={99}
-                  style={{ width: '4.5rem' }}
-                  value={s.goals}
-                  onChange={(e) => updateScorer(i, { goals: Math.max(1, Number(e.target.value) || 1) })}
-                  aria-label="Голов"
-                />
-                <button
-                  type="button"
-                  className="btn btn-ghost"
-                  onClick={() => removeScorer(i)}
-                  aria-label="Убрать автора"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-            <button type="button" className="btn btn-ghost" style={{ justifySelf: 'start' }} onClick={addScorer}>
-              + Добавить автора гола
-            </button>
-          </>
-        )}
-      </div>
+          <ScorersEditor players={players} scorers={scorers} onChange={setScorers} />
+        </>
+      )}
 
       <textarea
         className="textarea"
@@ -242,7 +206,7 @@ export const MatchComposer = ({
       />
 
       <button type="submit" className="btn btn-primary" style={{ justifySelf: 'start' }} disabled={busy}>
-        {busy ? 'Сохраняем…' : 'Сохранить результат'}
+        {busy ? 'Сохраняем…' : mode === 'result' ? 'Сохранить результат' : 'Добавить в расписание'}
       </button>
       {done && <span className="success-text">✓ Сохранено</span>}
       {error && (
