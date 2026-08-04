@@ -21,7 +21,7 @@ export async function up({ db, payload, req }: MigrateUpArgs): Promise<void> {
 export async function down({ db, payload, req }: MigrateDownArgs): Promise<void> {
   await db.execute(sql`
    ALTER TABLE "players" DROP CONSTRAINT "players_account_id_users_id_fk";
-  
+
   ALTER TABLE "users_roles" ALTER COLUMN "value" SET DATA TYPE text;
   DROP TYPE "public"."enum_users_roles";
   CREATE TYPE "public"."enum_users_roles" AS ENUM('owner', 'admin', 'coach', 'parent');
