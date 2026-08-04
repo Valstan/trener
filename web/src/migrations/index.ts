@@ -13,6 +13,7 @@ import * as migration_20260731_080000_branch_operator from './20260731_080000_br
 import * as migration_20260801_092743_future_matches from './20260801_092743_future_matches';
 import * as migration_20260801_162515_login_tokens_email_optional from './20260801_162515_login_tokens_email_optional';
 import * as migration_20260804_093423_child_accounts_and_chat_rooms from './20260804_093423_child_accounts_and_chat_rooms';
+import * as migration_20260804_095724_payment_conversations from './20260804_095724_payment_conversations';
 
 export const migrations = [
   {
@@ -88,6 +89,11 @@ export const migrations = [
   {
     up: migration_20260804_093423_child_accounts_and_chat_rooms.up,
     down: migration_20260804_093423_child_accounts_and_chat_rooms.down,
-    name: '20260804_093423_child_accounts_and_chat_rooms'
+    name: '20260804_093423_child_accounts_and_chat_rooms',
+  },
+  {
+    up: migration_20260804_095724_payment_conversations.up,
+    down: migration_20260804_095724_payment_conversations.down,
+    name: '20260804_095724_payment_conversations'
   },
 ];

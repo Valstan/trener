@@ -3,6 +3,7 @@ import { headers as nextHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
+import Link from 'next/link'
 
 import { isParent, isPending } from '@/access/roles'
 import { feeForGroup, formatFee } from '@/lib/fee'
@@ -101,6 +102,7 @@ const ParentPaymentsPage = async () => {
 
   return (
     <AppShell title="Оплата" tabs={PARENT_TABS} active="payments">
+      <Link className="btn btn-primary btn-block" href="/parent/payment-chat">Написать в бухгалтерию →</Link>
       {players.docs.length === 0 ? (
         <div className="empty-state">
           <span className="ic" aria-hidden>

@@ -25,6 +25,7 @@ import { Matches } from './collections/Matches'
 import { ChatTopics } from './collections/ChatTopics'
 import { ChatMessages } from './collections/ChatMessages'
 import { ChatReads } from './collections/ChatReads'
+import { PaymentMessages, PaymentThreads } from './collections/PaymentThreads'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -73,6 +74,8 @@ export default buildConfig({
     ChatTopics,
     ChatMessages,
     ChatReads,
+    PaymentThreads,
+    PaymentMessages,
   ],
   // Email — magic-link онбординг (PR2) + уведомления. Провайдеро-независимо через
   // внешний SMTP-relay (env). Пока SMTP_HOST не задан, адаптер не подключаем →
