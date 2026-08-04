@@ -13,6 +13,7 @@ import { AuthorCredit } from '../components/AuthorCredit'
 import { ServicesCatalogLink } from '../components/ServicesCatalogLink'
 import { AccountForm } from './AccountForm'
 import { ChildAccounts } from './ChildAccounts'
+import { ChildApprovalRequests } from './ChildApprovalRequests'
 import { LogoutButton } from './LogoutButton'
 
 // Экран «Аккаунт» любого вошедшего: логин (email) + установка постоянного пароля.
@@ -41,6 +42,7 @@ const AccountPage = async () => {
   const children = isParent(user)
     ? (await payload.find({ collection: 'players', depth: 1, limit: 100, pagination: false, user, overrideAccess: false })).docs
     : []
+  const childRequests = isParent(user) ? (await payload.find({ collection: 'child-registrations', where: { status: { equals: 'parent_review' } }, sort: 'createdAt', limit: 100, pagination: false, depth: 0, user, overrideAccess: false })).docs : []
 
   return (
     <AppShell title="Аккаунт" tabs={tabs} active="account" back={{ href: '/', label: 'Назад' }}>
@@ -48,6 +50,7 @@ const AccountPage = async () => {
 
       {isParent(user) && (
         <>
+          <ChildApprovalRequests requests={childRequests.map((request) => ({ id: request.id, childName: request.childName, dateOfBirth: request.dateOfBirth }))} />
           <h2 className="section-title">Аккаунты детей</h2>
           <ChildAccounts players={children.map((child) => ({
             id: child.id,

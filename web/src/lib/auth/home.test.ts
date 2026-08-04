@@ -28,9 +28,10 @@ describe('homePathForUser', () => {
     expect(homePathForUser({ roles: ['owner'] })).toBe('/admin')
   })
 
-  it('pending → экран ожидания модерации (M5 PR-B), роль не важна', () => {
-    expect(homePathForUser({ roles: ['parent'], status: 'pending' })).toBe('/pending')
-    expect(homePathForUser({ roles: ['coach'], status: 'pending' })).toBe('/pending')
+  it('pending без выбора роли → onboarding, после выбора → ожидание', () => {
+    expect(homePathForUser({ roles: ['applicant'], status: 'pending' })).toBe('/onboarding/role')
+    expect(homePathForUser({ roles: ['parent'], requestedRole: 'parent', status: 'pending' })).toBe('/pending')
+    expect(homePathForUser({ roles: ['coach'], requestedRole: 'coach', status: 'pending' })).toBe('/pending')
   })
 
   it('старый JWT без status = approved (не запираем действующих)', () => {

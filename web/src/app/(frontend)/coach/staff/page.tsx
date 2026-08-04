@@ -2,6 +2,7 @@ import config from '@payload-config'
 import type { Metadata } from 'next'
 import { headers as nextHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getPayload } from 'payload'
 import React from 'react'
 
@@ -75,6 +76,7 @@ const StaffPage = async () => {
   return (
     <AppShell title="Сотрудники" tabs={COACH_TABS} back={{ href: '/home' }}>
       {branches && <BranchSwitcher branches={branches} current={ctx} />}
+      {owner && <Link className="btn btn-primary btn-block" href="/coach/child-requests">Заявки самостоятельной регистрации детей →</Link>}
 
       <p className="muted" style={{ margin: '0 0 1rem' }}>
         Приглашённый получит письмо со ссылкой для входа. Пароль придумывать не нужно —

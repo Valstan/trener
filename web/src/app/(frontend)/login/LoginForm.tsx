@@ -7,7 +7,7 @@ import React, { useState } from 'react'
 //
 // magic-link: ответ сервера всегда одинаков (анти-enumeration) → нейтральный экран.
 // пароль: неверные данные → generic-ошибка (существование email не раскрываем).
-type Mode = 'link' | 'password'
+type Mode = 'link' | 'password' | 'register'
 
 export const LoginForm = () => {
   const [mode, setMode] = useState<Mode>('link')
@@ -19,7 +19,7 @@ export const LoginForm = () => {
 
   const requestLink = async () => {
     try {
-      await fetch('/auth/request-login', {
+      await fetch(mode === 'register' ? '/auth/register' : '/auth/request-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -52,7 +52,7 @@ export const LoginForm = () => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    if (mode === 'link') await requestLink()
+    if (mode === 'link' || mode === 'register') await requestLink()
     else await passwordLogin()
     setLoading(false)
   }
@@ -65,8 +65,7 @@ export const LoginForm = () => {
         </div>
         <strong style={{ display: 'block', marginBottom: '0.35rem' }}>Проверьте почту</strong>
         <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
-          Если аккаунт с этим email существует, мы отправили ссылку для входа. Ссылка действует
-          ограниченное время.
+          Мы отправили ссылку подтверждения, если адрес указан корректно. Ссылка действует ограниченное время.
         </span>
       </div>
     )
@@ -106,10 +105,12 @@ export const LoginForm = () => {
 
       <button type="submit" disabled={loading} className="btn btn-primary btn-block">
         {loading
-          ? mode === 'link'
+          ? mode === 'link' || mode === 'register'
             ? 'Отправляем…'
             : 'Входим…'
-          : mode === 'link'
+          : mode === 'register'
+            ? 'Зарегистрироваться по email'
+            : mode === 'link'
             ? 'Получить ссылку для входа'
             : 'Войти'}
       </button>
@@ -130,6 +131,8 @@ export const LoginForm = () => {
       >
         {mode === 'link' ? 'Войти по паролю' : 'Войти по ссылке на email'}
       </button>
+      {mode !== 'register' && <button type="button" className="btn btn-ghost btn-block" onClick={() => { setMode('register'); setError('') }}>Создать новый аккаунт</button>}
+      {mode === 'register' && <button type="button" className="btn btn-ghost btn-block" onClick={() => setMode('link')}>У меня уже есть аккаунт</button>}
     </form>
   )
 }

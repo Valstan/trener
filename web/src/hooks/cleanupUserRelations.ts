@@ -29,6 +29,7 @@ export const cleanupUserRelations: CollectionBeforeDeleteHook = async ({
     { collection: 'login-tokens', field: 'user' },
     { collection: 'chat-reads', field: 'user' },
     { collection: 'payment-threads', field: 'parent' },
+    { collection: 'child-registrations', field: 'account' },
   ] as const
 
   for (const { collection, field } of targets) {
