@@ -21,13 +21,14 @@ const readPlayers: Access = async ({ req }) => {
   const branch = adminBranchId(user)
   if (branch != null) {
     const ids = await branchGroupIds(req, branch)
-    if (!ids.length) return false
-    return { group: { in: ids } }
+    return { or: [{ group: { in: ids } }, { and: [{ branch: { equals: branch } }, { group: { exists: false } }] }] }
   }
   if (isCoach(user)) {
     const ids = await coachGroupIds(req, user.id)
     if (!ids.length) return false
-    const where: Where = { group: { in: ids } }
+    const groups = await req.payload.find({ collection: 'groups', where: { id: { in: ids } }, depth: 0, limit: 1000, pagination: false, overrideAccess: true })
+    const branches = Array.from(new Set(groups.docs.map((group) => typeof group.branch === 'object' && group.branch ? group.branch.id : group.branch).filter((id): id is number => typeof id === 'number')))
+    const where: Where = { or: [{ group: { in: ids } }, { and: [{ branch: { in: branches } }, { group: { exists: false } }] }] }
     return where
   }
   if (isParent(user)) {
@@ -79,8 +80,9 @@ export const Players: CollectionConfig = {
       type: 'relationship',
       label: 'Группа',
       relationTo: 'groups',
-      required: true,
+      required: false,
     },
+    { name: 'branch', type: 'relationship', label: 'Филиал', relationTo: 'branches', index: true, admin: { description: 'Нужен для ребёнка, которому тренер ещё не назначил группу.' } },
     {
       name: 'parent',
       type: 'relationship',

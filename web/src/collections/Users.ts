@@ -22,7 +22,7 @@ export const Users: CollectionConfig = {
     update: adminOrSelf,
   },
   admin: {
-    defaultColumns: ['name', 'email', 'roles'],
+    defaultColumns: ['name', 'email', 'requestedRole', 'roles', 'status', 'branch'],
     useAsTitle: 'name',
   },
   auth: true,
@@ -60,12 +60,25 @@ export const Users: CollectionConfig = {
         { label: 'Тренер', value: 'coach' },
         { label: 'Родитель', value: 'parent' },
         { label: 'Ребёнок', value: 'child' },
+        { label: 'Заявитель (без доступов)', value: 'applicant' },
       ],
       access: {
         // Защита от самоповышения: owner — любые роли; админ филиала — только
         // coach/parent в своём филиале (rolesField, M5).
         update: rolesField,
       },
+    },
+    {
+      name: 'requestedRole',
+      type: 'select',
+      label: 'Роль, выбранная при регистрации',
+      saveToJWT: true,
+      options: [
+        { label: 'Родитель', value: 'parent' },
+        { label: 'Тренер', value: 'coach' },
+        { label: 'Ребёнок', value: 'child' },
+      ],
+      admin: { readOnly: true, description: 'Самостоятельный выбор до одобрения заявки.' },
     },
     {
       name: 'login',

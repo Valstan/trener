@@ -82,6 +82,7 @@ export interface Config {
     'question-messages': QuestionMessage;
     matches: Match;
     'match-comments': MatchComment;
+    'child-registrations': ChildRegistration;
     subscriptions: Subscription;
     'chat-topics': ChatTopic;
     'chat-messages': ChatMessage;
@@ -110,6 +111,7 @@ export interface Config {
     'question-messages': QuestionMessagesSelect<false> | QuestionMessagesSelect<true>;
     matches: MatchesSelect<false> | MatchesSelect<true>;
     'match-comments': MatchCommentsSelect<false> | MatchCommentsSelect<true>;
+    'child-registrations': ChildRegistrationsSelect<false> | ChildRegistrationsSelect<true>;
     subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
     'chat-topics': ChatTopicsSelect<false> | ChatTopicsSelect<true>;
     'chat-messages': ChatMessagesSelect<false> | ChatMessagesSelect<true>;
@@ -163,7 +165,11 @@ export interface User {
    * Контакт тренера/родителя. 152-ФЗ: минимизация — только для связи.
    */
   phone?: string | null;
-  roles: ('owner' | 'admin' | 'coach' | 'parent' | 'child')[];
+  roles: ('owner' | 'admin' | 'coach' | 'parent' | 'child' | 'applicant')[];
+  /**
+   * Самостоятельный выбор до одобрения заявки.
+   */
+  requestedRole?: ('parent' | 'coach' | 'child') | null;
   /**
    * Только для детского входа; взрослые входят по email/VK.
    */
@@ -275,7 +281,11 @@ export interface Player {
    * Только для возрастной группы; не показывается участникам чатов.
    */
   dateOfBirth?: string | null;
-  group: number | Group;
+  group?: (number | null) | Group;
+  /**
+   * Нужен для ребёнка, которому тренер ещё не назначил группу.
+   */
+  branch?: (number | null) | Branch;
   /**
    * Аккаунт родителя — контакт и адресат уведомлений. Привязывается сам, когда родитель принимает приглашение по ссылке.
    */
@@ -558,6 +568,22 @@ export interface MatchComment {
   createdAt: string;
 }
 /**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "child-registrations".
+ */
+export interface ChildRegistration {
+  id: number;
+  account: number | User;
+  childName: string;
+  dateOfBirth: string;
+  parentName: string;
+  proposedParent?: (number | null) | User;
+  branch?: (number | null) | Branch;
+  status: 'owner_review' | 'parent_review' | 'accepted' | 'rejected';
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Учёт оплат абонементов. Продление = новая запись; статус выводится по датам.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -759,6 +785,10 @@ export interface PayloadLockedDocument {
         value: number | MatchComment;
       } | null)
     | ({
+        relationTo: 'child-registrations';
+        value: number | ChildRegistration;
+      } | null)
+    | ({
         relationTo: 'subscriptions';
         value: number | Subscription;
       } | null)
@@ -832,6 +862,7 @@ export interface UsersSelect<T extends boolean = true> {
   name?: T;
   phone?: T;
   roles?: T;
+  requestedRole?: T;
   login?: T;
   authProvider?: T;
   externalId?: T;
@@ -898,6 +929,7 @@ export interface PlayersSelect<T extends boolean = true> {
   name?: T;
   dateOfBirth?: T;
   group?: T;
+  branch?: T;
   parent?: T;
   account?: T;
   updatedAt?: T;
@@ -1076,6 +1108,21 @@ export interface MatchCommentsSelect<T extends boolean = true> {
   authorName?: T;
   authorRole?: T;
   body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "child-registrations_select".
+ */
+export interface ChildRegistrationsSelect<T extends boolean = true> {
+  account?: T;
+  childName?: T;
+  dateOfBirth?: T;
+  parentName?: T;
+  proposedParent?: T;
+  branch?: T;
+  status?: T;
   updatedAt?: T;
   createdAt?: T;
 }

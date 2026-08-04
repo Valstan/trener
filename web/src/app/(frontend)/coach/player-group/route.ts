@@ -25,7 +25,14 @@ export const PATCH = async (req: Request): Promise<Response> => {
   if (!allowed) return NextResponse.json({ ok: false }, { status: 403 })
 
   try {
-    await payload.update({ collection: 'players', id: playerId, data: { group: groupId }, user, overrideAccess: false })
+    const [player, targetGroup] = await Promise.all([
+      payload.findByID({ collection: 'players', id: playerId, depth: 0, user, overrideAccess: false }),
+      payload.findByID({ collection: 'groups', id: groupId, depth: 0, overrideAccess: true }),
+    ])
+    const playerBranch = relId(player.branch)
+    const targetBranch = relId(targetGroup.branch)
+    if (playerBranch != null && targetBranch !== playerBranch && !isOwner(user)) return NextResponse.json({ ok: false }, { status: 403 })
+    await payload.update({ collection: 'players', id: playerId, data: { group: groupId, branch: targetBranch ?? undefined }, overrideAccess: true })
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ ok: false }, { status: 404 })

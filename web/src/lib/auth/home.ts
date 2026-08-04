@@ -11,11 +11,11 @@ import { isAdmin, isChild, isCoach, isOwner, isParent, isPending } from '@/acces
 // coach → расписание со сводкой coverage; parent → очередь изменений.
 // Неизвестная/пустая роль → '/' (на лендинге это значит «не редиректим», без петли).
 export const homePathForUser = (
-  user: { roles?: string[] | null; status?: string | null } | null | undefined,
+  user: { roles?: string[] | null; status?: string | null; requestedRole?: string | null } | null | undefined,
 ): string => {
   if (!user) return '/'
   // Модерация входа (M5 PR-B): неподтверждённый участник — на экран ожидания.
-  if (isPending(user)) return '/pending'
+  if (isPending(user)) return user.requestedRole ? '/pending' : '/onboarding/role'
   // owner и админ филиала работают в панели координатора (M5).
   if (isOwner(user) || isAdmin(user)) return '/admin'
   if (isCoach(user)) return '/coach/schedule'

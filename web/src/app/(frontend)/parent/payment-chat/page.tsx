@@ -18,7 +18,7 @@ const ParentPaymentChat = async () => {
   if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/home')
   const players = await payload.find({ collection: 'players', where: { parent: { equals: user.id } }, depth: 1, limit: 100, overrideAccess: true })
-  const branchIds = [...new Set(players.docs.map((p) => typeof p.group === 'object' ? relId(p.group.branch) : null).filter((id): id is number => id != null))]
+  const branchIds = [...new Set(players.docs.map((p) => p.group && typeof p.group === 'object' ? relId(p.group.branch) : relId(p.branch)).filter((id): id is number => id != null))]
   const [branches, threads] = await Promise.all([
     payload.find({ collection: 'branches', where: { id: { in: branchIds } }, depth: 0, limit: 100, overrideAccess: true }),
     payload.find({ collection: 'payment-threads', sort: '-lastMessageAt', depth: 0, limit: 100, user, overrideAccess: false }),

@@ -27,6 +27,7 @@ import { ChatMessages } from './collections/ChatMessages'
 import { ChatReads } from './collections/ChatReads'
 import { PaymentMessages, PaymentThreads } from './collections/PaymentThreads'
 import { MatchComments } from './collections/MatchComments'
+import { ChildRegistrations } from './collections/ChildRegistrations'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -72,6 +73,7 @@ export default buildConfig({
     QuestionMessages,
     Matches,
     MatchComments,
+    ChildRegistrations,
     Subscriptions,
     ChatTopics,
     ChatMessages,

@@ -104,7 +104,7 @@ export const findOrLinkRadarUser = async (
           // Локальная стратегия включена → password обязателен. Случайный: вход
           // этого пользователя — через VK (и magic-link, если email реальный).
           password: generateRawToken(),
-          roles: ['parent'],
+          roles: ['applicant'],
           // Модерация входа (M5 PR-B): саморег через VK ждёт подтверждения
           // владельцем/админом (экран /pending). Инвайт-путь остаётся approved.
           status: 'pending',
