@@ -1,5 +1,6 @@
 import config from '@payload-config'
 import { headers as nextHeaders } from 'next/headers'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 
@@ -26,14 +27,14 @@ const ChildPage = async () => {
     payload.find({ collection: 'matches', where: { group: { in: groupIds } }, sort: '-matchDate', limit: 20, depth: 0, overrideAccess: true }),
     payload.find({ collection: 'announcements', where: { or: [{ group: { in: groupIds } }, { scope: { equals: 'network' } }] }, sort: '-createdAt', limit: 20, depth: 0, overrideAccess: true }),
   ])
-  const groupNames = new Map(groups.docs.map((g) => [g.id, g.name]))
+  const groupNames = new Map(groups.docs.map((group) => [group.id, group.name]))
   return <AppShell title={groups.docs[0]?.name ?? 'Моя команда'} tabs={CHILD_TABS} active="home">
     <h2 className="section-title">Тренировки</h2>
-    <div className="stack-sm">{sessions.docs.map((s) => <div className="card" key={s.id}><strong>{date(s.startDate)}</strong><div className="muted small">{s.location ?? 'Место уточняется'}</div></div>)}</div>
+    <div className="stack-sm">{sessions.docs.map((session) => <div className="card" key={session.id}><strong>{date(session.startDate)}</strong><div className="muted small">{session.location ?? 'Место уточняется'}</div></div>)}</div>
     <h2 className="section-title">Матчи</h2>
-    <div className="stack-sm">{matches.docs.map((m) => <div className="card" key={m.id}><strong>{m.opponent}</strong><div className="muted small">{groupNames.get(relId(m.group) ?? -1)} · {date(m.matchDate)}</div></div>)}</div>
+    <div className="stack-sm">{matches.docs.map((match) => <Link className="card" href={`/match/${match.id}`} key={match.id}><strong>{match.opponent}</strong><div className="muted small">{groupNames.get(relId(match.group) ?? -1)} · {date(match.matchDate)}</div><span className="small">Открыть матч и комментарии →</span></Link>)}</div>
     <h2 className="section-title">Объявления</h2>
-    <div className="stack-sm">{announcements.docs.map((a) => <div className="card" key={a.id}><strong>{a.title}</strong><p>{a.body}</p></div>)}</div>
+    <div className="stack-sm">{announcements.docs.map((announcement) => <div className="card" key={announcement.id}><strong>{announcement.title}</strong><p>{announcement.body}</p></div>)}</div>
   </AppShell>
 }
 

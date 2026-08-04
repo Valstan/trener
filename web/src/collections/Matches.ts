@@ -1,7 +1,8 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOrCoachOwnGroup } from '../access/byGroup'
-import { adminBranchId, branchGroupIds, coachGroupIds, isOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
+import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
+import { cleanupMatchRelations } from '../hooks/cleanupMatchRelations'
 
 // Матчи (дорожная карта §4, после M3): расписание будущих игр (видение §3.1 —
 // «когда, во сколько, где») и результаты сыгранных. Информационный канал поверх ядра
@@ -44,8 +45,14 @@ const readMatches: Access = async ({ req }) => {
     const where: Where = { group: { in: ids } }
     return where
   }
+  if (isChild(user)) {
+    const ids = await childGroupIds(req, user.id)
+    return ids.length ? { group: { in: ids } } : false
+  }
   return false
 }
+
+export const readMatchParticipants = readMatches
 
 // Счёт вводится парой: оба поля пустые (будущий матч) или оба заполнены (сыгранный).
 const scorePairValidate = (
@@ -70,6 +77,7 @@ export const Matches: CollectionConfig = {
     update: adminOrCoachOwnGroup,
     delete: adminOrCoachOwnGroup,
   },
+  hooks: { beforeDelete: [cleanupMatchRelations] },
   admin: {
     defaultColumns: ['matchDate', 'group', 'opponent', 'homeAway'],
     useAsTitle: 'opponent',
