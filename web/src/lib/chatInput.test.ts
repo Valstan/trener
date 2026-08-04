@@ -5,10 +5,18 @@ import { parseMessageCreate, parseTopicCreate } from './chatInput'
 describe('parseTopicCreate', () => {
   it('парсит валидный вход и триммит тему', () => {
     expect(parseTopicCreate({ groupId: 3, title: '  Едем на соревнования  ' })).toEqual({
+      scope: 'group',
       groupId: 3,
+      branchId: null,
       title: 'Едем на соревнования',
       room: 'adults',
     })
+  })
+
+  it('разбирает филиальный и общешкольный чат, но не допускает там детскую комнату', () => {
+    expect(parseTopicCreate({ scope: 'branch', branchId: 4, title: 'Филиал' })).toMatchObject({ scope: 'branch', branchId: 4, groupId: null })
+    expect(parseTopicCreate({ scope: 'school', title: 'Школа' })).toMatchObject({ scope: 'school', branchId: null, groupId: null })
+    expect(parseTopicCreate({ scope: 'school', title: 'Школа', room: 'children' })).toBeNull()
   })
 
   it('принимает детскую комнату только явным значением', () => {

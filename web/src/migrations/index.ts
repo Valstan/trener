@@ -15,6 +15,7 @@ import * as migration_20260801_162515_login_tokens_email_optional from './202608
 import * as migration_20260804_093423_child_accounts_and_chat_rooms from './20260804_093423_child_accounts_and_chat_rooms';
 import * as migration_20260804_095724_payment_conversations from './20260804_095724_payment_conversations';
 import * as migration_20260804_102209_match_comments from './20260804_102209_match_comments';
+import * as migration_20260804_104133_chat_scopes from './20260804_104133_chat_scopes';
 
 export const migrations = [
   {
@@ -100,6 +101,11 @@ export const migrations = [
   {
     up: migration_20260804_102209_match_comments.up,
     down: migration_20260804_102209_match_comments.down,
-    name: '20260804_102209_match_comments'
+    name: '20260804_102209_match_comments',
+  },
+  {
+    up: migration_20260804_104133_chat_scopes.up,
+    down: migration_20260804_104133_chat_scopes.down,
+    name: '20260804_104133_chat_scopes'
   },
 ];

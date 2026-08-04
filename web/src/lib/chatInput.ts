@@ -16,16 +16,19 @@ const parseText = (v: unknown, max: number): string | null => {
   return t ? t.slice(0, max) : null
 }
 
-export type TopicCreateInput = { groupId: number; title: string; room: 'adults' | 'children' }
+export type TopicCreateInput = { scope: 'group' | 'branch' | 'school'; groupId: number | null; branchId: number | null; title: string; room: 'adults' | 'children' }
 
 export const parseTopicCreate = (raw: unknown): TopicCreateInput | null => {
   if (typeof raw !== 'object' || raw === null) return null
   const r = raw as Record<string, unknown>
+  const scope = r.scope === 'branch' || r.scope === 'school' ? r.scope : 'group'
   const groupId = parseId(r.groupId)
+  const branchId = parseId(r.branchId)
   const title = parseText(r.title, MAX_TITLE)
-  if (groupId == null || title == null) return null
+  if (title == null || (scope === 'group' && groupId == null) || (scope === 'branch' && branchId == null)) return null
   const room = r.room === 'children' ? 'children' : 'adults'
-  return { groupId, title, room }
+  if (scope !== 'group' && room === 'children') return null
+  return { scope, groupId: scope === 'group' ? groupId : null, branchId: scope === 'branch' ? branchId : null, title, room }
 }
 
 export type MessageCreateInput = { topicId: number; body: string }

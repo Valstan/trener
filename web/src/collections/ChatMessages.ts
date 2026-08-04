@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
-import { adminOnly } from '../access/adminOnly'
-import { groupParticipantRead } from '../access/byGroup'
+import { readChatScope } from '../access/chatScope'
+import { isOwner } from '../access/roles'
 import { fanOutChatMessage } from '../hooks/fanOutChatMessage'
 
 // Сообщение в теме общей комнаты (M9). Пишет любой участник группы — но только
@@ -22,9 +22,9 @@ export const ChatMessages: CollectionConfig = {
   },
   access: {
     create: () => false, // только /chat/message (overrideAccess после проверки участия)
-    read: groupParticipantRead,
-    update: adminOnly,
-    delete: adminOnly,
+    read: readChatScope,
+    update: () => false,
+    delete: ({ req }) => isOwner(req.user),
   },
   hooks: {
     afterChange: [fanOutChatMessage],
@@ -35,6 +35,10 @@ export const ChatMessages: CollectionConfig = {
     description: 'Сообщения в темах общих чатов. Заводить и править вручную не нужно — пишутся из приложения.',
   },
   fields: [
+    {
+      name: 'scope', type: 'select', defaultValue: 'group', index: true,
+      options: [{ label: 'Группа', value: 'group' }, { label: 'Филиал', value: 'branch' }, { label: 'Вся школа', value: 'school' }], admin: { readOnly: true },
+    },
     {
       name: 'room',
       type: 'select',
@@ -48,6 +52,7 @@ export const ChatMessages: CollectionConfig = {
       ],
       admin: { readOnly: true },
     },
+    { name: 'branch', type: 'relationship', relationTo: 'branches', index: true, admin: { readOnly: true } },
     {
       name: 'topic',
       type: 'relationship',
@@ -63,7 +68,7 @@ export const ChatMessages: CollectionConfig = {
       type: 'relationship',
       label: 'Группа',
       relationTo: 'groups',
-      required: true,
+      required: false,
       index: true,
       admin: { readOnly: true, description: 'Копируется с темы — по ней считается видимость.' },
     },

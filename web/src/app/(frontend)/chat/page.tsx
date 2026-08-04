@@ -7,6 +7,7 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import { adminBranchId, isChild, isCoach, isOwner, isParent, isPending } from '@/access/roles'
+import { allowedChatTargets } from '@/access/chatScope'
 import { relId } from '@/lib/relId'
 
 import { AppShell, CHILD_TABS, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
@@ -92,6 +93,7 @@ const ChatPage = async () => {
   )
 
   // Группы, где можно завести тему (только персонал и только свои).
+  const targets = canStartTopic ? await allowedChatTargets({ payload, user } as never) : { groups: [], branches: [], school: false }
   const ownGroups = canStartTopic
     ? (
         await payload.find({
@@ -100,11 +102,12 @@ const ChatPage = async () => {
           limit: 200,
           depth: 0,
           pagination: false,
-          user,
-          overrideAccess: false,
+          where: isOwner(user) ? {} : { id: { in: targets.groups } },
+          overrideAccess: true,
         })
       ).docs.map((g) => ({ id: g.id, name: g.name }))
     : []
+  const ownBranches = targets.branches.length || isOwner(user) ? (await payload.find({ collection: 'branches', where: isOwner(user) ? {} : { id: { in: targets.branches } }, sort: 'name', limit: 200, pagination: false, depth: 0, overrideAccess: true })).docs.map((branch) => ({ id: branch.id, name: branch.name })) : []
 
   const newsCount = topics.docs.filter((t) => hasNews(t)).length
 
@@ -114,7 +117,7 @@ const ChatPage = async () => {
         Общий разговор группы: тренеры и родители. Личный вопрос тренеру — в разделе «Вопрос».
       </p>
 
-      {canStartTopic && ownGroups.length > 0 && <TopicComposer groups={ownGroups} />}
+      {canStartTopic && <TopicComposer groups={ownGroups} branches={ownBranches} canSchool={targets.school} />}
 
       {newsCount > 0 && (
         <p className="muted small" style={{ margin: '0 0 0.75rem' }}>
@@ -148,7 +151,7 @@ const ChatPage = async () => {
                   )}
                 </strong>
                 <span className="muted small">
-                  {groupNameById.get(relId(t.group) ?? -1) ?? 'Группа'} · {fmtWhen(t.lastMessageAt)}
+                  {t.scope === 'school' ? 'Вся школа' : t.scope === 'branch' ? 'Весь филиал' : groupNameById.get(relId(t.group) ?? -1) ?? 'Группа'} · {fmtWhen(t.lastMessageAt)}
                   {t.closed ? ' · закрыта' : ''}
                 </span>
               </div>
