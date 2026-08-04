@@ -1,4 +1,5 @@
 import React from 'react'
+import Link from 'next/link'
 
 import { formatDateTime } from '@/lib/notifications/describe'
 
@@ -27,7 +28,7 @@ const outcome = (our: number, opp: number): { label: string; cls: string } => {
   return { label: 'Ничья', cls: 'draw' }
 }
 
-export const MatchCard = ({ match }: { match: MatchView }) => {
+export const MatchCard = ({ match, showCommentsLink = true }: { match: MatchView; showCommentsLink?: boolean }) => {
   const played = match.scoreOur != null && match.scoreOpponent != null
   const res = played ? outcome(match.scoreOur as number, match.scoreOpponent as number) : null
   return (
@@ -72,6 +73,7 @@ export const MatchCard = ({ match }: { match: MatchView }) => {
       )}
 
       {match.note ? <p className="pre">{match.note}</p> : null}
+      {showCommentsLink && <Link className="btn btn-ghost btn-block" href={`/match/${match.id}`}>Открыть матч и комментарии →</Link>}
     </article>
   )
 }

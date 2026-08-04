@@ -81,6 +81,7 @@ export interface Config {
     questions: Question;
     'question-messages': QuestionMessage;
     matches: Match;
+    'match-comments': MatchComment;
     subscriptions: Subscription;
     'chat-topics': ChatTopic;
     'chat-messages': ChatMessage;
@@ -108,6 +109,7 @@ export interface Config {
     questions: QuestionsSelect<false> | QuestionsSelect<true>;
     'question-messages': QuestionMessagesSelect<false> | QuestionMessagesSelect<true>;
     matches: MatchesSelect<false> | MatchesSelect<true>;
+    'match-comments': MatchCommentsSelect<false> | MatchCommentsSelect<true>;
     subscriptions: SubscriptionsSelect<false> | SubscriptionsSelect<true>;
     'chat-topics': ChatTopicsSelect<false> | ChatTopicsSelect<true>;
     'chat-messages': ChatMessagesSelect<false> | ChatMessagesSelect<true>;
@@ -539,6 +541,23 @@ export interface Match {
   createdAt: string;
 }
 /**
+ * Комментарии участников группы. Редактирование запрещено; владелец может удалить сообщение при модерации.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "match-comments".
+ */
+export interface MatchComment {
+  id: number;
+  match: number | Match;
+  group: number | Group;
+  author?: (number | null) | User;
+  authorName: string;
+  authorRole: 'child' | 'parent' | 'coach' | 'staff';
+  body: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * Учёт оплат абонементов. Продление = новая запись; статус выводится по датам.
  *
  * This interface was referenced by `Config`'s JSON-Schema
@@ -730,6 +749,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'matches';
         value: number | Match;
+      } | null)
+    | ({
+        relationTo: 'match-comments';
+        value: number | MatchComment;
       } | null)
     | ({
         relationTo: 'subscriptions';
@@ -1035,6 +1058,20 @@ export interface MatchesSelect<T extends boolean = true> {
         id?: T;
       };
   note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "match-comments_select".
+ */
+export interface MatchCommentsSelect<T extends boolean = true> {
+  match?: T;
+  group?: T;
+  author?: T;
+  authorName?: T;
+  authorRole?: T;
+  body?: T;
   updatedAt?: T;
   createdAt?: T;
 }
