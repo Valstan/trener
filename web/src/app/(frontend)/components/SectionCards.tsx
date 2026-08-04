@@ -32,9 +32,16 @@ const STAFF_SECTIONS: Section[] = [
   { key: 'chat', href: '/chat', icon: '👥', title: 'Чат группы', text: 'Общий разговор тренеров и родителей' },
   { key: 'questions', href: '/coach/questions', icon: '💬', title: 'Вопросы', text: 'Переписка с родителями' },
   { key: 'account', href: '/account', icon: '👤', title: 'Аккаунт', text: 'Email, пароль, вход' },
-  { key: 'payments', href: '/coach/payments', icon: '💳', title: 'Оплата', text: 'Таблица абонементов по детям' },
   { key: 'gallery', href: '#', icon: '📷', title: 'Фотогалерея', text: 'Фото и видео с матчей — скоро', soon: true },
 ]
+
+const PAYMENTS_SECTION: Section = {
+  key: 'payments',
+  href: '/coach/payments',
+  icon: '💳',
+  title: 'Оплата',
+  text: 'Абонементы и платежи по детям',
+}
 
 // «Сотрудники» — только тем, кто вправе приглашать: владелец сети и админ филиала.
 // Тренеру карточка не нужна и экран ему всё равно ответит редиректом.
@@ -61,7 +68,9 @@ export const sectionsForRoles = (user: { roles?: string[] | null } | null | unde
   const staff = roles.includes('owner') || roles.includes('admin') || roles.includes('coach')
   if (!staff) return PARENT_SECTIONS
   const manager = roles.includes('owner') || roles.includes('admin')
-  return manager ? [...STAFF_SECTIONS, MANAGER_SECTION, IMPORT_SECTION] : [...STAFF_SECTIONS, IMPORT_SECTION]
+  return manager
+    ? [...STAFF_SECTIONS, PAYMENTS_SECTION, MANAGER_SECTION, IMPORT_SECTION]
+    : [...STAFF_SECTIONS, IMPORT_SECTION]
 }
 
 // locked: режим /pending — карточки видны, переходы закрыты (замок).

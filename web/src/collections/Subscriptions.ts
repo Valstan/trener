@@ -3,7 +3,6 @@ import type { Access, CollectionConfig, Where } from 'payload'
 import {
   adminBranchId,
   branchGroupIds,
-  coachGroupIds,
   isCoach,
   isOwner,
   isParent,
@@ -17,7 +16,7 @@ import {
 //
 // Деньги ЧЕРЕЗ приложение не ходят: это учётная таблица + помощник оплаты
 // (реквизиты филиала на /parent/payments). Ведут владелец («бухгалтер» = owner,
-// решение 2026-07-26) и админ филиала; тренер видит свои группы; родитель — своих.
+// решение 2026-07-26) и админ филиала; тренер оплату не видит; родитель — своих.
 // 152-ФЗ: только ребёнок+период+сумма, никаких платёжных данных родителя.
 
 // ID детей в скоупе: филиального админа (группы филиала) или тренера (свои группы).
@@ -37,19 +36,13 @@ const playerIdsByGroups = async (
   return res.docs.map((p) => p.id)
 }
 
-const readSubscriptions: Access = async ({ req }) => {
+export const readSubscriptions: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
   if (isOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const ids = await playerIdsByGroups(req, await branchGroupIds(req, branch))
-    if (!ids.length) return false
-    const where: Where = { player: { in: ids } }
-    return where
-  }
-  if (isCoach(user)) {
-    const ids = await playerIdsByGroups(req, await coachGroupIds(req, user.id))
     if (!ids.length) return false
     const where: Where = { player: { in: ids } }
     return where
@@ -102,6 +95,7 @@ export const Subscriptions: CollectionConfig = {
   admin: {
     defaultColumns: ['player', 'paidFrom', 'paidUntil', 'amount'],
     description: 'Учёт оплат абонементов. Продление = новая запись; статус выводится по датам.',
+    hidden: ({ user }) => isCoach(user as unknown as { roles?: string[] | null }),
   },
   fields: [
     {

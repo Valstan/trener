@@ -1,1 +1,48 @@
-/* Кастомные стили админки Payload. Пока пусто — оставлено как точка расширения. */
+/* Payload остаётся CMS, но визуально принадлежит тому же приложению: спортивный
+   зелёный акцент, скруглённые поверхности и тот же явный переключатель режима. */
+:root {
+  --trener-green: #176b45;
+  --trener-green-dark: #0b1f17;
+  --trener-mint: #dff5e9;
+}
+
+.template-default .nav {
+  border-right: 1px solid var(--theme-elevation-150);
+  background: color-mix(in srgb, var(--theme-bg) 94%, var(--trener-green) 6%);
+}
+
+.template-default .nav__wrap {
+  padding-top: 1rem;
+}
+
+.trener-admin-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+  margin: 0.75rem 0 1rem;
+  padding: 0.25rem;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: 999px;
+  background: var(--theme-elevation-50);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.trener-admin-mode a,
+.trener-admin-mode span {
+  padding: 0.55rem 0.65rem;
+  border-radius: 999px;
+  color: var(--theme-text);
+  text-align: center;
+  text-decoration: none;
+}
+
+.trener-admin-mode [aria-current='page'] {
+  background: var(--trener-green);
+  color: #fff;
+}
+
+.template-default .card,
+.template-default .collection-list__wrap {
+  border-radius: 14px;
+}

@@ -35,10 +35,9 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
-    // Ссылка из панели на фронт-приложение (персонал заходит в CMS, но живой
-    // интерфейс — на фронте). Без неё координатор оказывался заперт в админке.
+    // Явный переключатель «Приложение / Администрация» в начале навигации.
     components: {
-      afterNavLinks: ['@/components/admin/OpenAppLink'],
+      beforeNavLinks: ['@/components/admin/OpenAppLink'],
     },
     meta: {
       titleSuffix: ' — Футбольная школа',

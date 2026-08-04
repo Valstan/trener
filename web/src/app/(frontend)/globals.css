@@ -199,6 +199,34 @@ button {
   font-weight: 600;
   font-size: 1.05rem;
 }
+.mode-switch {
+  display: flex;
+  gap: 0.2rem;
+  padding: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+.mode-switch a,
+.mode-switch span {
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.mode-switch [aria-current='page'] {
+  background: var(--accent);
+  color: #fff;
+}
+.mode-switch a:hover {
+  background: var(--surface-hover);
+  color: var(--fg);
+  text-decoration: none;
+}
 .app-back {
   display: inline-flex;
   align-items: center;
@@ -774,6 +802,13 @@ a.card:hover {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .mode-switch a,
+  .mode-switch span {
+    padding-inline: 0.45rem;
+  }
+  .mode-switch [aria-current='page'] {
+    display: none;
   }
   .row,
   .row-between {
