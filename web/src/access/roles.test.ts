@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { hasRole, isAdmin, isCoach, isParent } from './roles'
+import { childGroupIds, hasRole, isAdmin, isChild, isCoach, isParent } from './roles'
 
 // Ролевой гейт #015 — security-critical: на нём держится write-authz и edit-gate.
 // Тесты фиксируют поведение на «грязных» входах (null/undefined/не-массив roles),
@@ -40,6 +40,7 @@ describe('isAdmin / isCoach / isParent', () => {
     expect(isAdmin({ roles: ['admin'] })).toBe(true)
     expect(isCoach({ roles: ['coach'] })).toBe(true)
     expect(isParent({ roles: ['parent'] })).toBe(true)
+    expect(isChild({ roles: ['child'] })).toBe(true)
   })
 
   it('не путают чужую роль', () => {
@@ -52,5 +53,17 @@ describe('isAdmin / isCoach / isParent', () => {
     expect(isAdmin(null)).toBe(false)
     expect(isCoach(undefined)).toBe(false)
     expect(isParent(null)).toBe(false)
+  })
+})
+
+describe('childGroupIds', () => {
+  it('всегда берёт текущую группу из связанного player', async () => {
+    const find = async () => ({ docs: [{ group: 42 }] })
+    await expect(childGroupIds({ payload: { find } } as never, 7)).resolves.toEqual([42])
+  })
+
+  it('без привязанного player не даёт ни одной группы', async () => {
+    const find = async () => ({ docs: [] })
+    await expect(childGroupIds({ payload: { find } } as never, 7)).resolves.toEqual([])
   })
 })

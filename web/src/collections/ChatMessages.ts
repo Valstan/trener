@@ -36,6 +36,19 @@ export const ChatMessages: CollectionConfig = {
   },
   fields: [
     {
+      name: 'room',
+      type: 'select',
+      label: 'Комната',
+      required: true,
+      defaultValue: 'adults',
+      index: true,
+      options: [
+        { label: 'Взрослая', value: 'adults' },
+        { label: 'Детская', value: 'children' },
+      ],
+      admin: { readOnly: true },
+    },
+    {
       name: 'topic',
       type: 'relationship',
       label: 'Тема',
@@ -76,6 +89,7 @@ export const ChatMessages: CollectionConfig = {
         { label: 'Тренер', value: 'coach' },
         { label: 'Администрация школы', value: 'staff' },
         { label: 'Родитель', value: 'parent' },
+        { label: 'Ребёнок', value: 'child' },
       ],
       admin: { readOnly: true },
     },

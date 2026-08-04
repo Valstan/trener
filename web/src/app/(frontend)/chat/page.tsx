@@ -6,10 +6,10 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { adminBranchId, isCoach, isOwner, isParent, isPending } from '@/access/roles'
+import { adminBranchId, isChild, isCoach, isOwner, isParent, isPending } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
-import { AppShell, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
+import { AppShell, CHILD_TABS, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
 import { TopicComposer } from './TopicComposer'
 
 // Список тем общих комнат (M9, видение v2 §3.3). Комната = группа: тренеры группы +
@@ -35,7 +35,7 @@ const ChatPage = async () => {
   if (isPending(user)) redirect('/pending')
 
   const parentOnly = isParent(user) && !isCoach(user) && !isOwner(user)
-  const tabs: Tab[] = parentOnly ? PARENT_TABS : COACH_TABS
+  const tabs: Tab[] = isChild(user) ? CHILD_TABS : parentOnly ? PARENT_TABS : COACH_TABS
   const canStartTopic = isOwner(user) || adminBranchId(user) != null || isCoach(user)
 
   // Темы в скоупе (scoped read сам ограничит видимость). Свежие — сверху; тема без

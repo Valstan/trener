@@ -4,10 +4,10 @@ import { notFound, redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { isCoach, isOwner, isParent, isPending } from '@/access/roles'
+import { isChild, isCoach, isOwner, isParent, isPending } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
-import { AppShell, COACH_TABS, PARENT_TABS, type Tab } from '../../components/AppShell'
+import { AppShell, CHILD_TABS, COACH_TABS, PARENT_TABS, type Tab } from '../../components/AppShell'
 import { MarkTopicRead } from './MarkTopicRead'
 import { MessageComposer } from './MessageComposer'
 
@@ -71,7 +71,7 @@ const TopicPage = async ({ params }: { params: Promise<{ id: string }> }) => {
       : null
 
   const parentOnly = isParent(user) && !isCoach(user) && !isOwner(user)
-  const tabs: Tab[] = parentOnly ? PARENT_TABS : COACH_TABS
+  const tabs: Tab[] = isChild(user) ? CHILD_TABS : parentOnly ? PARENT_TABS : COACH_TABS
 
   return (
     <AppShell title={topic.title} tabs={tabs} back={{ href: '/chat', label: 'К темам' }}>

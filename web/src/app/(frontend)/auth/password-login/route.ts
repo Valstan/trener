@@ -17,22 +17,33 @@ import { homePathForUser } from '@/lib/auth/home'
 export const dynamic = 'force-dynamic'
 
 export const POST = async (req: Request): Promise<Response> => {
-  let email = ''
+  let identifier = ''
   let password = ''
   try {
     const body = (await req.json()) as { email?: unknown; password?: unknown }
-    if (typeof body?.email === 'string') email = body.email.trim().toLowerCase()
+    if (typeof body?.email === 'string') identifier = body.email.trim().toLowerCase()
     if (typeof body?.password === 'string') password = body.password
   } catch {
     // ниже 400
   }
 
-  if (!email.includes('@') || !password) {
+  if (!identifier || !password) {
     return NextResponse.json({ ok: false }, { status: 400 })
   }
 
   try {
     const payload = await getPayload({ config })
+    let email = identifier
+    if (!identifier.includes('@')) {
+      const child = await payload.find({
+        collection: 'users',
+        where: { and: [{ login: { equals: identifier } }, { roles: { in: ['child'] } }] },
+        depth: 0,
+        limit: 1,
+        overrideAccess: true,
+      })
+      email = child.docs[0]?.email ?? ''
+    }
 
     let result: Awaited<ReturnType<typeof payload.login>>
     try {

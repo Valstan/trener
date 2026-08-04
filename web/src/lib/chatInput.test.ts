@@ -7,7 +7,13 @@ describe('parseTopicCreate', () => {
     expect(parseTopicCreate({ groupId: 3, title: '  Едем на соревнования  ' })).toEqual({
       groupId: 3,
       title: 'Едем на соревнования',
+      room: 'adults',
     })
+  })
+
+  it('принимает детскую комнату только явным значением', () => {
+    expect(parseTopicCreate({ groupId: 3, title: 'Команда', room: 'children' })?.room).toBe('children')
+    expect(parseTopicCreate({ groupId: 3, title: 'Команда', room: 'other' })?.room).toBe('adults')
   })
 
   it('режет тему по лимиту', () => {

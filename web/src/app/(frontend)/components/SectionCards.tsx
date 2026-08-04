@@ -63,14 +63,16 @@ const IMPORT_SECTION: Section = {
   text: 'Список из Excel → ссылки-приглашения родителям',
 }
 
+const PLAYERS_SECTION: Section = { key: 'players', href: '/coach/players', icon: '🔄', title: 'Дети и группы', text: 'Быстро перевести ребёнка в другую группу' }
+
 export const sectionsForRoles = (user: { roles?: string[] | null } | null | undefined): Section[] => {
   const roles = Array.isArray(user?.roles) ? user!.roles! : []
   const staff = roles.includes('owner') || roles.includes('admin') || roles.includes('coach')
   if (!staff) return PARENT_SECTIONS
   const manager = roles.includes('owner') || roles.includes('admin')
   return manager
-    ? [...STAFF_SECTIONS, PAYMENTS_SECTION, MANAGER_SECTION, IMPORT_SECTION]
-    : [...STAFF_SECTIONS, IMPORT_SECTION]
+    ? [...STAFF_SECTIONS, PAYMENTS_SECTION, MANAGER_SECTION, PLAYERS_SECTION, IMPORT_SECTION]
+    : [...STAFF_SECTIONS, PLAYERS_SECTION, IMPORT_SECTION]
 }
 
 // locked: режим /pending — карточки видны, переходы закрыты (замок).
