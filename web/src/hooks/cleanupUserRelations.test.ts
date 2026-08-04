@@ -28,6 +28,7 @@ describe('cleanupUserRelations', () => {
       consents: { parent: { equals: 3 } },
       'login-tokens': { user: { equals: 3 } },
       'chat-reads': { user: { equals: 3 } },
+      'payment-threads': { parent: { equals: 3 } },
     })
     for (const c of del.mock.calls) expect((c[0] as AnyArgs).overrideAccess).toBe(true)
     // players НЕ удаляются (ребёнок остаётся в группе)
@@ -53,7 +54,7 @@ describe('cleanupUserRelations', () => {
 
     await cleanupUserRelations({ id: 3, req } as never)
 
-    expect(del).toHaveBeenCalledTimes(7)
+    expect(del).toHaveBeenCalledTimes(8)
     expect(logger.error).toHaveBeenCalledTimes(1)
   })
 })

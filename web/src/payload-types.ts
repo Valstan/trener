@@ -85,6 +85,8 @@ export interface Config {
     'chat-topics': ChatTopic;
     'chat-messages': ChatMessage;
     'chat-reads': ChatRead;
+    'payment-threads': PaymentThread;
+    'payment-messages': PaymentMessage;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -110,6 +112,8 @@ export interface Config {
     'chat-topics': ChatTopicsSelect<false> | ChatTopicsSelect<true>;
     'chat-messages': ChatMessagesSelect<false> | ChatMessagesSelect<true>;
     'chat-reads': ChatReadsSelect<false> | ChatReadsSelect<true>;
+    'payment-threads': PaymentThreadsSelect<false> | PaymentThreadsSelect<true>;
+    'payment-messages': PaymentMessagesSelect<false> | PaymentMessagesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -618,6 +622,36 @@ export interface ChatRead {
   createdAt: string;
 }
 /**
+ * Неудаляемые личные диалоги родителей с бухгалтерией. Ведутся из приложения.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-threads".
+ */
+export interface PaymentThread {
+  id: number;
+  parent: number | User;
+  branch?: (number | null) | Branch;
+  lastMessageAt: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * История неизменяема и не удаляется.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-messages".
+ */
+export interface PaymentMessage {
+  id: number;
+  thread: number | PaymentThread;
+  author?: (number | null) | User;
+  authorName: string;
+  authorRole: 'parent' | 'staff';
+  body: string;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -712,6 +746,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'chat-reads';
         value: number | ChatRead;
+      } | null)
+    | ({
+        relationTo: 'payment-threads';
+        value: number | PaymentThread;
+      } | null)
+    | ({
+        relationTo: 'payment-messages';
+        value: number | PaymentMessage;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1046,6 +1088,30 @@ export interface ChatReadsSelect<T extends boolean = true> {
   user?: T;
   topic?: T;
   lastReadAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-threads_select".
+ */
+export interface PaymentThreadsSelect<T extends boolean = true> {
+  parent?: T;
+  branch?: T;
+  lastMessageAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payment-messages_select".
+ */
+export interface PaymentMessagesSelect<T extends boolean = true> {
+  thread?: T;
+  author?: T;
+  authorName?: T;
+  authorRole?: T;
+  body?: T;
   updatedAt?: T;
   createdAt?: T;
 }

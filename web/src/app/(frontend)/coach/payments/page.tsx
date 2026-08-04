@@ -3,6 +3,7 @@ import { headers as nextHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
+import Link from 'next/link'
 
 import { adminBranchId, isOwner, isPending } from '@/access/roles'
 import { feeForGroup, formatFee } from '@/lib/fee'
@@ -106,6 +107,7 @@ const CoachPaymentsPage = async () => {
 
   return (
     <AppShell title="Оплата" tabs={COACH_TABS} active="payments">
+      {isOwner(user) && <Link className="btn btn-primary btn-block" href="/coach/payment-chats">Чаты родителей по оплате →</Link>}
       {branches && <BranchSwitcher branches={branches} current={ctx} />}
       {canWrite &&
         (players.docs.length ? (
