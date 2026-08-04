@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { parseTopicCreate } from '@/lib/chatInput'
+import { allowedChatTargets } from '@/access/chatScope'
 
 // POST { groupId, title } → новая тема в комнате группы (M9).
 //
@@ -28,11 +29,13 @@ export const POST = async (req: Request): Promise<Response> => {
     if (!input) return NextResponse.json({ ok: false }, { status: 400 })
 
     try {
+      const allowed = await allowedChatTargets({ payload, user } as never)
+      const permitted = input.scope === 'school' ? allowed.school : input.scope === 'branch' ? input.branchId != null && allowed.branches.map(String).includes(String(input.branchId)) : input.groupId != null && (allowed.school || allowed.groups.map(String).includes(String(input.groupId)))
+      if (!permitted) return NextResponse.json({ ok: false }, { status: 403 })
       const topic = await payload.create({
         collection: 'chat-topics',
-        data: { title: input.title, group: input.groupId, room: input.room, createdBy: user.id },
-        user,
-        overrideAccess: false,
+        data: { title: input.title, scope: input.scope, ...(input.groupId != null ? { group: input.groupId } : {}), ...(input.branchId != null ? { branch: input.branchId } : {}), room: input.room, createdBy: user.id },
+        overrideAccess: true,
       })
       return NextResponse.json({ ok: true, id: topic.id })
     } catch {

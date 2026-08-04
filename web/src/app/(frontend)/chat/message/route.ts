@@ -44,7 +44,7 @@ export const POST = async (req: Request): Promise<Response> => {
     if (topic.closed) return NextResponse.json({ ok: false, reason: 'closed' }, { status: 409 })
 
     const groupId = relId(topic.group)
-    if (groupId == null) return NextResponse.json({ ok: false }, { status: 409 })
+    const branchId = relId(topic.branch)
 
     const authorRole = isOwner(user) || adminBranchId(user) != null ? 'staff' : isCoach(user) ? 'coach' : isChild(user) ? 'child' : 'parent'
 
@@ -52,8 +52,10 @@ export const POST = async (req: Request): Promise<Response> => {
       collection: 'chat-messages',
       data: {
         topic: topic.id,
-        group: groupId,
-        room: topic.room,
+        ...(groupId != null ? { group: groupId } : {}),
+        ...(branchId != null ? { branch: branchId } : {}),
+        scope: topic.scope ?? 'group',
+        room: topic.room ?? 'adults',
         author: user.id,
         // Снимок имени: аккаунт удалят — переписка останется читаемой.
         authorName: user.name || user.email,

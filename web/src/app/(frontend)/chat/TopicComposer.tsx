@@ -3,97 +3,33 @@
 import { useRouter } from 'next/navigation'
 import React, { useState } from 'react'
 
-// Заведение темы (M9) — только персонал: список групп приходит уже отфильтрованным
-// под роль, сервер проверяет владение ещё раз.
-export const TopicComposer = ({ groups }: { groups: { id: number; name: string }[] }) => {
+type Option = { id: number; name: string }
+
+export const TopicComposer = ({ groups, branches, canSchool }: { groups: Option[]; branches: Option[]; canSchool: boolean }) => {
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [groupId, setGroupId] = useState<number>(groups[0]?.id ?? -1)
-  const [title, setTitle] = useState('')
+  const [scope, setScope] = useState<'group' | 'branch' | 'school'>('group')
+  const [groupId, setGroupId] = useState(groups[0]?.id ?? -1)
+  const [branchId, setBranchId] = useState(branches[0]?.id ?? -1)
   const [room, setRoom] = useState<'adults' | 'children'>('adults')
+  const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  if (!open) return <button type="button" className="btn btn-ghost" style={{ marginBottom: '1rem' }} onClick={() => setOpen(true)}>+ Создать чат</button>
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!title.trim()) {
-      setError('Напишите, о чём тема.')
-      return
-    }
-    setBusy(true)
-    setError('')
-    try {
-      const res = await fetch('/chat/topic', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupId, title, room }),
-      })
-      const data = (await res.json()) as { ok?: boolean; id?: number }
-      if (res.ok && data.ok && data.id) {
-        router.push(`/chat/${data.id}`)
-        return
-      }
-      setError('Не удалось завести тему. Попробуйте ещё раз.')
-    } catch {
-      setError('Не удалось завести тему. Попробуйте ещё раз.')
-    }
-    setBusy(false)
-  }
-
-  if (!open) {
-    return (
-      <button type="button" className="btn btn-ghost" style={{ marginBottom: '1rem' }} onClick={() => setOpen(true)}>
-        + Завести тему
-      </button>
-    )
-  }
-
-  return (
-    <form onSubmit={submit} className="stack-sm card" style={{ marginBottom: '1rem' }}>
-      {groups.length > 1 && (
-        <div className="field">
-          <label htmlFor="t-group">Группа</label>
-          <select id="t-group" className="select" value={groupId} onChange={(e) => setGroupId(Number(e.target.value))}>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-      <div className="field">
-        <label htmlFor="t-room">Комната</label>
-        <select id="t-room" className="select" value={room} onChange={(e) => setRoom(e.target.value === 'children' ? 'children' : 'adults')}>
-          <option value="adults">Взрослая</option>
-          <option value="children">Детская</option>
-        </select>
-      </div>
-      <div className="field">
-        <label htmlFor="t-title">О чём тема</label>
-        <input
-          id="t-title"
-          className="input"
-          type="text"
-          maxLength={120}
-          placeholder="например, Едем на соревнования 12 сентября"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-      </div>
-      <div className="row" style={{ gap: '0.5rem' }}>
-        <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? 'Заводим…' : 'Завести'}
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={() => setOpen(false)} disabled={busy}>
-          Отмена
-        </button>
-      </div>
-      {error && (
-        <p className="error-text" style={{ margin: 0 }}>
-          {error}
-        </p>
-      )}
-    </form>
-  )
+  return <form className="stack-sm card" style={{ marginBottom: '1rem' }} onSubmit={async (event) => {
+    event.preventDefault(); setBusy(true); setError('')
+    const response = await fetch('/chat/topic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope, groupId, branchId, room, title }) })
+    const data = await response.json().catch(() => ({})) as { id?: number }
+    if (response.ok && data.id) router.push(`/chat/${data.id}`); else { setError('Не удалось создать чат.'); setBusy(false) }
+  }}>
+    <div className="field"><label htmlFor="chat-scope">Кто видит чат</label><select id="chat-scope" className="select" value={scope} onChange={(event) => { const value = event.target.value as typeof scope; setScope(value); if (value !== 'group') setRoom('adults') }}>
+      <option value="group">Одна группа</option>{branches.length > 0 && <option value="branch">Весь филиал</option>}{canSchool && <option value="school">Вся школа</option>}
+    </select></div>
+    {scope === 'group' && <div className="field"><label htmlFor="chat-group">Группа</label><select id="chat-group" className="select" value={groupId} onChange={(event) => setGroupId(Number(event.target.value))}>{groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select></div>}
+    {scope === 'branch' && <div className="field"><label htmlFor="chat-branch">Филиал</label><select id="chat-branch" className="select" value={branchId} onChange={(event) => setBranchId(Number(event.target.value))}>{branches.map((branch) => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></div>}
+    {scope === 'group' && <div className="field"><label htmlFor="chat-room">Комната</label><select id="chat-room" className="select" value={room} onChange={(event) => setRoom(event.target.value === 'children' ? 'children' : 'adults')}><option value="adults">Взрослая</option><option value="children">Детская</option></select></div>}
+    <div className="field"><label htmlFor="chat-title">Название</label><input id="chat-title" className="input" maxLength={120} required value={title} onChange={(event) => setTitle(event.target.value)} /></div>
+    <div className="row"><button className="btn btn-primary" disabled={busy} type="submit">Создать</button><button className="btn btn-ghost" type="button" onClick={() => setOpen(false)}>Отмена</button></div>{error && <p className="error-text">{error}</p>}
+  </form>
 }

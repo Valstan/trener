@@ -584,12 +584,14 @@ export interface Subscription {
  */
 export interface ChatTopic {
   id: number;
+  scope?: ('group' | 'branch' | 'school') | null;
   room: 'adults' | 'children';
+  branch?: (number | null) | Branch;
   /**
    * О чём разговор — например, «Едем на соревнования 12 сентября».
    */
   title: string;
-  group: number | Group;
+  group?: (number | null) | Group;
   createdBy?: (number | null) | User;
   /**
    * Проставляется сама при новом сообщении — по ней темы идут сверху вниз.
@@ -610,12 +612,14 @@ export interface ChatTopic {
  */
 export interface ChatMessage {
   id: number;
+  scope?: ('group' | 'branch' | 'school') | null;
   room: 'adults' | 'children';
+  branch?: (number | null) | Branch;
   topic: number | ChatTopic;
   /**
    * Копируется с темы — по ней считается видимость.
    */
-  group: number | Group;
+  group?: (number | null) | Group;
   author?: (number | null) | User;
   /**
    * Снимок имени на момент отправки — переписка переживает удаление аккаунта.
@@ -1093,7 +1097,9 @@ export interface SubscriptionsSelect<T extends boolean = true> {
  * via the `definition` "chat-topics_select".
  */
 export interface ChatTopicsSelect<T extends boolean = true> {
+  scope?: T;
   room?: T;
+  branch?: T;
   title?: T;
   group?: T;
   createdBy?: T;
@@ -1107,7 +1113,9 @@ export interface ChatTopicsSelect<T extends boolean = true> {
  * via the `definition` "chat-messages_select".
  */
 export interface ChatMessagesSelect<T extends boolean = true> {
+  scope?: T;
   room?: T;
+  branch?: T;
   topic?: T;
   group?: T;
   author?: T;

@@ -1,8 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
-import { adminOrCoachOwnGroup, groupParticipantRead } from '../access/byGroup'
+import { readChatScope } from '../access/chatScope'
+import { isOwner } from '../access/roles'
 import { cleanupTopicRelations } from '../hooks/cleanupTopicRelations'
-import { guardTopicGroup } from '../hooks/guardTopicGroup'
 
 // Тема во «взрослой комнате» группы (M9, видение v2 §3.3). Комната — это сама
 // группа: её тренеры + родители её детей. Отдельной сущности «комната» нет
@@ -22,10 +22,10 @@ export const ChatTopics: CollectionConfig = {
     plural: 'Темы в чате',
   },
   access: {
-    create: adminOrCoachOwnGroup,
-    read: groupParticipantRead,
-    update: adminOrCoachOwnGroup,
-    delete: adminOrCoachOwnGroup,
+    create: () => false,
+    read: readChatScope,
+    update: ({ req }) => isOwner(req.user),
+    delete: ({ req }) => isOwner(req.user),
   },
   admin: {
     defaultColumns: ['title', 'group', 'lastMessageAt', 'closed'],
@@ -36,10 +36,13 @@ export const ChatTopics: CollectionConfig = {
   hooks: {
     // Гейт «своя группа» — в beforeValidate, а не только в access: на создании
     // access-Where ничего не ограничивает (см. комментарий в guardTopicGroup).
-    beforeValidate: [guardTopicGroup],
     beforeDelete: [cleanupTopicRelations],
   },
   fields: [
+    {
+      name: 'scope', type: 'select', label: 'Область', defaultValue: 'group', index: true,
+      options: [{ label: 'Группа', value: 'group' }, { label: 'Филиал', value: 'branch' }, { label: 'Вся школа', value: 'school' }],
+    },
     {
       name: 'room',
       type: 'select',
@@ -52,6 +55,7 @@ export const ChatTopics: CollectionConfig = {
         { label: 'Детская', value: 'children' },
       ],
     },
+    { name: 'branch', type: 'relationship', label: 'Филиал', relationTo: 'branches', index: true },
     {
       name: 'title',
       type: 'text',
@@ -65,7 +69,7 @@ export const ChatTopics: CollectionConfig = {
       type: 'relationship',
       label: 'Группа',
       relationTo: 'groups',
-      required: true,
+      required: false,
       index: true,
       // ⚠️ G149-класс: required relationship = NOT NULL FK × ON DELETE SET NULL.
       // Тот же расклад, что у players.group: группу с живой перепиской не удалить,
