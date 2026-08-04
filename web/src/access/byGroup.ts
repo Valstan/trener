@@ -1,15 +1,11 @@
-import type { Access, Where } from 'payload'
+import type { Access } from 'payload'
 
 import {
   adminBranchId,
   branchGroupIds,
-  childGroupIds,
   coachGroupIds,
   isCoach,
-  isChild,
   isOwner,
-  isParent,
-  parentGroupIds,
 } from './roles'
 
 // Запись/удаление записей, привязанных к группе (Players, TrainingSessions):
@@ -30,41 +26,6 @@ export const adminOrCoachOwnGroup: Access = async ({ req }) => {
     const ids = await coachGroupIds(req, user.id)
     if (!ids.length) return false
     return { group: { in: ids } }
-  }
-  return false
-}
-
-// Чтение записей, привязанных к группе, ВСЕМИ участниками группы — включая родителя
-// (M9, комнаты чатов): владелец — все; админ филиала — группы своего филиала; тренер —
-// свои группы; родитель — группы своих детей.
-//
-// Отличие от `adminOrCoachOwnGroup`: тот про запись (родителю в ней делать нечего),
-// этот — про чтение общей комнаты, где родитель полноправный участник. Фильтры —
-// плоскими списками id, как везде: вложенный relationship-where бьёт по планам запросов.
-export const groupParticipantRead: Access = async ({ req }) => {
-  const { user } = req
-  if (!user) return false
-  if (isOwner(user)) return true
-  const branch = adminBranchId(user)
-  if (branch != null) {
-    const ids = await branchGroupIds(req, branch)
-    if (!ids.length) return false
-    return { group: { in: ids } }
-  }
-  if (isCoach(user)) {
-    const ids = await coachGroupIds(req, user.id)
-    if (!ids.length) return false
-    return { group: { in: ids } }
-  }
-  if (isParent(user)) {
-    const ids = await parentGroupIds(req, user.id)
-    if (!ids.length) return false
-    return { group: { in: ids } }
-  }
-  if (isChild(user)) {
-    const ids = await childGroupIds(req, user.id)
-    const where: Where = { and: [{ group: { in: ids } }, { room: { equals: 'children' } }] }
-    return ids.length ? where : false
   }
   return false
 }
