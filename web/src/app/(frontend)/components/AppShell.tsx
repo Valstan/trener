@@ -53,6 +53,12 @@ export const PARENT_TABS: Tab[] = [
   },
 ]
 
+export const CHILD_TABS: Tab[] = [
+  { key: 'home', href: '/child', label: 'Главная', icon: '⚽' },
+  { key: 'chat', href: '/chat', label: 'Детский чат', icon: '👥' },
+  { key: 'account', href: '/account', label: 'Аккаунт', icon: '👤' },
+]
+
 export const AppShell = ({
   title,
   back,

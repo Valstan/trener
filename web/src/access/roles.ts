@@ -3,7 +3,7 @@ import type { FieldAccess, PayloadRequest } from 'payload'
 // ─────────────────────────────────────────────────────────────────────────────
 // Роли и скоупинг доступа (#015 — day-1, серверный write-authz = клиентский edit-gate).
 //
-// Четыре роли (M5, docs/m5-design.md §2): owner | admin | coach | parent.
+// Пять ролей: owner | admin | coach | parent | child.
 //   • owner  — владелец сети: все филиалы, структура, назначение ролей.
 //   • admin  — администратор СВОЕГО филиала (users.branch): участники и группы
 //              филиала; не создаёт филиалы и не назначает owner/admin.
@@ -34,6 +34,7 @@ export const isPending = (user: ({ status?: string | null } & Roleish) | null | 
 export const isAdmin = (user: Roleish): boolean => hasRole(user, 'admin')
 export const isCoach = (user: Roleish): boolean => hasRole(user, 'coach')
 export const isParent = (user: Roleish): boolean => hasRole(user, 'parent')
+export const isChild = (user: Roleish): boolean => hasRole(user, 'child')
 
 // Филиал, которым управляет админ: users.branch (id). null — не админ или филиал
 // не назначен (админ без филиала не управляет ничем — fail-closed).
@@ -123,6 +124,25 @@ export const parentGroupIds = async (
     .map((doc) => (typeof doc.group === 'object' && doc.group !== null ? doc.group.id : doc.group))
     .filter((g): g is number => typeof g === 'number')
   return Array.from(new Set(ids))
+}
+
+// Текущая группа ребёнка берётся через player.account. При переводе тренером
+// меняется player.group — старый скоуп исчезает на следующем запросе автоматически.
+export const childGroupIds = async (
+  req: PayloadRequest,
+  userId: string | number,
+): Promise<(string | number)[]> => {
+  const res = await req.payload.find({
+    collection: 'players',
+    where: { account: { equals: userId } },
+    depth: 0,
+    limit: 1,
+    pagination: false,
+    overrideAccess: true,
+  })
+  const group = res.docs[0]?.group
+  const id = typeof group === 'object' && group !== null ? group.id : group
+  return typeof id === 'number' ? [id] : []
 }
 
 // ID тренировок групп филиала — скоуп филиального админа для session-привязанных

@@ -1,10 +1,12 @@
-import type { Access } from 'payload'
+import type { Access, Where } from 'payload'
 
 import {
   adminBranchId,
   branchGroupIds,
+  childGroupIds,
   coachGroupIds,
   isCoach,
+  isChild,
   isOwner,
   isParent,
   parentGroupIds,
@@ -58,6 +60,11 @@ export const groupParticipantRead: Access = async ({ req }) => {
     const ids = await parentGroupIds(req, user.id)
     if (!ids.length) return false
     return { group: { in: ids } }
+  }
+  if (isChild(user)) {
+    const ids = await childGroupIds(req, user.id)
+    const where: Where = { and: [{ group: { in: ids } }, { room: { equals: 'children' } }] }
+    return ids.length ? where : false
   }
   return false
 }

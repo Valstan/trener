@@ -157,7 +157,11 @@ export interface User {
    * Контакт тренера/родителя. 152-ФЗ: минимизация — только для связи.
    */
   phone?: string | null;
-  roles: ('owner' | 'admin' | 'coach' | 'parent')[];
+  roles: ('owner' | 'admin' | 'coach' | 'parent' | 'child')[];
+  /**
+   * Только для детского входа; взрослые входят по email/VK.
+   */
+  login?: string | null;
   /**
    * SSO-провайдер, через который связан аккаунт. Пусто — вход по email.
    */
@@ -261,11 +265,19 @@ export interface Group {
 export interface Player {
   id: number;
   name: string;
+  /**
+   * Только для возрастной группы; не показывается участникам чатов.
+   */
+  dateOfBirth?: string | null;
   group: number | Group;
   /**
    * Аккаунт родителя — контакт и адресат уведомлений. Привязывается сам, когда родитель принимает приглашение по ссылке.
    */
   parent?: (number | null) | User;
+  /**
+   * Создаётся родителем в разделе «Аккаунт».
+   */
+  account?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -549,6 +561,7 @@ export interface Subscription {
  */
 export interface ChatTopic {
   id: number;
+  room: 'adults' | 'children';
   /**
    * О чём разговор — например, «Едем на соревнования 12 сентября».
    */
@@ -574,6 +587,7 @@ export interface ChatTopic {
  */
 export interface ChatMessage {
   id: number;
+  room: 'adults' | 'children';
   topic: number | ChatTopic;
   /**
    * Копируется с темы — по ней считается видимость.
@@ -584,7 +598,7 @@ export interface ChatMessage {
    * Снимок имени на момент отправки — переписка переживает удаление аккаунта.
    */
   authorName?: string | null;
-  authorRole?: ('coach' | 'staff' | 'parent') | null;
+  authorRole?: ('coach' | 'staff' | 'parent' | 'child') | null;
   body: string;
   updatedAt: string;
   createdAt: string;
@@ -749,6 +763,7 @@ export interface UsersSelect<T extends boolean = true> {
   name?: T;
   phone?: T;
   roles?: T;
+  login?: T;
   authProvider?: T;
   externalId?: T;
   branch?: T;
@@ -812,8 +827,10 @@ export interface GroupsSelect<T extends boolean = true> {
  */
 export interface PlayersSelect<T extends boolean = true> {
   name?: T;
+  dateOfBirth?: T;
   group?: T;
   parent?: T;
+  account?: T;
   updatedAt?: T;
   createdAt?: T;
 }
@@ -997,6 +1014,7 @@ export interface SubscriptionsSelect<T extends boolean = true> {
  * via the `definition` "chat-topics_select".
  */
 export interface ChatTopicsSelect<T extends boolean = true> {
+  room?: T;
   title?: T;
   group?: T;
   createdBy?: T;
@@ -1010,6 +1028,7 @@ export interface ChatTopicsSelect<T extends boolean = true> {
  * via the `definition` "chat-messages_select".
  */
 export interface ChatMessagesSelect<T extends boolean = true> {
+  room?: T;
   topic?: T;
   group?: T;
   author?: T;

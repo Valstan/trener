@@ -610,6 +610,7 @@ if (existingTopics.totalDocs === 0) {
       data: {
         topic: topicId,
         group: gSenior.id,
+        room: 'adults',
         author: author.id,
         authorName: author.name || author.email,
         authorRole: role,
@@ -622,7 +623,7 @@ if (existingTopics.totalDocs === 0) {
 
   const tTrip = await payload.create({
     collection: 'chat-topics',
-    data: { title: 'Едем на соревнования 12 сентября', group: gSenior.id, createdBy: coach.id },
+    data: { title: 'Едем на соревнования 12 сентября', group: gSenior.id, room: 'adults', createdBy: coach.id },
     overrideAccess: true,
   })
   await say(
@@ -662,7 +663,7 @@ if (existingTopics.totalDocs === 0) {
 
   await payload.create({
     collection: 'chat-topics',
-    data: { title: 'Форма на сезон', group: gJunior.id, createdBy: coach.id },
+    data: { title: 'Форма на сезон', group: gJunior.id, room: 'adults', createdBy: coach.id },
     overrideAccess: true,
   })
   await payload.create({
@@ -670,6 +671,7 @@ if (existingTopics.totalDocs === 0) {
     data: {
       title: 'Фотосессия в июне (завершено)',
       group: gSenior.id,
+      room: 'adults',
       createdBy: coach.id,
       closed: true,
     },

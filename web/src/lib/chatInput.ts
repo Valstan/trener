@@ -16,7 +16,7 @@ const parseText = (v: unknown, max: number): string | null => {
   return t ? t.slice(0, max) : null
 }
 
-export type TopicCreateInput = { groupId: number; title: string }
+export type TopicCreateInput = { groupId: number; title: string; room: 'adults' | 'children' }
 
 export const parseTopicCreate = (raw: unknown): TopicCreateInput | null => {
   if (typeof raw !== 'object' || raw === null) return null
@@ -24,7 +24,8 @@ export const parseTopicCreate = (raw: unknown): TopicCreateInput | null => {
   const groupId = parseId(r.groupId)
   const title = parseText(r.title, MAX_TITLE)
   if (groupId == null || title == null) return null
-  return { groupId, title }
+  const room = r.room === 'children' ? 'children' : 'adults'
+  return { groupId, title, room }
 }
 
 export type MessageCreateInput = { topicId: number; body: string }

@@ -2,7 +2,7 @@ import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOrCoachOwnGroup } from '../access/byGroup'
 import { cleanupPlayerRelations } from '../hooks/cleanupPlayerRelations'
-import { adminBranchId, branchGroupIds, coachGroupIds, hasRole, isCoach, isOwner, isParent } from '../access/roles'
+import { adminBranchId, branchGroupIds, coachGroupIds, hasRole, isChild, isCoach, isOwner, isParent, ownerField } from '../access/roles'
 
 // Ребёнок (игрок).
 //
@@ -34,6 +34,7 @@ const readPlayers: Access = async ({ req }) => {
     const where: Where = { parent: { equals: user.id } }
     return where
   }
+  if (isChild(user)) return { account: { equals: user.id } }
   return false
 }
 
@@ -67,6 +68,13 @@ export const Players: CollectionConfig = {
       maxLength: 100,
     },
     {
+      name: 'dateOfBirth',
+      type: 'date',
+      label: 'Дата рождения',
+      access: { create: ownerField, update: ownerField },
+      admin: { description: 'Только для возрастной группы; не показывается участникам чатов.' },
+    },
+    {
       name: 'group',
       type: 'relationship',
       label: 'Группа',
@@ -83,6 +91,16 @@ export const Players: CollectionConfig = {
         description:
           'Аккаунт родителя — контакт и адресат уведомлений. Привязывается сам, когда родитель принимает приглашение по ссылке.',
       },
+    },
+    {
+      name: 'account',
+      type: 'relationship',
+      label: 'Аккаунт ребёнка',
+      relationTo: 'users',
+      unique: true,
+      access: { create: ownerField, update: ownerField },
+      filterOptions: () => ({ roles: { in: ['child'] } }),
+      admin: { readOnly: true, description: 'Создаётся родителем в разделе «Аккаунт».' },
     },
     {
       // Кнопка генерации ссылки-приглашения родителю (sidebar). Сама привязка —

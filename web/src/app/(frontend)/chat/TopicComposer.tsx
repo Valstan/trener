@@ -10,6 +10,7 @@ export const TopicComposer = ({ groups }: { groups: { id: number; name: string }
   const [open, setOpen] = useState(false)
   const [groupId, setGroupId] = useState<number>(groups[0]?.id ?? -1)
   const [title, setTitle] = useState('')
+  const [room, setRoom] = useState<'adults' | 'children'>('adults')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,7 +26,7 @@ export const TopicComposer = ({ groups }: { groups: { id: number; name: string }
       const res = await fetch('/chat/topic', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ groupId, title }),
+        body: JSON.stringify({ groupId, title, room }),
       })
       const data = (await res.json()) as { ok?: boolean; id?: number }
       if (res.ok && data.ok && data.id) {
@@ -61,6 +62,13 @@ export const TopicComposer = ({ groups }: { groups: { id: number; name: string }
           </select>
         </div>
       )}
+      <div className="field">
+        <label htmlFor="t-room">Комната</label>
+        <select id="t-room" className="select" value={room} onChange={(e) => setRoom(e.target.value === 'children' ? 'children' : 'adults')}>
+          <option value="adults">Взрослая</option>
+          <option value="children">Детская</option>
+        </select>
+      </div>
       <div className="field">
         <label htmlFor="t-title">О чём тема</label>
         <input

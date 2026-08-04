@@ -30,7 +30,7 @@ export const POST = async (req: Request): Promise<Response> => {
     try {
       const topic = await payload.create({
         collection: 'chat-topics',
-        data: { title: input.title, group: input.groupId, createdBy: user.id },
+        data: { title: input.title, group: input.groupId, room: input.room, createdBy: user.id },
         user,
         overrideAccess: false,
       })

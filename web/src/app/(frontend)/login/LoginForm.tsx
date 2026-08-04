@@ -42,7 +42,7 @@ export const LoginForm = () => {
         window.location.href = data.redirect || '/'
         return
       }
-      setError('Неверный email или пароль.')
+      setError('Неверный логин, email или пароль.')
     } catch {
       setError('Не удалось войти. Попробуйте ещё раз.')
     }
@@ -75,17 +75,17 @@ export const LoginForm = () => {
   return (
     <form onSubmit={onSubmit} className="stack" style={{ marginTop: '1.5rem' }}>
       <div className="field">
-        <label htmlFor="email">Email</label>
+        <label htmlFor="email">{mode === 'password' ? 'Логин ребёнка или email' : 'Email'}</label>
         <input
           id="email"
           className="input"
-          type="email"
+          type={mode === 'password' ? 'text' : 'email'}
           required
           autoFocus
-          autoComplete="email"
+          autoComplete={mode === 'password' ? 'username' : 'email'}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.ru"
+          placeholder={mode === 'password' ? 'login или you@example.ru' : 'you@example.ru'}
         />
       </div>
 

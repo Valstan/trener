@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { adminBranchId, isCoach, isOwner } from '@/access/roles'
+import { adminBranchId, isChild, isCoach, isOwner } from '@/access/roles'
 import { parseMessageCreate } from '@/lib/chatInput'
 import { markTopicRead } from '@/lib/chatRead'
 import { relId } from '@/lib/relId'
@@ -46,13 +46,14 @@ export const POST = async (req: Request): Promise<Response> => {
     const groupId = relId(topic.group)
     if (groupId == null) return NextResponse.json({ ok: false }, { status: 409 })
 
-    const authorRole = isOwner(user) || adminBranchId(user) != null ? 'staff' : isCoach(user) ? 'coach' : 'parent'
+    const authorRole = isOwner(user) || adminBranchId(user) != null ? 'staff' : isCoach(user) ? 'coach' : isChild(user) ? 'child' : 'parent'
 
     await payload.create({
       collection: 'chat-messages',
       data: {
         topic: topic.id,
         group: groupId,
+        room: topic.room,
         author: user.id,
         // Снимок имени: аккаунт удалят — переписка останется читаемой.
         authorName: user.name || user.email,

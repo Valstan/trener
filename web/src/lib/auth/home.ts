@@ -1,4 +1,4 @@
-import { isAdmin, isCoach, isOwner, isParent, isPending } from '@/access/roles'
+import { isAdmin, isChild, isCoach, isOwner, isParent, isPending } from '@/access/roles'
 
 // Домашний экран пользователя по роли — единый источник для:
 //   • редиректа после входа (/auth/complete-login),
@@ -20,5 +20,6 @@ export const homePathForUser = (
   if (isOwner(user) || isAdmin(user)) return '/admin'
   if (isCoach(user)) return '/coach/schedule'
   if (isParent(user)) return '/parent'
+  if (isChild(user)) return '/child'
   return '/'
 }

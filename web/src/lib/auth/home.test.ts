@@ -15,6 +15,10 @@ describe('homePathForUser', () => {
     expect(homePathForUser({ roles: ['parent'] })).toBe('/parent')
   })
 
+  it('child → детский экран', () => {
+    expect(homePathForUser({ roles: ['child'] })).toBe('/child')
+  })
+
   it('admin важнее coach/parent (приоритет ролей)', () => {
     expect(homePathForUser({ roles: ['parent', 'coach', 'admin'] })).toBe('/admin')
     expect(homePathForUser({ roles: ['parent', 'coach'] })).toBe('/coach/schedule')

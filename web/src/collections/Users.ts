@@ -59,12 +59,22 @@ export const Users: CollectionConfig = {
         { label: 'Администратор филиала', value: 'admin' },
         { label: 'Тренер', value: 'coach' },
         { label: 'Родитель', value: 'parent' },
+        { label: 'Ребёнок', value: 'child' },
       ],
       access: {
         // Защита от самоповышения: owner — любые роли; админ филиала — только
         // coach/parent в своём филиале (rolesField, M5).
         update: rolesField,
       },
+    },
+    {
+      name: 'login',
+      type: 'text',
+      label: 'Логин ребёнка',
+      unique: true,
+      index: true,
+      access: { create: ownerField, update: ownerField },
+      admin: { description: 'Только для детского входа; взрослые входят по email/VK.' },
     },
     // ── Связь с внешней личностью центра авторизации «Радар» (SSO через VK) ──
     // Заполняются ТОЛЬКО серверным путём VK-входа (findOrLinkRadarUser,
