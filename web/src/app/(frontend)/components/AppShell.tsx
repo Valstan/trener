@@ -23,7 +23,6 @@ export const COACH_TABS: Tab[] = [
   { key: 'schedule', href: '/coach/schedule', label: 'Расписание', icon: '📅' },
   { key: 'chat', href: '/chat', label: 'Чат', icon: '👥' },
   { key: 'questions', href: '/coach/questions', label: 'Вопросы', icon: '💬' },
-  { key: 'payments', href: '/coach/payments', label: 'Оплата', icon: '💳' },
   {
     key: 'more',
     href: '#more',
@@ -81,6 +80,12 @@ export const AppShell = ({
       )}
       {title && <span className="app-title">{title}</span>}
       <span className="spacer" />
+      {tabs === COACH_TABS && (
+        <nav className="mode-switch" aria-label="Режим работы">
+          <span aria-current="page">Приложение</span>
+          <Link href="/admin">Администрация</Link>
+        </nav>
+      )}
       <ThemeToggle />
       {tabs && (
         <Link

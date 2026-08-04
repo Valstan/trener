@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { adminBranchId, isCoach, isOwner, isPending } from '@/access/roles'
+import { adminBranchId, isOwner, isPending } from '@/access/roles'
 import { feeForGroup, formatFee } from '@/lib/fee'
 import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { relId } from '@/lib/relId'
@@ -16,7 +16,7 @@ import { PaymentForm } from './PaymentForm'
 
 // Раздел «Оплата» персонала (M8): таблица абонементов по детям (актуальная запись
 // = максимальный paidUntil) + форма записи оплаты. Запись — владелец и админ
-// филиала; тренер видит своих (read-only). Деньги через приложение не ходят.
+// филиала. Тренер оплату не видит. Деньги через приложение не ходят.
 export const dynamic = 'force-dynamic'
 
 const fmtDate = (iso: string | null | undefined): string => {
@@ -31,7 +31,7 @@ const CoachPaymentsPage = async () => {
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
   const canWrite = isOwner(user) || adminBranchId(user) != null
-  if (!(canWrite || isCoach(user))) redirect('/')
+  if (!canWrite) redirect('/')
 
   // Контекст филиала владельца (M5 PR-D) — сужает группы/детей.
   const { branches, ctx, ctxGroupIds } = await loadOwnerBranch(payload, user)
