@@ -9,7 +9,7 @@ import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { resolveMatchViews, splitMatchViews } from '@/lib/matches'
 import { relId } from '@/lib/relId'
 
-import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { AppShell, staffTabs } from '../../components/AppShell'
 import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { MatchCard } from '../../components/MatchCard'
 import { MatchComposer } from './MatchComposer'
@@ -74,7 +74,7 @@ const CoachMatchesPage = async () => {
   const { upcoming, played } = splitMatchViews(views)
 
   return (
-    <AppShell title="Матчи" tabs={COACH_TABS} active="matches">
+    <AppShell title="Матчи" tabs={staffTabs(user)} active="matches">
       {branches && <BranchSwitcher branches={branches} current={ctx} />}
       {groupOptions.length === 0 ? (
         <div className="empty-state">

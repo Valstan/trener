@@ -4,10 +4,14 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 
-import { isOwner, isPending } from '@/access/roles'
+import { adminBranchId, isOwner, isPending } from '@/access/roles'
 
-import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { AppShell, staffTabs } from '../../components/AppShell'
 
+// Список платёжных диалогов. Доводка 09.08: пускаем и АДМИНА ФИЛИАЛА — он ведёт
+// учёт оплат филиала, но был отрезан от переписки с родителями по этой же теме
+// (роль «бухгалтер филиала» работала наполовину). Scoped read сам ограничит
+// его нитями своего филиала.
 export const dynamic = 'force-dynamic'
 
 const Page = async () => {
@@ -15,9 +19,9 @@ const Page = async () => {
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
-  if (!isOwner(user)) redirect('/home')
+  if (!isOwner(user) && adminBranchId(user) == null) redirect('/home')
   const threads = await payload.find({ collection: 'payment-threads', sort: '-lastMessageAt', depth: 1, limit: 1000, user, overrideAccess: false })
-  return <AppShell title="Чаты по оплате" tabs={COACH_TABS} active="payments" back={{ href: '/coach/payments' }}><div className="stack-sm">{threads.docs.length ? threads.docs.map((thread) => <Link className="card row-between" href={`/coach/payment-chats/${thread.id}`} key={thread.id}><span><strong>{typeof thread.parent === 'object' ? thread.parent.name : 'Родитель'}</strong><span className="muted small" style={{ display: 'block' }}>{thread.branch && typeof thread.branch === 'object' ? thread.branch.name : 'Филиал'}</span></span><span aria-hidden>›</span></Link>) : <p className="muted">Сообщений по оплате пока нет.</p>}</div></AppShell>
+  return <AppShell title="Чаты по оплате" tabs={staffTabs(user)} active="payments" back={{ href: '/coach/payments' }}><div className="stack-sm">{threads.docs.length ? threads.docs.map((thread) => <Link className="card row-between" href={`/coach/payment-chats/${thread.id}`} key={thread.id}><span><strong>{typeof thread.parent === 'object' ? thread.parent.name : 'Родитель'}</strong><span className="muted small" style={{ display: 'block' }}>{thread.branch && typeof thread.branch === 'object' ? thread.branch.name : 'Филиал'}</span></span><span aria-hidden>›</span></Link>) : <p className="muted">Сообщений по оплате пока нет.</p>}</div></AppShell>
 }
 
 export default Page

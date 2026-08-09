@@ -9,7 +9,7 @@ import React from 'react'
 import { adminBranchId, hasRole, isOwner, isPending } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
-import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { AppShell, staffTabs } from '../../components/AppShell'
 import { ImportForm } from './ImportForm'
 
 // Массовый импорт детей (п.6 аудита): «вставил список из Excel → предпросмотр →
@@ -65,7 +65,7 @@ const ImportPage = async () => {
   })
 
   return (
-    <AppShell title="Импорт детей" tabs={COACH_TABS} active="import" back={{ href: '/home' }}>
+    <AppShell title="Импорт детей" tabs={staffTabs(user)} active="import" back={{ href: '/home' }}>
       <p className="muted" style={{ margin: '0 0 1rem' }}>
         Вставьте список из Excel: имя ребёнка, группа и — по желанию — email родителя.
         Сохраняются только имя и группа, всё лишнее отбрасывается.

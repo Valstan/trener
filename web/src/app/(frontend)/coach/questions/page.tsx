@@ -9,7 +9,7 @@ import { hasRole } from '@/access/roles'
 import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { relId } from '@/lib/relId'
 
-import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { AppShell, staffTabs } from '../../components/AppShell'
 import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { CoachQuestions, type QuestionItem } from './CoachQuestions'
 
@@ -93,7 +93,7 @@ const CoachQuestionsPage = async () => {
   })
 
   return (
-    <AppShell title="Вопросы родителей" tabs={COACH_TABS} active="questions">
+    <AppShell title="Вопросы родителей" tabs={staffTabs(user)} active="questions">
       {branches && <BranchSwitcher branches={branches} current={ctx} />}
       <CoachQuestions items={items} />
     </AppShell>

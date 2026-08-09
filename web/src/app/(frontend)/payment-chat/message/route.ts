@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { isOwner, isParent } from '@/access/roles'
+import { adminBranchId, isOwner, isParent } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 export const POST = async (req: Request): Promise<Response> => {
@@ -32,9 +32,15 @@ export const POST = async (req: Request): Promise<Response> => {
     threadId = thread.id
   }
 
-  if (!thread || !(isParent(user) || isOwner(user))) return NextResponse.json({ ok: false }, { status: 403 })
+  // Бухгалтерия = владелец ИЛИ админ филиала (нить его филиала — гейт держит
+  // scoped read выше: findByID под ролью не отдаст чужую нить).
+  const isStaff = isOwner(user) || adminBranchId(user) != null
+  if (!thread || !(isParent(user) || isStaff)) return NextResponse.json({ ok: false }, { status: 403 })
   const now = new Date().toISOString()
-  await payload.create({ collection: 'payment-messages', data: { thread: threadId, author: user.id, authorName: user.name || user.email, authorRole: isOwner(user) ? 'staff' : 'parent', body }, overrideAccess: true })
+  // authorName: имя, а не email — email сотрудника попадал в НЕИЗМЕНЯЕМОЕ
+  // сообщение, видимое родителю, у любого сотрудника без имени.
+  const authorName = user.name?.trim() || (isStaff ? 'Бухгалтерия школы' : 'Родитель')
+  await payload.create({ collection: 'payment-messages', data: { thread: threadId, author: user.id, authorName, authorRole: isStaff ? 'staff' : 'parent', body }, overrideAccess: true })
   await payload.update({ collection: 'payment-threads', id: threadId, data: { lastMessageAt: now }, overrideAccess: true })
   return NextResponse.json({ ok: true, threadId })
 }

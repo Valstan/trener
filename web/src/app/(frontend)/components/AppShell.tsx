@@ -63,6 +63,40 @@ export const CHILD_TABS: Tab[] = [
   { key: 'account', href: '/account', label: 'Аккаунт', icon: '👤' },
 ]
 
+// Наборы табов персонала помечаем в WeakSet, а не сравниваем со ссылкой на
+// COACH_TABS: переключатель «Приложение / Администрация» раньше держался на
+// `tabs === COACH_TABS`, и любой экран со СВОИМ массивом молча его терял.
+const staffTabSets = new WeakSet<Tab[]>()
+staffTabSets.add(COACH_TABS)
+
+const isStaffTabs = (tabs?: Tab[]): boolean => Boolean(tabs && staffTabSets.has(tabs))
+
+// Табы персонала с учётом роли: владельцу и админу филиала — «Оплата» и «Заявки»
+// в «Ещё» (ключ 'payments' экраны передавали всегда, но самого таба не было —
+// раздел учёта достигался только карточкой на /home, куда владелец не заходит,
+// т.к. его домашний экран — /admin). Тренеру их не показываем: экраны его всё
+// равно редиректят, а мёртвый пункт в навигации хуже отсутствующего.
+export const staffTabs = (user: { roles?: string[] | null } | null | undefined): Tab[] => {
+  const roles = Array.isArray(user?.roles) ? user!.roles! : []
+  const manager = roles.includes('owner') || roles.includes('admin')
+  if (!manager) return COACH_TABS
+  const more = COACH_TABS.find((t) => t.key === 'more')
+  const tabs: Tab[] = COACH_TABS.map((t) =>
+    t.key === 'more'
+      ? {
+          ...t,
+          items: [
+            { key: 'payments', href: '/coach/payments', label: 'Оплата', icon: '💳' },
+            { key: 'requests', href: '/coach/requests', label: 'Заявки', icon: '📨' },
+            ...(more?.items ?? []),
+          ],
+        }
+      : t,
+  )
+  staffTabSets.add(tabs)
+  return tabs
+}
+
 export const AppShell = ({
   title,
   back,
@@ -90,7 +124,7 @@ export const AppShell = ({
       )}
       {title && <span className="app-title">{title}</span>}
       <span className="spacer" />
-      {tabs === COACH_TABS && (
+      {isStaffTabs(tabs) && (
         <nav className="mode-switch" aria-label="Режим работы">
           <span aria-current="page">Приложение</span>
           <Link href="/admin">Администрация</Link>

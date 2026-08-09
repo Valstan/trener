@@ -7,7 +7,7 @@ import React from 'react'
 import { isOwner } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
-import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { AppShell, staffTabs } from '../../components/AppShell'
 import { AdultRequestRow } from './AdultRequestRow'
 import { ChildRequestCard } from './ChildRequestCard'
 
@@ -56,7 +56,7 @@ const RequestsPage = async () => {
   const branchOptions = branches.docs.map((b) => ({ id: b.id, name: b.name }))
 
   return (
-    <AppShell title="Заявки" tabs={COACH_TABS} active="requests" back={{ href: '/home' }}>
+    <AppShell title="Заявки" tabs={staffTabs(user)} active="requests" back={{ href: '/home' }}>
       <h2 className="section-title">Взрослые</h2>
       {adults.docs.length === 0 ? (
         <p className="muted">Заявок от родителей и тренеров нет.</p>

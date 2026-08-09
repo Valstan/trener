@@ -1,12 +1,24 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
-import { isOwner, isParent } from '../access/roles'
+import { adminBranchId, isOwner, isParent } from '../access/roles'
 import { cleanupPaymentThread } from '../hooks/cleanupPaymentThread'
 
+// Доводка 09.08: админ филиала — ведёт учёт оплат филиала, но был отрезан от
+// платёжных диалогов (только owner). Роль «бухгалтер филиала» существовала
+// наполовину: записывать абонементы можно, а ответить родителю на вопрос об
+// оплате — нет. Теперь он видит нити СВОЕГО филиала.
 export const readPaymentThreads: Access = ({ req: { user } }) => {
   if (!user) return false
   if (isOwner(user)) return true
-  if (isParent(user)) return { parent: { equals: user.id } }
+  const branch = adminBranchId(user)
+  if (branch != null) {
+    const where: Where = { branch: { equals: branch } }
+    return where
+  }
+  if (isParent(user)) {
+    const where: Where = { parent: { equals: user.id } }
+    return where
+  }
   return false
 }
 
@@ -14,12 +26,18 @@ export const readPaymentMessages: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
   if (isOwner(user)) return true
-  if (!isParent(user)) return false
+  const branch = adminBranchId(user)
+  const scope: Where | null = branch != null
+    ? { branch: { equals: branch } }
+    : isParent(user)
+      ? { parent: { equals: user.id } }
+      : null
+  if (!scope) return false
   const threads = await req.payload.find({
     collection: 'payment-threads',
-    where: { parent: { equals: user.id } },
+    where: scope,
     depth: 0,
-    limit: 100,
+    limit: 1000,
     pagination: false,
     overrideAccess: true,
   })

@@ -10,7 +10,7 @@ import { adminBranchId, isOwner, isPending } from '@/access/roles'
 import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { relId } from '@/lib/relId'
 
-import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { AppShell, staffTabs } from '../../components/AppShell'
 import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { StaffInviteForm } from './StaffInviteForm'
 
@@ -74,7 +74,7 @@ const StaffPage = async () => {
   const branchNameById = new Map((branches ?? []).map((b) => [b.id, b.name]))
 
   return (
-    <AppShell title="Сотрудники" tabs={COACH_TABS} back={{ href: '/home' }}>
+    <AppShell title="Сотрудники" tabs={staffTabs(user)} back={{ href: '/home' }}>
       {branches && <BranchSwitcher branches={branches} current={ctx} />}
       {owner && <Link className="btn btn-primary btn-block" href="/coach/child-requests">Заявки самостоятельной регистрации детей →</Link>}
 

@@ -9,7 +9,7 @@ import { adminBranchId, hasRole, isOwner } from '@/access/roles'
 import { activeDocument, renderLegalBody, requisitesComplete } from '@/lib/legal'
 import { operatorFromBranch } from '@/lib/operator'
 
-import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { AppShell, staffTabs } from '../../components/AppShell'
 import { SignAgreementButton } from './SignAgreementButton'
 
 // Юридическое подключение филиала (D-016): договор поручения обработки ПДн живёт
@@ -47,7 +47,7 @@ const LegalPage = async ({ searchParams }: { searchParams: Promise<{ branch?: st
   const doc = await activeDocument(payload, 'processing_agreement')
 
   return (
-    <AppShell title="Юридическое подключение" tabs={COACH_TABS} back={{ href: '/home' }}>
+    <AppShell title="Юридическое подключение" tabs={staffTabs(user)} back={{ href: '/home' }}>
       {!selected ? (
         <div className="stack-sm">
           <p className="muted" style={{ marginTop: 0 }}>
