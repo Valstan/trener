@@ -18,7 +18,3 @@
 //
 // null → скрипт и информер не рендерятся вовсе (текущее состояние: номер ждём).
 export const METRIKA_COUNTER_ID: number | null = null
-
-// Кириллический и punycode-домены — для фильтра адресов счётчика (G136) и для
-// проверки, что оба написания учтены.
-export const SITE_DOMAINS = ['интер.вмалмыже.рф', 'xn--e1afpni.xn--80adkdyec4j.xn--p1ai'] as const
