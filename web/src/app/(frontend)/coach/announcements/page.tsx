@@ -9,7 +9,7 @@ import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 
-import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { AppShell, staffTabs } from '../../components/AppShell'
 import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { AnnouncementComposer } from './AnnouncementComposer'
 
@@ -68,7 +68,7 @@ const CoachAnnouncementsPage = async () => {
   const groupNameById = new Map(groupOptions.map((g) => [g.id, g.name]))
 
   return (
-    <AppShell title="Объявления" tabs={COACH_TABS} active="announcements">
+    <AppShell title="Объявления" tabs={staffTabs(user)} active="announcements">
       {ctxBranches && <BranchSwitcher branches={ctxBranches} current={ctx} />}
       {groupOptions.length === 0 && !branchOptions ? (
         <div className="empty-state">

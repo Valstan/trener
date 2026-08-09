@@ -12,7 +12,7 @@ import { loadCoverage, type CoverageSummary } from '@/lib/coverage'
 import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 
-import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { AppShell, staffTabs } from '../../components/AppShell'
 import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { SessionComposer } from './SessionComposer'
 import { SessionEditor } from './SessionEditor'
@@ -84,7 +84,7 @@ const CoachSchedulePage = async ({ searchParams }: { searchParams: Promise<{ pas
   )
 
   return (
-    <AppShell title="Расписание" tabs={COACH_TABS} active="schedule">
+    <AppShell title="Расписание" tabs={staffTabs(user)} active="schedule">
       {branches && <BranchSwitcher branches={branches} current={ctx} />}
       {groupOptions.length === 0 ? (
         <div className="empty-state">

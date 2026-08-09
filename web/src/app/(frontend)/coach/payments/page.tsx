@@ -8,10 +8,11 @@ import Link from 'next/link'
 import { adminBranchId, isOwner, isPending } from '@/access/roles'
 import { feeForGroup, formatFee } from '@/lib/fee'
 import { loadOwnerBranch } from '@/lib/ownerBranch'
+import { collectedInMonth, debtSummary, monthOf } from '@/lib/paymentTotals'
 import { relId } from '@/lib/relId'
 import { STATUS_VIEW, subscriptionStatus } from '@/lib/subscriptionStatus'
 
-import { AppShell, COACH_TABS } from '../../components/AppShell'
+import { AppShell, staffTabs } from '../../components/AppShell'
 import { BranchSwitcher } from '../../components/BranchSwitcher'
 import { PaymentForm } from './PaymentForm'
 
@@ -26,7 +27,7 @@ const fmtDate = (iso: string | null | undefined): string => {
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-const CoachPaymentsPage = async () => {
+const CoachPaymentsPage = async ({ searchParams }: { searchParams: Promise<{ month?: string; filter?: string }> }) => {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
@@ -108,16 +109,50 @@ const CoachPaymentsPage = async () => {
   }
 
   const now = new Date()
-  const rows = players.docs.map((p) => {
+  const allRows = players.docs.map((p) => {
     const sub = latestByPlayer.get(p.id)
     const status = subscriptionStatus(sub?.paidUntil, now)
     return { player: p, sub, status, fee: feeForPlayerGroup(relId(p.group)) }
   })
 
+  // Сводка: собрано за выбранный месяц (по дате записи — деньги через приложение
+  // не ходят, отметку ставят в день оплаты) и задолженность по текущим статусам.
+  const { month: monthParam, filter } = await searchParams
+  const month = /^\d{4}-\d{2}$/.test(monthParam ?? '') ? monthParam! : (monthOf(now.toISOString()) ?? '')
+  const collected = collectedInMonth(subs.docs, month)
+  const debt = debtSummary(allRows)
+  const monthLabel = new Date(`${month}-01T00:00:00`).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })
+  const shiftMonth = (delta: number): string => {
+    const [y, m] = month.split('-').map(Number)
+    const d = new Date(y, (m ?? 1) - 1 + delta, 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+  const onlyDebt = filter === 'debt'
+  const rows = onlyDebt ? allRows.filter((r) => r.status === 'expired' || r.status === 'none') : allRows
+
   return (
-    <AppShell title="Оплата" tabs={COACH_TABS} active="payments">
-      {isOwner(user) && <Link className="btn btn-primary btn-block" href="/coach/payment-chats">Чаты родителей по оплате →</Link>}
+    <AppShell title="Оплата" tabs={staffTabs(user)} active="payments">
+      <Link className="btn btn-primary btn-block" href="/coach/payment-chats">Чаты родителей по оплате →</Link>
       {branches && <BranchSwitcher branches={branches} current={ctx} />}
+
+      <div className="card stack-sm">
+        <div className="row-between" style={{ alignItems: 'baseline' }}>
+          <Link className="small" href={`/coach/payments?month=${shiftMonth(-1)}${onlyDebt ? '&filter=debt' : ''}`}>‹ пред.</Link>
+          <strong>{monthLabel}</strong>
+          <Link className="small" href={`/coach/payments?month=${shiftMonth(1)}${onlyDebt ? '&filter=debt' : ''}`}>след. ›</Link>
+        </div>
+        <div className="big-stat">Собрано: {formatFee(collected.total)}</div>
+        <span className="muted small">{collected.count} записей об оплате за месяц</span>
+        <div className="row-between" style={{ alignItems: 'baseline' }}>
+          <span>
+            Задолженность: <strong>{formatFee(debt.total)}</strong>{' '}
+            <span className="muted small">({debt.count} детей)</span>
+          </span>
+          <Link className="small" href={onlyDebt ? '/coach/payments' : '/coach/payments?filter=debt'}>
+            {onlyDebt ? 'показать всех' : 'только должники →'}
+          </Link>
+        </div>
+      </div>
       {canWrite &&
         (players.docs.length ? (
           <PaymentForm
@@ -131,24 +166,25 @@ const CoachPaymentsPage = async () => {
           <p className="muted">В этом филиале ещё нет детей — записывать оплату некому.</p>
         ))}
 
-      <h2 className="section-title">Абонементы</h2>
+      <h2 className="section-title">{onlyDebt ? 'Должники' : 'Абонементы'}</h2>
       {rows.length === 0 ? (
-        <p className="muted">Детей пока нет.</p>
+        <p className="muted">{onlyDebt ? 'Должников нет — все оплатили.' : 'Детей пока нет.'}</p>
       ) : (
         <div className="stack-sm">
           {rows.map(({ player, sub, status, fee }) => (
-            <article key={player.id} className="card stack-sm">
+            <Link key={player.id} href={`/coach/payments/player/${player.id}`} className="card stack-sm">
               <div className="row-between" style={{ alignItems: 'baseline' }}>
                 <strong>{player.name}</strong>
                 <span className={STATUS_VIEW[status].cls}>{STATUS_VIEW[status].label}</span>
               </div>
               <div className="muted small">
-                {groupNameById.get(relId(player.group) ?? -1) ?? 'Группа'}
+                {groupNameById.get(relId(player.group) ?? -1) ?? 'Без группы'}
                 {status === 'none' ? ' · оплата не отмечена' : ` · оплачено по ${fmtDate(sub?.paidUntil)}`}
                 {fee != null ? ` · абонемент ${formatFee(fee)}` : ''}
               </div>
               {sub?.note && <div className="muted small">{sub.note}</div>}
-            </article>
+              <span className="small">История платежей →</span>
+            </Link>
           ))}
         </div>
       )}

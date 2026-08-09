@@ -7,6 +7,7 @@ import Link from 'next/link'
 
 import { isParent, isPending } from '@/access/roles'
 import { feeForGroup, formatFee } from '@/lib/fee'
+import { sumAmounts } from '@/lib/paymentTotals'
 import { relId } from '@/lib/relId'
 import { STATUS_VIEW, subscriptionStatus } from '@/lib/subscriptionStatus'
 
@@ -102,7 +103,11 @@ const ParentPaymentsPage = async () => {
 
   return (
     <AppShell title="Оплата" tabs={PARENT_TABS} active="payments">
-      <Link className="btn btn-primary btn-block" href="/parent/payment-chat">Написать в бухгалтерию →</Link>
+      {/* Кнопка — только при наличии детей: без них маршрут всё равно отвечает 403
+          («не в какой филиал писать»), а кнопка обещала обратное. */}
+      {players.docs.length > 0 && (
+        <Link className="btn btn-primary btn-block" href="/parent/payment-chat">Написать в бухгалтерию →</Link>
+      )}
       {players.docs.length === 0 ? (
         <div className="empty-state">
           <span className="ic" aria-hidden>
@@ -143,6 +148,33 @@ const ParentPaymentsPage = async () => {
             )
           })}
         </div>
+      )}
+
+      {subs.docs.length > 0 && (
+        <>
+          <h2 className="section-title">История платежей</h2>
+          <div className="stack-sm">
+            {subs.docs.map((s) => {
+              const name = players.docs.find((p) => p.id === relId(s.player))?.name ?? 'ребёнок'
+              return (
+                <article key={s.id} className="card stack-sm">
+                  <div className="row-between" style={{ alignItems: 'baseline' }}>
+                    <strong>{name}</strong>
+                    <span>{s.amount != null ? formatFee(s.amount) : '—'}</span>
+                  </div>
+                  <span className="muted small">
+                    Оплачено {s.paidFrom ? `с ${fmtDate(s.paidFrom)} ` : ''}по {fmtDate(s.paidUntil)}
+                    {s.note ? ` · ${s.note}` : ''}
+                  </span>
+                </article>
+              )
+            })}
+          </div>
+          <p className="muted small" style={{ marginTop: '0.5rem' }}>
+            Всего отмечено: <strong>{formatFee(sumAmounts(subs.docs))}</strong>. Если чего-то не хватает —
+            напишите в бухгалтерию, отметки ставит школа вручную.
+          </p>
+        </>
       )}
 
       <h2 className="section-title">Как оплатить</h2>

@@ -25,7 +25,7 @@ export const PaymentForm = ({
   const [note, setNote] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [done, setDone] = useState(false)
+  const [done, setDone] = useState('')
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,8 +47,9 @@ export const PaymentForm = ({
           note: note || undefined,
         }),
       })
-      const data = (await res.json()) as { ok?: boolean }
+      const data = (await res.json()) as { ok?: boolean; error?: string }
       if (res.ok && data.ok) {
+        const name = players.find((p) => p.id === playerId)?.name ?? 'ребёнок'
         setPaidFrom('')
         setPaidUntil('')
         setAmount(() => {
@@ -56,11 +57,13 @@ export const PaymentForm = ({
           return fee != null ? String(fee) : ''
         })
         setNote('')
-        setDone(true)
+        // Подтверждение НЕ исчезает по таймеру: «мигнуло и пропало» не отвечает
+        // на вопрос «я точно записал Иванова или отвлёкся?».
+        setDone(`${name} — оплачено по ${new Date(paidUntil).toLocaleDateString('ru-RU')}`)
         router.refresh()
-        setTimeout(() => setDone(false), 2500)
       } else {
-        setError('Не удалось сохранить. Попробуйте ещё раз.')
+        // Серверные причины («Оплачено с» позже, сумма) показываем как есть.
+        setError(data.error ?? 'Не удалось сохранить. Попробуйте ещё раз.')
       }
     } catch {
       setError('Не удалось сохранить. Попробуйте ещё раз.')
@@ -126,7 +129,7 @@ export const PaymentForm = ({
       <button type="submit" className="btn btn-primary" style={{ justifySelf: 'start' }} disabled={busy}>
         {busy ? 'Сохраняем…' : 'Записать оплату'}
       </button>
-      {done && <span className="success-text">✓ Записано</span>}
+      {done && <span className="success-text">✓ Записано: {done}</span>}
       {error && <p className="error-text" style={{ margin: 0 }}>{error}</p>}
     </form>
   )
