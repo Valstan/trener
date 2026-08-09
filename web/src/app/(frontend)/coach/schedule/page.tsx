@@ -6,7 +6,7 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import type { Group } from '@/payload-types'
-import { isOwner, isCoach } from '@/access/roles'
+import { hasRole } from '@/access/roles'
 import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { loadCoverage, type CoverageSummary } from '@/lib/coverage'
 import { formatDateTime } from '@/lib/notifications/describe'
@@ -32,7 +32,7 @@ const CoachSchedulePage = async ({ searchParams }: { searchParams: Promise<{ pas
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
-  if (!(isCoach(user) || isOwner(user))) redirect('/')
+  if (!hasRole(user, 'owner', 'admin', 'coach')) redirect('/') // admin филиала — полноправный staff (M5)
 
   // Контекст филиала владельца (M5 PR-D): фильтр групп/сессий + селектор в шапке.
   const { branches, ctx, ctxGroupIds } = await loadOwnerBranch(payload, user)

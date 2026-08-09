@@ -29,6 +29,23 @@ const PendingPage = async () => {
   if (!isPending(freshUser) && !hasRole(freshUser, 'applicant')) redirect('/auth/refresh-session')
   if (!freshUser.requestedRole) redirect('/onboarding/role')
 
+  // Отклонённая детская заявка: сказать прямо и дать дорогу назад (иначе вечный
+  // «передаётся родителю» — заявка отклонена, а ребёнок об этом не узнаёт).
+  const childRegistration =
+    freshUser.requestedRole === 'child'
+      ? (
+          await payload.find({
+            collection: 'child-registrations',
+            where: { account: { equals: freshUser.id } },
+            limit: 1,
+            depth: 0,
+            pagination: false,
+            overrideAccess: true,
+          })
+        ).docs[0]
+      : undefined
+  const childRejected = childRegistration?.status === 'rejected'
+
   // Превью разделов — по ЗАПРОШЕННОЙ роли (будущему тренеру раньше показывали
   // родительские «Оплата» и «Вопрос тренеру» под замком — сбивало с толку).
   const previewSections =
@@ -45,11 +62,20 @@ const PendingPage = async () => {
       <div aria-hidden style={{ fontSize: '3rem', padding: '2.5rem 0 1rem' }}>
         ⏳
       </div>
-      <h1 style={{ fontSize: '1.6rem', margin: '0 0 0.5rem' }}>Заявка на рассмотрении</h1>
+      <h1 style={{ fontSize: '1.6rem', margin: '0 0 0.5rem' }}>
+        {childRejected ? 'Заявка отклонена' : 'Заявка на рассмотрении'}
+      </h1>
       <p style={{ color: 'var(--muted)', margin: '0 0 1.5rem' }}>
-        {freshUser.requestedRole === 'child'
-          ? 'Заявка передаётся указанному родителю. После его подтверждения тренер назначит вам группу.'
-          : 'Доступ к разделам откроется после того, как администрация школы подтвердит вашу регистрацию и назначит филиал.'}
+        {childRejected ? (
+          <>
+            Владелец школы отклонил заявку — чаще всего из-за неточных данных.{' '}
+            <Link href="/onboarding/child">Проверьте и отправьте снова →</Link>
+          </>
+        ) : freshUser.requestedRole === 'child' ? (
+          'Заявка передаётся указанному родителю. После его подтверждения тренер назначит вам группу.'
+        ) : (
+          'Доступ к разделам откроется после того, как администрация школы подтвердит вашу регистрацию и назначит филиал.'
+        )}
       </p>
       <div className="card card-muted" style={{ textAlign: 'left' }}>
         <strong style={{ display: 'block', marginBottom: '0.35rem' }}>Что дальше?</strong>

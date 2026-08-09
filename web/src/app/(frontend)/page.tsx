@@ -85,6 +85,15 @@ const HomePage = async () => {
       <Link href="/login" className="btn btn-primary btn-block" style={{ maxWidth: 320, margin: '0 auto' }}>
         Войти →
       </Link>
+      {/* Явный CTA регистрации: раньше «создать аккаунт» был ghost-кнопкой внутри
+          формы входа — новый родитель/тренер не понимал, что сюда можно записаться. */}
+      <Link
+        href="/login?mode=register"
+        className="btn btn-block"
+        style={{ maxWidth: 320, margin: '0.6rem auto 0' }}
+      >
+        Зарегистрироваться
+      </Link>
       <p className="note" style={{ marginTop: '0.85rem' }}>
         Без пароля — пришлём ссылку для входа на email.
       </p>
@@ -146,9 +155,9 @@ const HomePage = async () => {
       <span style={{ color: 'var(--faint)' }}>Работает на платформе «Тренер»</span>
       <AuthorCredit />
       <Link href="/privacy">Политика обработки персональных данных</Link>
-      <Link href="/admin" style={{ color: 'var(--faint)' }}>
-        Панель управления школой →
-      </Link>
+      {/* Ссылки на /admin здесь больше нет: гостю она открывала форму логина CMS
+          с email+паролем, которых у родителя не существует. Владелец попадает в
+          панель через свой /home. */}
     </footer>
   </main>
   )
