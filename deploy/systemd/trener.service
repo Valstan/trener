@@ -25,9 +25,22 @@ EnvironmentFile=-/etc/trener/secrets-token.env
 # Боксе 1 (заняты: gonba 3000, karman 3002, vmalmyzhe 3004, dkmalmyzh 3005, kalinino 3006).
 Environment=PORT=3007
 Environment=HOSTNAME=127.0.0.1
+# G234 (профилактика, замер 09.08). Гонка keep-alive у нас НЕ воспроизводится:
+# в nginx нет ни одного upstream-блока с `keepalive N` — прокси не держит пул
+# соединений к бэкенду. Значение всё равно задаём явно и с запасом (65 c > 60 c
+# nginx-idle): если пул однажды появится, дефолтные 5 c Node дадут ровно ту самую
+# «случайную 502 при пустых логах». standalone server.js читает эту env сам.
+Environment=KEEP_ALIVE_TIMEOUT=65000
+# Окно дренажа при остановке (lib/gracefulShutdown): в standalone-сборке Next
+# обработчика SIGTERM НЕТ (проверено grep'ом по server.js), поэтому рестарт рвал
+# запросы в полёте. Приложение само откладывает выход на это время.
+Environment=SHUTDOWN_DRAIN_MS=5000
 ExecStart=/usr/bin/node server.js
 Restart=on-failure
 RestartSec=3
+# Запас над окном дренажа: systemd не должен добивать процесс раньше, чем тот
+# успеет доответить (по умолчанию 90 c, фиксируем явно).
+TimeoutStopSec=20
 # Noisy-neighbor гард (server-consolidation §6 шаг4): RAM на боксе тесная (~2 ГБ).
 # OOM локализуется в cgroup проекта, а не валит соседей/Postgres.
 MemoryHigh=450M
