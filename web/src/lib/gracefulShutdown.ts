@@ -15,7 +15,7 @@
 // Почему не полноценный graceful close сокетов: до объекта сервера из instrumentation
 // не дотянуться, а костыль с перебором хендлов хрупче задержки. Пауза решает ту же
 // задачу — не рвать то, что уже в работе.
-export const DRAIN_MS = Number(process.env.SHUTDOWN_DRAIN_MS ?? 5000)
+const DRAIN_MS = Number(process.env.SHUTDOWN_DRAIN_MS ?? 5000)
 
 let armed = false
 
