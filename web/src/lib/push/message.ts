@@ -99,6 +99,16 @@ export const buildRegistrationDecidedMessage = (kind: 'accepted' | 'rejected'): 
   urgency: 'normal',
 })
 
+// Отзыв согласия родителем (D-016) — владельцам: школа обязана отреагировать
+// (прекратить обработку / связаться с родителем). Без ПДн (R4).
+export const buildConsentWithdrawnMessage = (): PushMessage => ({
+  title: 'Отозвано согласие на обработку данных',
+  body: 'Родитель отозвал согласие — откройте приложение.',
+  url: '/admin',
+  tag: 'trener-registration',
+  urgency: 'high',
+})
+
 // Сообщение в теме общей комнаты (M9). Адресат — остальные участники группы.
 // 152-ФЗ R4: ни текста сообщения, ни имени автора, ни названия темы в payload —
 // он проходит через Apple/Google, а в реплике родителя запросто окажется имя

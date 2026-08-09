@@ -63,6 +63,15 @@ const REQUESTS_SECTION: Section = {
   text: 'Саморегистрации взрослых и детей — подтвердить или отклонить',
 }
 
+// Юридическое подключение филиала (D-016): реквизиты + договор поручения на сайте.
+const LEGAL_SECTION: Section = {
+  key: 'legal',
+  href: '/coach/legal',
+  icon: '📜',
+  title: 'Юридическое подключение',
+  text: 'Договор поручения ПДн: прочитать и подписать за филиал',
+}
+
 // «Импорт детей» — всем, кто создаёт players (owner/admin/coach): тренер, перевёзший
 // свою группу сам, — валидный сценарий. Сервер скоупит группы по роли.
 const IMPORT_SECTION: Section = {
@@ -81,7 +90,7 @@ export const sectionsForRoles = (user: { roles?: string[] | null } | null | unde
   if (!staff) return PARENT_SECTIONS
   const manager = roles.includes('owner') || roles.includes('admin')
   return manager
-    ? [...STAFF_SECTIONS, REQUESTS_SECTION, PAYMENTS_SECTION, MANAGER_SECTION, PLAYERS_SECTION, IMPORT_SECTION]
+    ? [...STAFF_SECTIONS, REQUESTS_SECTION, PAYMENTS_SECTION, MANAGER_SECTION, PLAYERS_SECTION, IMPORT_SECTION, LEGAL_SECTION]
     : [...STAFF_SECTIONS, PLAYERS_SECTION, IMPORT_SECTION]
 }
 

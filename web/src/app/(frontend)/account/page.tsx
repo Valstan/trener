@@ -15,6 +15,7 @@ import { ServicesCatalogLink } from '../components/ServicesCatalogLink'
 import { AccountForm } from './AccountForm'
 import { ChildAccounts } from './ChildAccounts'
 import { ChildApprovalRequests } from './ChildApprovalRequests'
+import { ConsentWithdraw } from './ConsentWithdraw'
 import { LogoutButton } from './LogoutButton'
 
 // Экран «Аккаунт» любого вошедшего: логин (email) + установка постоянного пароля.
@@ -43,6 +44,10 @@ const AccountPage = async () => {
   const children = isParent(user)
     ? (await payload.find({ collection: 'players', depth: 1, limit: 100, pagination: false, user, overrideAccess: false })).docs
     : []
+  // Активное согласие — для секции отзыва (D-016 §5).
+  const hasConsent = isParent(user)
+    ? (await payload.count({ collection: 'consents', where: { parent: { equals: user.id } }, overrideAccess: true })).totalDocs > 0
+    : false
   const childRequests = isParent(user) ? (await payload.find({ collection: 'child-registrations', where: { status: { equals: 'parent_review' } }, sort: 'createdAt', limit: 100, pagination: false, depth: 0, user, overrideAccess: false })).docs : []
 
   return (
@@ -75,6 +80,13 @@ const AccountPage = async () => {
 
       <h2 className="section-title">Уведомления</h2>
       <PushSubscribe />
+
+      {hasConsent && (
+        <>
+          <h2 className="section-title">Согласие на обработку данных</h2>
+          <ConsentWithdraw />
+        </>
+      )}
 
       <h2 className="section-title">Выход</h2>
       <p className="muted small" style={{ marginTop: 0 }}>

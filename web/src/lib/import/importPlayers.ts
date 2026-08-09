@@ -2,6 +2,7 @@ import type { Payload, Where } from 'payload'
 
 import { adminBranchId, isCoach, isOwner } from '@/access/roles'
 import { createInviteToken } from '@/lib/auth/invite'
+import { branchCanAcceptConsents } from '@/lib/legal'
 import { sendPlayerJoinEmail } from '@/lib/email/magicLinkEmail'
 import { relId } from '@/lib/relId'
 
@@ -171,7 +172,7 @@ export type ImportApplyRow = {
 }
 
 type ImportApplyResult =
-  | { ok: false; errorCode: 'branch-required' | 'forbidden' }
+  | { ok: false; errorCode: 'branch-required' | 'forbidden' | 'branch-not-ready' }
   | {
       ok: true
       rows: ImportApplyRow[]
@@ -189,6 +190,40 @@ export const applyImport = async (
 ): Promise<ImportApplyResult> => {
   const scope = await resolveScope(payload, user, input.branchId)
   if (!scope.ok) return scope
+
+  // Жёсткий гейт D-016: импорт рассылает родителям приглашения, а филиал без полных
+  // реквизитов и подписанного договора поручения родителей принимать не вправе.
+  // Fail-closed по всем затронутым филиалам скоупа.
+  if (scope.groups.length) {
+    const fullGroups = await payload.find({
+      collection: 'groups',
+      where: { id: { in: scope.groups.map((g) => g.id) } },
+      depth: 0,
+      limit: 500,
+      pagination: false,
+      overrideAccess: true,
+    })
+    const branchIds = [
+      ...new Set(
+        fullGroups.docs
+          .map((g) => (typeof g.branch === 'object' && g.branch !== null ? g.branch.id : g.branch))
+          .filter((v): v is number => typeof v === 'number'),
+      ),
+    ]
+    if (branchIds.length) {
+      const branches = await payload.find({
+        collection: 'branches',
+        where: { id: { in: branchIds } },
+        depth: 0,
+        limit: 200,
+        pagination: false,
+        overrideAccess: true,
+      })
+      if (branches.docs.some((b) => !branchCanAcceptConsents(b))) {
+        return { ok: false, errorCode: 'branch-not-ready' }
+      }
+    }
+  }
 
   const groupById = new Map(scope.groups.map((g) => [g.id, g]))
   const existing = await loadExisting(payload, scope.groups.map((g) => g.id))

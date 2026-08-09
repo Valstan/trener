@@ -28,6 +28,8 @@ import { ChatReads } from './collections/ChatReads'
 import { PaymentMessages, PaymentThreads } from './collections/PaymentThreads'
 import { MatchComments } from './collections/MatchComments'
 import { ChildRegistrations } from './collections/ChildRegistrations'
+import { LegalDocuments } from './collections/LegalDocuments'
+import { LegalSignatures } from './collections/LegalSignatures'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -80,6 +82,8 @@ export default buildConfig({
     ChatReads,
     PaymentThreads,
     PaymentMessages,
+    LegalDocuments,
+    LegalSignatures,
   ],
   // Email — magic-link онбординг (PR2) + уведомления. Провайдеро-независимо через
   // внешний SMTP-relay (env). Пока SMTP_HOST не задан, адаптер не подключаем →
