@@ -2,6 +2,7 @@ import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminBranchId, isOwner, isParent } from '../access/roles'
 import { cleanupPaymentThread } from '../hooks/cleanupPaymentThread'
+import { fanOutPaymentMessage } from '../hooks/fanOutPaymentMessage'
 
 // Доводка 09.08: админ филиала — ведёт учёт оплат филиала, но был отрезан от
 // платёжных диалогов (только owner). Роль «бухгалтер филиала» существовала
@@ -70,6 +71,8 @@ export const PaymentMessages: CollectionConfig = {
   labels: { singular: 'Сообщение об оплате', plural: 'Сообщения об оплате' },
   access: { create: () => false, read: readPaymentMessages, update: () => false, delete: () => false },
   admin: { defaultColumns: ['thread', 'authorName', 'createdAt'], description: 'История неизменяема и не удаляется.' },
+  // Пуш второй стороне диалога (родителю или бухгалтерии) — раньше нить молчала.
+  hooks: { afterChange: [fanOutPaymentMessage] },
   fields: [
     { name: 'thread', type: 'relationship', relationTo: 'payment-threads', required: true, index: true },
     { name: 'author', type: 'relationship', relationTo: 'users' },
