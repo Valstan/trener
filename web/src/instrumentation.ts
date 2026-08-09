@@ -5,6 +5,15 @@
 export async function register() {
   // Только Node-рантайм (не edge): секреты нужны серверной части приложения.
   if (process.env.NEXT_RUNTIME !== 'nodejs') return
+  // SIGTERM-drain (G234): в standalone-сборке Next обработчика сигнала нет, и
+  // каждый `systemctl restart` (а он идёт после каждого деплоя) рвёт запросы в
+  // полёте. Ставим ПЕРВЫМ делом — до любых await'ов.
+  try {
+    const { armGracefulShutdown } = await import('./lib/gracefulShutdown')
+    armGracefulShutdown()
+  } catch (e) {
+    console.error('[shutdown] не удалось повесить обработчик сигнала:', (e as Error).message)
+  }
   try {
     const { bootstrapSecretsFromManager } = await import('./lib/secretsBootstrap')
     await bootstrapSecretsFromManager()
