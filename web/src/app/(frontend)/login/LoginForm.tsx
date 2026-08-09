@@ -9,8 +9,8 @@ import React, { useState } from 'react'
 // пароль: неверные данные → generic-ошибка (существование email не раскрываем).
 type Mode = 'link' | 'password' | 'register'
 
-export const LoginForm = () => {
-  const [mode, setMode] = useState<Mode>('link')
+export const LoginForm = ({ initialMode = 'link' }: { initialMode?: Mode }) => {
+  const [mode, setMode] = useState<Mode>(initialMode)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [sent, setSent] = useState(false)

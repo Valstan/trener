@@ -24,10 +24,13 @@ export const metadata: Metadata = {
 const LoginPage = async ({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>
+  searchParams: Promise<{ error?: string; mode?: string }>
 }) => {
-  const { error } = await searchParams
+  const { error, mode } = await searchParams
   const ssoEnabled = getRadarConfig() !== null
+  // ?mode=register — CTA «Зарегистрироваться» с лендинга открывает форму сразу
+  // в режиме регистрации (раньше регистрация пряталась ghost-кнопкой).
+  const initialMode = mode === 'register' ? ('register' as const) : ('link' as const)
 
   return (
     <main className="page" style={{ maxWidth: 460 }}>
@@ -62,7 +65,7 @@ const LoginPage = async ({
           </p>
         </>
       )}
-      <LoginForm />
+      <LoginForm initialMode={initialMode} />
       <p className="note" style={{ textAlign: 'center', marginTop: '2rem' }}>
         <Link href="/">← На главную</Link>
       </p>

@@ -1,19 +1,24 @@
 import type { Payload, PayloadRequest } from 'payload'
 
 import type { Player, TrainingSession, User } from '@/payload-types'
-import { coachGroupIds, isOwner } from '@/access/roles'
+import { adminBranchId, branchGroupIds, coachGroupIds, isOwner } from '@/access/roles'
 import { relId } from '@/lib/relId'
 import { summarizeRsvp, type RsvpSummary } from '@/lib/rsvp'
 
-// Может ли пользователь видеть coverage этой сессии: админ — любую; тренер — только
-// сессии своих групп (#015). Гейт владения для coverage-эндпоинта и /coach-страниц.
+// Может ли пользователь видеть coverage этой сессии: владелец — любую; админ филиала —
+// сессии групп филиала; тренер — только своих групп (#015). Гейт владения для
+// coverage-эндпоинта и /coach-страниц.
 export const coachCanSeeSession = async (
   payload: Payload,
-  user: Pick<User, 'id' | 'roles'>,
+  user: Pick<User, 'id' | 'roles' | 'branch'>,
   session: TrainingSession,
 ): Promise<boolean> => {
   if (isOwner(user)) return true
-  const groupIds = await coachGroupIds({ payload } as unknown as PayloadRequest, user.id)
+  const branch = adminBranchId(user)
+  const groupIds =
+    branch != null
+      ? await branchGroupIds({ payload } as unknown as PayloadRequest, branch)
+      : await coachGroupIds({ payload } as unknown as PayloadRequest, user.id)
   return groupIds.includes(relId(session.group) ?? -1)
 }
 
