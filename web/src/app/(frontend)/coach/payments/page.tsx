@@ -71,27 +71,36 @@ const CoachPaymentsPage = async () => {
     const group = groupId != null ? groupById.get(groupId) : undefined
     return feeForGroup(group?.monthlyFee, branchFeeById.get(relId(group?.branch) ?? -1))
   }
+  // Дети в скоупе. Контекст филиала владельца включает и БЕЗГРУППОВЫХ детей
+  // филиала (раньше выбранный контекст молча прятал их с экрана оплат).
   const players = await payload.find({
     collection: 'players',
     sort: 'name',
     limit: 1000,
     depth: 0,
     pagination: false,
-    where: ctxGroupIds ? { group: { in: ctxGroupIds } } : {},
+    where: ctxGroupIds
+      ? { or: [{ group: { in: ctxGroupIds } }, { and: [{ group: { exists: false } }, { branch: { equals: ctx } }] }] }
+      : {},
     user,
     overrideAccess: false,
   })
 
-  // Абонементы (scoped read): актуальная запись на ребёнка — max(paidUntil).
-  const subs = await payload.find({
-    collection: 'subscriptions',
-    sort: '-paidUntil',
-    limit: 5000,
-    depth: 0,
-    pagination: false,
-    user,
-    overrideAccess: false,
-  })
+  // Абонементы ТОЛЬКО детей экрана (раньше выборка шла без where — на сети из
+  // нескольких школ это полная таблица на каждый рендер).
+  const playerIds = players.docs.map((p) => p.id)
+  const subs = playerIds.length
+    ? await payload.find({
+        collection: 'subscriptions',
+        where: { player: { in: playerIds } },
+        sort: '-paidUntil',
+        limit: 5000,
+        depth: 0,
+        pagination: false,
+        user,
+        overrideAccess: false,
+      })
+    : { docs: [] as never[] }
   const latestByPlayer = new Map<number, (typeof subs.docs)[number]>()
   for (const s of subs.docs) {
     const pid = relId(s.player)

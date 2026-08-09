@@ -589,7 +589,7 @@ export interface ChildRegistration {
   createdAt: string;
 }
 /**
- * Учёт оплат абонементов. Продление = новая запись; статус выводится по датам.
+ * Учёт оплат абонементов. Продление = новая запись; статус выводится по датам. Правка/удаление — только владелец (журнал).
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "subscriptions".
@@ -604,6 +604,8 @@ export interface Subscription {
    * Например: «перенос из-за болезни», «скидка на второго ребёнка».
    */
   note?: string | null;
+  branch?: (number | null) | Branch;
+  recordedBy?: (number | null) | User;
   updatedAt: string;
   createdAt: string;
 }
@@ -1215,6 +1217,8 @@ export interface SubscriptionsSelect<T extends boolean = true> {
   paidUntil?: T;
   amount?: T;
   note?: T;
+  branch?: T;
+  recordedBy?: T;
   updatedAt?: T;
   createdAt?: T;
 }

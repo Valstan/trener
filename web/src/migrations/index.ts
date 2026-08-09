@@ -19,6 +19,7 @@ import * as migration_20260804_104133_chat_scopes from './20260804_104133_chat_s
 import * as migration_20260804_111204_self_registration_onboarding from './20260804_111204_self_registration_onboarding';
 import * as migration_20260809_161403_parent_schedule_rsvp_reminder from './20260809_161403_parent_schedule_rsvp_reminder';
 import * as migration_20260809_165619_legal_docs_d016 from './20260809_165619_legal_docs_d016';
+import * as migration_20260809_171123_payments_hardening from './20260809_171123_payments_hardening';
 
 export const migrations = [
   {
@@ -124,6 +125,11 @@ export const migrations = [
   {
     up: migration_20260809_165619_legal_docs_d016.up,
     down: migration_20260809_165619_legal_docs_d016.down,
-    name: '20260809_165619_legal_docs_d016'
+    name: '20260809_165619_legal_docs_d016',
+  },
+  {
+    up: migration_20260809_171123_payments_hardening.up,
+    down: migration_20260809_171123_payments_hardening.down,
+    name: '20260809_171123_payments_hardening'
   },
 ];
