@@ -1,4 +1,14 @@
-export type PushMessage = { title: string; body: string; url: string }
+export type PushMessage = {
+  title: string
+  body: string
+  url: string
+  // tag системного уведомления: события одного типа схлопываются между собой,
+  // но НЕ вытесняют чужой тип (сообщение чата не съест «Тренировка отменена»).
+  tag: string
+  // Web Push urgency: high — время критично (изменение расписания, kickoff §2),
+  // normal — остальное. Проставляется в заголовки отправки (lib/push/send.ts).
+  urgency: 'high' | 'normal'
+}
 
 // 152-ФЗ (R4): НИКАКИХ ПДн ребёнка (имя/группа/контакт) в payload пуша — он проходит
 // через Apple/Google. Только неидентифицирующий текст + ссылка на нейтральный /parent
@@ -8,6 +18,8 @@ export const buildPushMessage = (type: 'changed' | 'cancelled'): PushMessage => 
   title: type === 'cancelled' ? 'Тренировка отменена' : 'Изменение в расписании',
   body: 'Откройте приложение и подтвердите, что видите изменение.',
   url: '/parent',
+  tag: 'trener-schedule',
+  urgency: 'high',
 })
 
 // Напоминание RSVP-нереспондентам (cron, PR9). Тоже без ПДн (R4).
@@ -15,6 +27,8 @@ export const buildRsvpReminderMessage = (): PushMessage => ({
   title: 'Скоро тренировка',
   body: 'Подтвердите в приложении, придёт ли ребёнок.',
   url: '/parent',
+  tag: 'trener-rsvp',
+  urgency: 'normal',
 })
 
 // Объявление тренера (M3-PR10). Best-effort, normal-urgency (granularity §6: не high,
@@ -25,6 +39,8 @@ export const buildAnnouncementMessage = (): PushMessage => ({
   title: 'Новое объявление',
   body: 'Откройте приложение — тренер оставил сообщение.',
   url: '/parent',
+  tag: 'trener-announcement',
+  urgency: 'normal',
 })
 
 // Вопрос родителя тренеру (M3-PR11, суррогат чата). Адресат — ТРЕНЕР, ссылка на его
@@ -34,6 +50,8 @@ export const buildQuestionMessage = (): PushMessage => ({
   title: 'Новый вопрос от родителя',
   body: 'Откройте приложение, чтобы прочитать и ответить.',
   url: '/coach/questions',
+  tag: 'trener-question',
+  urgency: 'normal',
 })
 
 // Ответ тренера в нитке чата (M4). Адресат — РОДИТЕЛЬ, ссылка на его переписку
@@ -43,6 +61,8 @@ export const buildQuestionReplyMessage = (): PushMessage => ({
   title: 'Ответ тренера',
   body: 'Откройте приложение, чтобы прочитать ответ.',
   url: '/parent/ask',
+  tag: 'trener-question',
+  urgency: 'normal',
 })
 
 // Сообщение в теме общей комнаты (M9). Адресат — остальные участники группы.
@@ -53,4 +73,6 @@ export const buildChatMessage = (): PushMessage => ({
   title: 'Новое сообщение в чате',
   body: 'Откройте приложение, чтобы прочитать.',
   url: '/chat',
+  tag: 'trener-chat',
+  urgency: 'normal',
 })

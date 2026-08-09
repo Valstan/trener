@@ -21,7 +21,13 @@ const VAPID_PUBLIC = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 // Подписка на web-push по жесту пользователя (требование браузеров). iOS-гард: пуш
 // доступен только в УСТАНОВЛЕННОМ PWA (16.4+) — иначе подсказываем установить.
 // Корректность от пуша НЕ зависит (in-app очередь первична) — это апгрейд доставки.
-export const PushSubscribe = () => {
+//
+// variant='prompt' — тихий режим для AppShell (все роли, каждый экран): показываем
+// ТОЛЬКО призыв подписаться (ready / ios-needs-install); подписан, отказал или
+// не поддерживается — ничего не рисуем, чтобы не захламлять каждый экран.
+// variant='full' — все состояния, включая «включены» и подсказку при отказе
+// (экран «Аккаунт», где статус уведомлений уместен).
+export const PushSubscribe = ({ variant = 'full' }: { variant?: 'prompt' | 'full' }) => {
   const [state, setState] = useState<State>('checking')
 
   useEffect(() => {
@@ -66,6 +72,11 @@ export const PushSubscribe = () => {
   }, [])
 
   if (state === 'checking' || state === 'unsupported') return null
+  if (variant === 'prompt' && (state === 'subscribed' || state === 'denied')) return null
+
+  // В prompt-режиме карточка стоит над контентом экрана — ей нужен нижний отступ
+  // (в full-режиме отступы задаёт родительский stack).
+  const cardStyle = variant === 'prompt' ? { marginBottom: '0.75rem' } : undefined
 
   if (state === 'subscribed') {
     return (
@@ -77,7 +88,7 @@ export const PushSubscribe = () => {
 
   if (state === 'ios-needs-install') {
     return (
-      <div className="card stack-sm">
+      <div className="card stack-sm" style={cardStyle}>
         <strong>Включите уведомления</strong>
         <span className="muted small">
           На iPhone сначала добавьте приложение на экран «Домой» (кнопка «Поделиться» → «На экран
@@ -101,7 +112,7 @@ export const PushSubscribe = () => {
 
   // ready
   return (
-    <div className="card card-accent stack-sm">
+    <div className="card card-accent stack-sm" style={cardStyle}>
       <strong>Уведомления об изменениях</strong>
       <span className="muted small">
         Включите пуш, чтобы узнавать о переносах и отменах сразу. Это ускорение — изменения в любом

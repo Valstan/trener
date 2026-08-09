@@ -10,6 +10,7 @@ import { relId } from '@/lib/relId'
 
 import { AppShell, CHILD_TABS, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
 import { AuthorCredit } from '../components/AuthorCredit'
+import { PushSubscribe } from '../components/PushSubscribe'
 import { ServicesCatalogLink } from '../components/ServicesCatalogLink'
 import { AccountForm } from './AccountForm'
 import { ChildAccounts } from './ChildAccounts'
@@ -71,6 +72,9 @@ const AccountPage = async () => {
           <ServicesCatalogLink />
         </>
       )}
+
+      <h2 className="section-title">Уведомления</h2>
+      <PushSubscribe />
 
       <h2 className="section-title">Выход</h2>
       <p className="muted small" style={{ marginTop: 0 }}>

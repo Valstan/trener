@@ -6,9 +6,9 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { isCoach, isOwner, isParent, isPending } from '@/access/roles'
+import { isChild, isCoach, isOwner, isParent, isPending } from '@/access/roles'
 
-import { AppShell, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
+import { AppShell, CHILD_TABS, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
 import { SectionCards, sectionsForRoles } from '../components/SectionCards'
 
 // Главная-карточки (M7, видение v2 §3): плашки-разделы по роли + баннер
@@ -26,8 +26,10 @@ const HomeCardsPage = async () => {
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
 
+  // Ребёнку — детские табы (раньше проваливался в COACH_TABS вместе с переключателем
+  // «Администрация», который вёл его на форму логина Payload).
   const parentOnly = isParent(user) && !isCoach(user) && !isOwner(user)
-  const tabs: Tab[] = parentOnly ? PARENT_TABS : COACH_TABS
+  const tabs: Tab[] = isChild(user) ? CHILD_TABS : parentOnly ? PARENT_TABS : COACH_TABS
 
   // Баннер: закреплённые объявления (scoped read сам ограничит видимость).
   const pinned = await payload.find({

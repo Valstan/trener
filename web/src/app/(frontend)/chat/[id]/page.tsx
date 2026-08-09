@@ -20,6 +20,7 @@ const ROLE_LABEL: Record<string, string> = {
   coach: 'Тренер',
   staff: 'Администрация школы',
   parent: 'Родитель',
+  child: 'Ребёнок',
 }
 
 const fmtWhen = (iso: string | null | undefined): string => {
