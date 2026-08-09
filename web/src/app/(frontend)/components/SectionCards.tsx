@@ -16,6 +16,7 @@ export type Section = {
 
 const PARENT_SECTIONS: Section[] = [
   { key: 'changes', href: '/parent', icon: '🔔', title: 'Изменения', text: 'Переносы и отмены — подтвердите «Вижу»' },
+  { key: 'schedule', href: '/parent/schedule', icon: '📅', title: 'Расписание', text: 'Ближайшие тренировки и «придём / не придём»' },
   { key: 'announcements', href: '/parent/announcements', icon: '📣', title: 'Объявления', text: 'Новости школы и группы' },
   { key: 'matches', href: '/parent/matches', icon: '🏆', title: 'Результаты', text: 'Матчи и счёт' },
   { key: 'chat', href: '/chat', icon: '👥', title: 'Чат группы', text: 'Общий разговор тренеров и родителей' },

@@ -39,7 +39,9 @@ export const COACH_TABS: Tab[] = [
 
 export const PARENT_TABS: Tab[] = [
   { key: 'changes', href: '/parent', label: 'Изменения', icon: '🔔' },
-  { key: 'announcements', href: '/parent/announcements', label: 'Новости', icon: '📣' },
+  // «Расписание» — таб первого ряда (главный вопрос родителя — «когда тренировка»);
+  // «Новости» ушли в «Ещё», чтобы удержать шесть позиций на 375px.
+  { key: 'schedule', href: '/parent/schedule', label: 'Расписание', icon: '📅' },
   { key: 'chat', href: '/chat', label: 'Чат', icon: '👥' },
   { key: 'payments', href: '/parent/payments', label: 'Оплата', icon: '💳' },
   {
@@ -48,6 +50,7 @@ export const PARENT_TABS: Tab[] = [
     label: 'Ещё',
     icon: '•••',
     items: [
+      { key: 'announcements', href: '/parent/announcements', label: 'Новости', icon: '📣' },
       { key: 'matches', href: '/parent/matches', label: 'Матчи', icon: '🏆' },
       { key: 'ask', href: '/parent/ask', label: 'Вопрос тренеру', icon: '💬' },
     ],

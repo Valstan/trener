@@ -5,18 +5,19 @@ import { NextResponse } from 'next/server'
 import { buildRsvpReminderMessage } from '@/lib/push/message'
 import { sendPushToUser } from '@/lib/push/send'
 import { relId } from '@/lib/relId'
-import { rsvpKey, selectReminderParents, type PlayerSlot } from '@/lib/rsvp'
+import { REMINDER_WINDOW_MS, rsvpKey, selectReminderParents, sessionNeedsReminder, type PlayerSlot } from '@/lib/rsvp'
 
 // Cron: напоминание RSVP-нереспондентам по ближайшим тренировкам (окно 48ч).
 // H3: ТОЛЬКО RSVP-нереспонденты — НЕ ack-эскалация (она вне M2, её закрывает
 // coverage-экран: тренер сам звонит). Best-effort пуш (in-app очередь первична).
 //
+// Дедуп: одна отметка rsvpReminderSentAt на сессию — иначе окно 48 ч при ежедневном
+// таймере накрывает одну тренировку двумя прогонами и родитель получает дубль.
+//
 // Секрет-гард (#008/#011): CRON_SECRET в env; вызов с ?secret= или заголовком
 // x-cron-secret. Нет CRON_SECRET → эндпоинт ОТКЛЮЧЁН (403), чтобы его нельзя было
 // дёрнуть открыто. На проде дёргается systemd-таймером/cron'ом с секретом.
 export const dynamic = 'force-dynamic'
-
-const WINDOW_MS = 48 * 60 * 60 * 1000
 
 const handle = async (req: Request): Promise<Response> => {
   const secret = process.env.CRON_SECRET
@@ -27,13 +28,14 @@ const handle = async (req: Request): Promise<Response> => {
   try {
     const payload = await getPayload({ config })
     const now = Date.now()
-    const upcoming = await payload.find({
+    const found = await payload.find({
       collection: 'training-sessions',
       where: {
         and: [
           { startDate: { greater_than: new Date(now).toISOString() } },
-          { startDate: { less_than: new Date(now + WINDOW_MS).toISOString() } },
+          { startDate: { less_than: new Date(now + REMINDER_WINDOW_MS).toISOString() } },
           { status: { not_equals: 'cancelled' } },
+          { rsvpReminderSentAt: { exists: false } },
         ],
       },
       depth: 0,
@@ -41,11 +43,13 @@ const handle = async (req: Request): Promise<Response> => {
       limit: 500,
       overrideAccess: true,
     })
+    // Пояс + подтяжки: where уже отфильтровал, предикат держит границы под тестами.
+    const docs = found.docs.filter((s) => sessionNeedsReminder(s, now))
 
-    if (!upcoming.docs.length) return NextResponse.json({ ok: true, sessions: 0, reminders: 0 })
+    if (!docs.length) return NextResponse.json({ ok: true, sessions: 0, reminders: 0 })
 
-    const sessionIds = upcoming.docs.map((s) => s.id)
-    const groupIds = [...new Set(upcoming.docs.map((s) => relId(s.group)).filter((v): v is number => v != null))]
+    const sessionIds = docs.map((s) => s.id)
+    const groupIds = [...new Set(docs.map((s) => relId(s.group)).filter((v): v is number => v != null))]
 
     // дети предстоящих групп → слоты (session × player × parent)
     const players = groupIds.length
@@ -69,7 +73,7 @@ const handle = async (req: Request): Promise<Response> => {
       playersByGroup.set(g, list)
     }
     const slots: PlayerSlot[] = []
-    for (const s of upcoming.docs) {
+    for (const s of docs) {
       const g = relId(s.group)
       for (const p of (g != null && playersByGroup.get(g)) || []) {
         slots.push({ sessionId: s.id, playerId: p.id, parentId: relId(p.parent) })
@@ -97,8 +101,17 @@ const handle = async (req: Request): Promise<Response> => {
       if (result === 'ok') reminders++
     }
 
-    payload.logger.info(`[cron/rsvp] sessions=${upcoming.docs.length} targets=${targets.length} sent=${reminders}`)
-    return NextResponse.json({ ok: true, sessions: upcoming.docs.length, targets: targets.length, reminders })
+    // Отметка «напоминание отправлено» — на КАЖДУЮ сессию прогона (даже если все
+    // родители уже ответили: прогон её накрыл, второй раз не нужна). Best-effort.
+    const sentAt = new Date(now).toISOString()
+    for (const s of docs) {
+      await payload
+        .update({ collection: 'training-sessions', id: s.id, data: { rsvpReminderSentAt: sentAt }, overrideAccess: true })
+        .catch(() => {})
+    }
+
+    payload.logger.info(`[cron/rsvp] sessions=${docs.length} targets=${targets.length} sent=${reminders}`)
+    return NextResponse.json({ ok: true, sessions: docs.length, targets: targets.length, reminders })
   } catch (err) {
     console.error('[cron/rsvp-reminders]', err)
     return NextResponse.json({ ok: false }, { status: 500 })

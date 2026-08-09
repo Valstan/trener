@@ -28,7 +28,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   cancelled: { label: 'Отменена', cls: 'badge badge-danger' },
 }
 
-const CoachSchedulePage = async () => {
+const CoachSchedulePage = async ({ searchParams }: { searchParams: Promise<{ past?: string }> }) => {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
@@ -37,12 +37,21 @@ const CoachSchedulePage = async () => {
   // Контекст филиала владельца (M5 PR-D): фильтр групп/сессий + селектор в шапке.
   const { branches, ctx, ctxGroupIds } = await loadOwnerBranch(payload, user)
 
+  // По умолчанию — предстоящие (минус сутки: только что прошедшая тренировка ещё
+  // нужна ради coverage). Раньше список шёл asc от начала времён с limit 100 —
+  // прошедшие забивали экран, а свежесозданные занятия в него НЕ ПОПАДАЛИ вовсе.
+  // ?past=1 — архив: прошедшие, свежие сверху.
+  const { past } = await searchParams
+  const showPast = past === '1'
+  const cutoff = new Date(Date.now() - 24 * 3600_000).toISOString()
+  const dateClause = showPast ? { startDate: { less_than: cutoff } } : { startDate: { greater_than: cutoff } }
+
   const sessions = await payload.find({
     collection: 'training-sessions',
-    sort: 'startDate',
+    sort: showPast ? '-startDate' : 'startDate',
     limit: 100,
     pagination: false,
-    where: ctxGroupIds ? { group: { in: ctxGroupIds } } : {},
+    where: ctxGroupIds ? { and: [{ group: { in: ctxGroupIds } }, dateClause] } : dateClause,
     user,
     overrideAccess: false,
   })
@@ -88,13 +97,18 @@ const CoachSchedulePage = async () => {
         <SessionComposer groups={groupOptions} />
       )}
 
-      <h2 className="section-title">Тренировки</h2>
+      <div className="row-between" style={{ alignItems: 'baseline' }}>
+        <h2 className="section-title">{showPast ? 'Прошедшие тренировки' : 'Тренировки'}</h2>
+        <Link className="small" href={showPast ? '/coach/schedule' : '/coach/schedule?past=1'}>
+          {showPast ? '← к предстоящим' : 'прошедшие →'}
+        </Link>
+      </div>
       {sessions.docs.length === 0 ? (
         <div className="empty-state">
           <span className="ic" aria-hidden>
             📅
           </span>
-          Тренировок пока нет.
+          {showPast ? 'Прошедших тренировок нет.' : 'Тренировок пока нет.'}
         </div>
       ) : (
         <div className="stack-sm">

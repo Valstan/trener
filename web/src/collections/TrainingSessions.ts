@@ -169,6 +169,18 @@ export const TrainingSessions: CollectionConfig = {
       access: { read: adminOrStaffField },
       admin: { readOnly: true, hidden: true },
     },
+    {
+      // Дедуп cron-напоминаний RSVP: окно 48 ч при ежедневном таймере перекрывает
+      // два прогона — без отметки родитель получал одно и то же напоминание дважды.
+      // Одна отметка на сессию: прогон, накрывший сессию, ставит метку и больше
+      // её не трогает (см. cron/rsvp-reminders + sessionNeedsReminder).
+      name: 'rsvpReminderSentAt',
+      type: 'date',
+      label: 'RSVP-напоминание отправлено',
+      index: true,
+      access: { read: adminOrStaffField },
+      admin: { readOnly: true, hidden: true },
+    },
   ],
   timestamps: true,
 }

@@ -330,6 +330,7 @@ export interface TrainingSession {
   changedAt?: string | null;
   prevStartDate?: string | null;
   prevLocation?: string | null;
+  rsvpReminderSentAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -950,6 +951,7 @@ export interface TrainingSessionsSelect<T extends boolean = true> {
   changedAt?: T;
   prevStartDate?: T;
   prevLocation?: T;
+  rsvpReminderSentAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
