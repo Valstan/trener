@@ -3,6 +3,7 @@ import type { Access, CollectionConfig, Where } from 'payload'
 import { adminOrCoachOwnGroup } from '../access/byGroup'
 import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
 import { cleanupMatchRelations } from '../hooks/cleanupMatchRelations'
+import { fanOutMatchChange } from '../hooks/fanOutMatchChange'
 
 // Матчи (дорожная карта §4, после M3): расписание будущих игр (видение §3.1 —
 // «когда, во сколько, где») и результаты сыгранных. Информационный канал поверх ядра
@@ -77,7 +78,9 @@ export const Matches: CollectionConfig = {
     update: adminOrCoachOwnGroup,
     delete: adminOrCoachOwnGroup,
   },
-  hooks: { beforeDelete: [cleanupMatchRelations] },
+  // Пуш родителям группы: назначен матч / перенесён / появился счёт (push-only,
+  // без ack-очереди — ров остаётся у изменений расписания).
+  hooks: { afterChange: [fanOutMatchChange], beforeDelete: [cleanupMatchRelations] },
   admin: {
     defaultColumns: ['matchDate', 'group', 'opponent', 'homeAway'],
     useAsTitle: 'opponent',

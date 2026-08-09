@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { isOwner } from '../access/roles'
+import { fanOutMatchComment } from '../hooks/fanOutMatchComment'
 import { readMatchParticipants } from './Matches'
 
 export const MatchComments: CollectionConfig = {
@@ -17,6 +18,8 @@ export const MatchComments: CollectionConfig = {
     defaultColumns: ['match', 'authorName', 'createdAt'],
     description: 'Комментарии участников группы. Редактирование запрещено; владелец может удалить сообщение при модерации.',
   },
+  // Пуш участникам группы (раньше комментарии создавались молча).
+  hooks: { afterChange: [fanOutMatchComment] },
   fields: [
     { name: 'match', type: 'relationship', relationTo: 'matches', required: true, index: true },
     { name: 'group', type: 'relationship', relationTo: 'groups', required: true, index: true, admin: { readOnly: true } },

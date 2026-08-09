@@ -109,6 +109,48 @@ export const buildConsentWithdrawnMessage = (): PushMessage => ({
   urgency: 'high',
 })
 
+// Матчи (доводка 09.08). До этого матчи не порождали НИ ОДНОГО уведомления:
+// «когда, во сколько, где» доходило до родителя, только если он сам заглянул в
+// приложение. Push-only (без Notification/ack): матч — информационный канал
+// поверх ядра M2, ров «приняли N из M» остаётся только у изменений расписания.
+// R4: ни соперника, ни счёта в payload — читается из РФ-БД.
+export const buildMatchMessage = (kind: 'new' | 'moved' | 'result'): PushMessage => ({
+  title: kind === 'new' ? 'Назначен матч' : kind === 'moved' ? 'Матч перенесён' : 'Итог матча',
+  body: 'Откройте приложение — подробности в разделе «Матчи».',
+  url: '/parent/matches',
+  tag: 'trener-match',
+  urgency: kind === 'moved' ? 'high' : 'normal',
+})
+
+// Новые тренировки в расписании (одна отправка на запрос, даже если тренер завёл
+// серию из 20 занятий — иначе пуш на каждое занятие превращается в спам).
+export const buildSessionsCreatedMessage = (count: number): PushMessage => ({
+  title: count > 1 ? 'Новые тренировки в расписании' : 'Новая тренировка',
+  body: 'Откройте приложение — расписание обновилось.',
+  url: '/parent/schedule',
+  tag: 'trener-schedule-new',
+  urgency: 'normal',
+})
+
+// Платёжный диалог (доводка 09.08): раньше нить не уведомляла никого — родитель
+// писал в бухгалтерию и ждал, пока туда заглянут. R4: ни сумм, ни текста.
+export const buildPaymentMessage = (to: 'toParent' | 'toStaff'): PushMessage => ({
+  title: to === 'toParent' ? 'Ответ бухгалтерии' : 'Вопрос по оплате',
+  body: 'Откройте приложение — сообщение в разделе «Оплата».',
+  url: to === 'toParent' ? '/parent/payment-chat' : '/coach/payment-chats',
+  tag: 'trener-payment',
+  urgency: 'normal',
+})
+
+// Комментарий к матчу (доводка 09.08) — участникам группы. R4: без текста и имён.
+export const buildMatchCommentMessage = (): PushMessage => ({
+  title: 'Новый комментарий к матчу',
+  body: 'Откройте приложение, чтобы прочитать.',
+  url: '/parent/matches',
+  tag: 'trener-match',
+  urgency: 'normal',
+})
+
 // Сообщение в теме общей комнаты (M9). Адресат — остальные участники группы.
 // 152-ФЗ R4: ни текста сообщения, ни имени автора, ни названия темы в payload —
 // он проходит через Apple/Google, а в реплике родителя запросто окажется имя

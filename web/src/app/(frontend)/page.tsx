@@ -8,6 +8,7 @@ import React from 'react'
 import { homePathForUser } from '@/lib/auth/home'
 
 import { AuthorCredit } from './components/AuthorCredit'
+import { Metrika, MetrikaInformer } from './components/Metrika'
 import { SalesContacts } from './components/SalesContacts'
 import { ServicesCatalogLink } from './components/ServicesCatalogLink'
 
@@ -51,6 +52,25 @@ const FOR_SCHOOL: { ic: string; text: string }[] = [
   },
 ]
 
+// Шаги подключения (D-017-витрина): директор школы после буллетов упирался прямо
+// в список контактов — «что дальше» не отвечал никто. Шаги совпадают с реальным
+// порядком в продукте: филиал и реквизиты → договор поручения на сайте (D-016) →
+// импорт детей и приглашения родителям.
+const HOW_TO_START: { n: string; title: string; text: string }[] = [
+  { n: '1', title: 'Связаться', text: 'Пишете в любой канал ниже — договариваемся о демо на 15 минут.' },
+  { n: '2', title: 'Завести школу', text: 'Создаём ваш филиал, вносим реквизиты и цену абонемента.' },
+  {
+    n: '3',
+    title: 'Подписать договор',
+    text: 'Договор поручения на обработку данных подписывается прямо на сайте — юрист не нужен.',
+  },
+  {
+    n: '4',
+    title: 'Пригласить родителей',
+    text: 'Загружаем список детей из таблицы, родители заходят по ссылке из письма.',
+  },
+]
+
 const HomePage = async () => {
   const payload = await getPayload({ config })
   const { user } = await payload.auth({ headers: await nextHeaders() })
@@ -61,6 +81,8 @@ const HomePage = async () => {
 
   return (
   <main className="page" style={{ display: 'flex', flexDirection: 'column' }}>
+    {/* Счётчик Метрики — ТОЛЬКО на публичной странице (D-017), не в layout. */}
+    <Metrika />
     <section
       style={{
         textAlign: 'center',
@@ -133,6 +155,36 @@ const HomePage = async () => {
           ))}
         </ul>
         <div className="divider" style={{ margin: '1rem 0' }} />
+        <strong style={{ display: 'block', marginBottom: '0.6rem' }}>Как подключиться</strong>
+        <ol className="list-reset stack-sm" style={{ margin: 0 }}>
+          {HOW_TO_START.map((s) => (
+            <li key={s.n} className="row" style={{ alignItems: 'flex-start' }}>
+              <span
+                aria-hidden
+                className="badge"
+                style={{ minWidth: '1.6rem', textAlign: 'center', lineHeight: 1.4 }}
+              >
+                {s.n}
+              </span>
+              <span style={{ fontSize: '0.9rem' }}>
+                <strong>{s.title}.</strong> {s.text}
+              </span>
+            </li>
+          ))}
+        </ol>
+        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: '0.85rem 0 0' }}>
+          Реально это один день, из которого ваша работа — полчаса.
+        </p>
+
+        <div className="divider" style={{ margin: '1rem 0' }} />
+        <strong style={{ display: 'block', marginBottom: '0.35rem' }}>Сколько стоит</strong>
+        <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: '0 0 0.6rem' }}>
+          Подписка за филиал, стоимость — по договорённости. <strong>Первый месяц бесплатно</strong>:
+          пробуете на одной группе, платите, только если останетесь. Эквайринга нет — родители платят
+          школе как раньше, приложение ведёт учёт.
+        </p>
+
+        <div className="divider" style={{ margin: '1rem 0' }} />
         <strong style={{ display: 'block', marginBottom: '0.6rem' }}>Связаться</strong>
         <SalesContacts />
       </div>
@@ -154,6 +206,9 @@ const HomePage = async () => {
       <ServicesCatalogLink style={{ marginBottom: '0.5rem' }} />
       <span style={{ color: 'var(--faint)' }}>Работает на платформе «Тренер»</span>
       <AuthorCredit />
+      {/* Видимый информер посещаемости (D-017) — рядом с подписью автора и только
+          здесь: в кабинетах школы счётчика нет намеренно. */}
+      <MetrikaInformer />
       <Link href="/privacy">Политика обработки персональных данных</Link>
       {/* Ссылки на /admin здесь больше нет: гостю она открывала форму логина CMS
           с email+паролем, которых у родителя не существует. Владелец попадает в
