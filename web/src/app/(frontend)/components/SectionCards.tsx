@@ -54,6 +54,15 @@ const MANAGER_SECTION: Section = {
   text: 'Пригласить тренера или администратора',
 }
 
+// Инбокс заявок — владельцу (взрослые + дети в одном месте; экран гейтит сам).
+const REQUESTS_SECTION: Section = {
+  key: 'requests',
+  href: '/coach/requests',
+  icon: '📨',
+  title: 'Заявки',
+  text: 'Саморегистрации взрослых и детей — подтвердить или отклонить',
+}
+
 // «Импорт детей» — всем, кто создаёт players (owner/admin/coach): тренер, перевёзший
 // свою группу сам, — валидный сценарий. Сервер скоупит группы по роли.
 const IMPORT_SECTION: Section = {
@@ -72,7 +81,7 @@ export const sectionsForRoles = (user: { roles?: string[] | null } | null | unde
   if (!staff) return PARENT_SECTIONS
   const manager = roles.includes('owner') || roles.includes('admin')
   return manager
-    ? [...STAFF_SECTIONS, PAYMENTS_SECTION, MANAGER_SECTION, PLAYERS_SECTION, IMPORT_SECTION]
+    ? [...STAFF_SECTIONS, REQUESTS_SECTION, PAYMENTS_SECTION, MANAGER_SECTION, PLAYERS_SECTION, IMPORT_SECTION]
     : [...STAFF_SECTIONS, PLAYERS_SECTION, IMPORT_SECTION]
 }
 

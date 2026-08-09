@@ -68,6 +68,37 @@ export const buildQuestionReplyMessage = (): PushMessage => ({
   urgency: 'normal',
 })
 
+// Заявки на вступление (#115 доводка). Все — без ПДн (R4): только зов открыть экран.
+// Новая заявка — владельцу (инбокс /coach/requests).
+export const buildRegistrationSubmittedMessage = (): PushMessage => ({
+  title: 'Новая заявка на вступление',
+  body: 'Откройте приложение — кто-то ждёт подтверждения.',
+  url: '/coach/requests',
+  tag: 'trener-registration',
+  urgency: 'normal',
+})
+
+// Заявка ребёнка передана родителю — подтвердить в «Аккаунте».
+export const buildRegistrationParentReviewMessage = (): PushMessage => ({
+  title: 'Подтвердите ребёнка',
+  body: 'Вам передана заявка — откройте раздел «Аккаунт».',
+  url: '/account',
+  tag: 'trener-registration',
+  urgency: 'normal',
+})
+
+// Решение по заявке — самому ребёнку (best-effort: устройств у него может не быть).
+export const buildRegistrationDecidedMessage = (kind: 'accepted' | 'rejected'): PushMessage => ({
+  title: kind === 'accepted' ? 'Заявка подтверждена' : 'Заявка отклонена',
+  body:
+    kind === 'accepted'
+      ? 'Родитель подтвердил вас — откройте приложение.'
+      : 'Откройте приложение: данные можно поправить и подать заявку снова.',
+  url: '/',
+  tag: 'trener-registration',
+  urgency: 'normal',
+})
+
 // Сообщение в теме общей комнаты (M9). Адресат — остальные участники группы.
 // 152-ФЗ R4: ни текста сообщения, ни имени автора, ни названия темы в payload —
 // он проходит через Apple/Google, а в реплике родителя запросто окажется имя

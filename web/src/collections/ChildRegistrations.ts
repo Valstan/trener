@@ -1,6 +1,7 @@
 import type { Access, CollectionConfig } from 'payload'
 
 import { isOwner, isParent } from '../access/roles'
+import { fanOutRegistration } from '../hooks/fanOutRegistration'
 
 const read: Access = ({ req }) => {
   if (isOwner(req.user)) return true
@@ -13,6 +14,8 @@ export const ChildRegistrations: CollectionConfig = {
   labels: { singular: 'Заявка ребёнка', plural: 'Заявки детей' },
   access: { create: () => false, read, update: () => false, delete: ({ req }) => isOwner(req.user) },
   admin: { useAsTitle: 'childName', defaultColumns: ['childName', 'parentName', 'status', 'createdAt'] },
+  // Пуш на каждом стыке цепочки ребёнок→родитель→группа (см. fanOutRegistration).
+  hooks: { afterChange: [fanOutRegistration] },
   fields: [
     { name: 'account', type: 'relationship', relationTo: 'users', required: true, unique: true, index: true },
     { name: 'childName', type: 'text', required: true, maxLength: 120 },
