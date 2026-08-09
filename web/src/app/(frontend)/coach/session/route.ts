@@ -3,6 +3,9 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { isOwner, isCoach } from '@/access/roles'
+import { buildSessionsCreatedMessage } from '@/lib/push/message'
+import { sendPushToUser } from '@/lib/push/send'
+import { relId } from '@/lib/relId'
 import { MAX_OCCURRENCES } from '@/lib/repeatSchedule'
 import { parseSessionBatch, parseSessionCreate, parseSessionPatch } from '@/lib/sessionInput'
 
@@ -66,6 +69,31 @@ export const POST = async (req: Request): Promise<Response> => {
         },
         overrideAccess: true,
       })
+    }
+
+    // Пуш «в расписании появились тренировки» — ОДИН на запрос, а не на занятие:
+    // хук на create слал бы до 120 пушей за один клик по форме с повторами.
+    // Push-only, без Notification: ack-очередь остаётся у изменений (ров M2).
+    // Best-effort — сбой рассылки не отменяет уже созданные занятия.
+    try {
+      const players = await payload.find({
+        collection: 'players',
+        where: { group: { equals: input.groupId } },
+        depth: 0,
+        limit: 1000,
+        pagination: false,
+        overrideAccess: true,
+      })
+      const parents = [
+        ...new Set(players.docs.map((p) => relId(p.parent)).filter((v): v is number => v != null)),
+      ]
+      const message = buildSessionsCreatedMessage(input.occurrences.length)
+      for (const parentId of parents) await sendPushToUser(payload, parentId, message).catch(() => {})
+      payload.logger.info(
+        `[coach/session] group ${input.groupId}: создано ${input.occurrences.length}, пуш ${parents.length} родителям`,
+      )
+    } catch (err) {
+      payload.logger.error({ err, groupId: input.groupId }, '[coach/session] пуш о новых тренировках не отправлен')
     }
 
     return NextResponse.json({ ok: true, created: input.occurrences.length })
