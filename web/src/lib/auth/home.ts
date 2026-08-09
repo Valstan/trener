@@ -1,4 +1,4 @@
-import { isAdmin, isChild, isCoach, isOwner, isParent, isPending } from '@/access/roles'
+import { hasRole, isAdmin, isChild, isCoach, isOwner, isParent, isPending } from '@/access/roles'
 
 // Домашний экран пользователя по роли — единый источник для:
 //   • редиректа после входа (/auth/complete-login),
@@ -21,5 +21,9 @@ export const homePathForUser = (
   if (isCoach(user)) return '/coach/schedule'
   if (isParent(user)) return '/parent'
   if (isChild(user)) return '/child'
+  // Applicant, которого владелец «одобрил», забыв назначить роль: раньше уезжал на
+  // '/', где лендинг его не редиректит, — вечная петля «Войти». Ведём в онбординг
+  // (страницы /pending и /onboarding/role пускают applicant вне зависимости от status).
+  if (hasRole(user, 'applicant')) return user.requestedRole ? '/pending' : '/onboarding/role'
   return '/'
 }

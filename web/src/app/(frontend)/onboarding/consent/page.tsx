@@ -31,8 +31,11 @@ const ConsentPage = async () => {
   if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/')
 
+  // Родитель без филиала (легаси-данные до фикса invite-пути): оператора подставить
+  // не из чего — в кабинет, БЕЗ записи согласия. Редирект на /pending здесь раньше
+  // гонял approved-родителя по кругу pending → refresh-session → parent.
   const branchId = relId(user.branch)
-  if (branchId == null) redirect('/pending')
+  if (branchId == null) redirect('/parent')
   const branch = await payload.findByID({
     collection: 'branches',
     id: branchId,

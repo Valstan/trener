@@ -45,4 +45,9 @@ describe('homePathForUser', () => {
     expect(homePathForUser({ roles: [] })).toBe('/')
     expect(homePathForUser({ roles: null })).toBe('/')
   })
+
+  it('approved-applicant (одобрен, роль не назначена) → онбординг, не вечный лендинг', () => {
+    expect(homePathForUser({ roles: ['applicant'], status: 'approved' })).toBe('/onboarding/role')
+    expect(homePathForUser({ roles: ['applicant'], status: 'approved', requestedRole: 'parent' })).toBe('/pending')
+  })
 })

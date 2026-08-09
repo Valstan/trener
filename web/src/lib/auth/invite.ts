@@ -1,5 +1,6 @@
 import type { Payload } from 'payload'
 
+import { applicantUpgrade } from './applicantUpgrade'
 import { generateRawToken, hashToken } from './tokens'
 
 // Invite-ссылка (join) живёт дольше login'а — тренер выдаёт её заранее. 14 дней.
@@ -126,6 +127,50 @@ export type AcceptResult =
   | { ok: true; userId: number | string }
   | { ok: false; reason: 'claimed' | 'error' }
 
+// Доукомплектование профиля родителя после привязки ребёнка. Две дыры, которые
+// это закрывает (аудит 09.08):
+//   • branch: acceptInvite создавал родителя БЕЗ филиала → /onboarding/consent при
+//     branch == null уходил редиректом, и согласие 152-ФЗ не записывалось НИКОГДА
+//     на основном invite-пути. Филиал берём из группы ребёнка (fallback — player.branch).
+//   • застрявший applicant: саморег, которого потом пригласили, оставался
+//     applicant/pending и залипал на /pending (см. applicantUpgrade).
+// Best-effort: сбой доукомплектования не рушит уже сделанную привязку.
+const completeParentProfile = async (
+  payload: Payload,
+  userId: number | string,
+  player: { group?: unknown; branch?: unknown },
+): Promise<void> => {
+  try {
+    const user = await payload.findByID({ collection: 'users', id: userId, depth: 0, overrideAccess: true })
+    if (!user) return
+    const data: Record<string, unknown> = {}
+
+    const upgraded = applicantUpgrade(user.roles, 'parent')
+    if (upgraded) {
+      data.roles = upgraded
+      data.status = 'approved' // инвайт тренера = подтверждение участия (M5)
+    }
+
+    if (relId(user.branch) == null) {
+      const groupId = relId(player.group)
+      let branchId = relId(player.branch)
+      if (groupId != null) {
+        const group = await payload
+          .findByID({ collection: 'groups', id: groupId, depth: 0, overrideAccess: true })
+          .catch(() => null)
+        branchId = relId(group?.branch) ?? branchId
+      }
+      if (branchId != null) data.branch = branchId
+    }
+
+    if (Object.keys(data).length) {
+      await payload.update({ collection: 'users', id: userId, data, overrideAccess: true })
+    }
+  } catch (err) {
+    payload.logger.warn({ err, userId }, '[invite] completeParentProfile failed')
+  }
+}
+
 // Привязка ребёнка к КОНКРЕТНОМУ аккаунту (личность уже доказана: email-токеном
 // либо живой сессией — VK/magic-link). Защита 152-ФЗ-привязки:
 //   • привязка ТОЛЬКО если у ребёнка ещё нет родителя (idempotent, без перепривязки);
@@ -154,6 +199,9 @@ export const linkPlayerToUser = async (
       overrideAccess: true,
     })
   }
+
+  // Филиал/роль родителя — доукомплектовать (см. completeParentProfile).
+  await completeParentProfile(payload, userId, player as { group?: unknown; branch?: unknown })
 
   // Гасим открытые invite-токены этого ребёнка (включая исходную join-ссылку).
   const open = await payload.find({
