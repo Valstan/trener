@@ -6,6 +6,7 @@ import React from 'react'
 
 import type { Player, Rsvp, TrainingSession } from '@/payload-types'
 import { isParent, isPending } from '@/access/roles'
+import { parentNeedsConsent } from '@/lib/consentGate'
 import { describeChange } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 import { rsvpKey } from '@/lib/rsvp'
@@ -28,6 +29,18 @@ const ParentPage = async () => {
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/')
+
+  // 152-ФЗ: родитель с детьми и филиалом, но без записанного согласия — сначала
+  // экран согласия (invite-путь до фикса 09.08 согласие молча пропускал).
+  if (await parentNeedsConsent(payload, user)) redirect('/onboarding/consent')
+
+  // Есть ли вообще привязанные дети — для честного пустого состояния ниже
+  // (раньше родителю без детей показывали «Изменений нет — всё подтверждено»).
+  const myChildren = await payload.count({
+    collection: 'players',
+    where: { parent: { equals: user.id } },
+    overrideAccess: true,
+  })
 
   const notifs = await payload.find({
     collection: 'notifications',
@@ -116,7 +129,17 @@ const ParentPage = async () => {
         Отметьте «Вижу», чтобы тренер знал, что вы в курсе.
       </p>
       {/* Призыв включить пуш теперь в AppShell (для всех ролей); полный статус — в «Аккаунте». */}
-      <ParentInbox items={items} />
+      {myChildren.totalDocs === 0 ? (
+        <div className="empty-state">
+          <span className="ic" aria-hidden>
+            👶
+          </span>
+          К вам пока не привязан ребёнок. Откройте ссылку-приглашение от тренера или
+          проверьте раздел «Аккаунт» — там появляются заявки на подтверждение.
+        </div>
+      ) : (
+        <ParentInbox items={items} />
+      )}
     </AppShell>
   )
 }

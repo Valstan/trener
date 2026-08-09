@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { adminBranchId, isOwner } from '@/access/roles'
+import { applicantUpgrade } from '@/lib/auth/applicantUpgrade'
 import { createLoginToken } from '@/lib/auth/magicLink'
 import { sendStaffInviteEmail } from '@/lib/email/magicLinkEmail'
 import { relId } from '@/lib/relId'
@@ -54,7 +55,10 @@ export const POST = async (req: Request): Promise<Response> => {
     if (branchId == null) return NextResponse.json({ ok: false, reason: 'branch' }, { status: 400 })
 
     // Уже заведён? Повторное приглашение — это «перевыпустить ссылку», а не
-    // перезапись чужого аккаунта: роли и филиал не трогаем.
+    // перезапись чужого аккаунта: роли и филиал живого аккаунта не трогаем.
+    // ИСКЛЮЧЕНИЕ — застрявший applicant (саморег без содержательной роли): его
+    // приглашение и есть подтверждение, иначе он навсегда залипает на /pending
+    // (applicantUpgrade возвращает null для всех «живых» ролей).
     const existing = await payload.find({
       collection: 'users',
       where: { email: { equals: input.email } },
@@ -68,6 +72,20 @@ export const POST = async (req: Request): Promise<Response> => {
     let created = false
     if (existing.docs[0]) {
       userId = existing.docs[0].id
+      const upgraded = applicantUpgrade(existing.docs[0].roles, input.role)
+      if (upgraded) {
+        await payload.update({
+          collection: 'users',
+          id: userId,
+          data: {
+            roles: upgraded,
+            status: 'approved',
+            branch: branchId,
+            ...(existing.docs[0].name ? {} : { name: input.name }),
+          },
+          overrideAccess: true,
+        })
+      }
     } else {
       const account = await payload.create({
         collection: 'users',

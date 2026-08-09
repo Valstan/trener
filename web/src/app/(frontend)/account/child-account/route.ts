@@ -35,8 +35,10 @@ export const POST = async (req: Request): Promise<Response> => {
 
   try {
     const accountId = relId(player.account)
+    // branch аккаунта НЕ трогаем: update с branch:null затирал филиал ребёнку,
+    // пришедшему саморегистрацией (его выставил respond-маршрут подтверждения).
     const account = accountId
-      ? await payload.update({ collection: 'users', id: accountId, data: { name, login, password, roles: ['child'], status: 'approved', branch: null }, overrideAccess: true })
+      ? await payload.update({ collection: 'users', id: accountId, data: { name, login, password, roles: ['child'], status: 'approved' }, overrideAccess: true })
       : await payload.create({ collection: 'users', data: { name, login, password, email: `${login}@children.trener.invalid`, roles: ['child'], status: 'approved' }, overrideAccess: true })
 
     await payload.update({ collection: 'players', id: player.id, data: { name, dateOfBirth, account: account.id }, overrideAccess: true })

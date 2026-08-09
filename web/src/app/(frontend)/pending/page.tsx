@@ -6,12 +6,15 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { isPending } from '@/access/roles'
+import { hasRole, isPending } from '@/access/roles'
+import { SALES_CONTACTS } from '@/lib/salesContacts'
 
 import { SectionCards, sectionsForRoles } from '../components/SectionCards'
 
 // Экран ожидания модерации (M5 PR-B): самореги видят его до подтверждения
 // владельцем/админом филиала. Подтверждённого (или гостя) уводим по назначению.
+// Approved-applicant (одобрен, но роль не назначена) тоже остаётся здесь — редирект
+// на refresh-session уводил его в петлю лендинга.
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
@@ -23,8 +26,19 @@ const PendingPage = async () => {
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
   const freshUser = await payload.findByID({ collection: 'users', id: user.id, depth: 0, overrideAccess: true })
-  if (!isPending(freshUser)) redirect('/auth/refresh-session')
+  if (!isPending(freshUser) && !hasRole(freshUser, 'applicant')) redirect('/auth/refresh-session')
   if (!freshUser.requestedRole) redirect('/onboarding/role')
+
+  // Превью разделов — по ЗАПРОШЕННОЙ роли (будущему тренеру раньше показывали
+  // родительские «Оплата» и «Вопрос тренеру» под замком — сбивало с толку).
+  const previewSections =
+    freshUser.requestedRole === 'coach'
+      ? sectionsForRoles({ roles: ['coach'] })
+      : freshUser.requestedRole === 'parent'
+        ? sectionsForRoles({ roles: ['parent'] })
+        : null
+
+  const phone = SALES_CONTACTS.find((c) => c.href?.startsWith('tel:'))
 
   return (
     <main className="page" style={{ maxWidth: 460, textAlign: 'center' }}>
@@ -42,13 +56,20 @@ const PendingPage = async () => {
         <span style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
           {freshUser.requestedRole === 'child'
             ? 'Попросите родителя проверить раздел «Аккаунт» в приложении.'
-            : 'Сообщите администрации школы, что завершили самостоятельную регистрацию.'}
+            : 'Сообщите администрации школы, что завершили самостоятельную регистрацию — так заявку рассмотрят быстрее.'}
         </span>
+        {freshUser.requestedRole !== 'child' && phone && (
+          <span style={{ display: 'block', color: 'var(--muted)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+            Не отвечают? Свяжитесь с платформой: <a href={phone.href!}>{phone.value}</a>.
+          </span>
+        )}
       </div>
       {/* M7: плашки разделов видны, но под замком до подтверждения (видение v2 §2). */}
-      <div style={{ textAlign: 'left', marginTop: '1.5rem' }}>
-        <SectionCards sections={sectionsForRoles(freshUser)} locked />
-      </div>
+      {previewSections && (
+        <div style={{ textAlign: 'left', marginTop: '1.5rem' }}>
+          <SectionCards sections={previewSections} locked />
+        </div>
+      )}
       <p className="note" style={{ marginTop: '1.5rem' }}>
         <Link href="/">← На главную</Link>
       </p>
