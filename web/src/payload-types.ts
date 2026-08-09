@@ -89,6 +89,8 @@ export interface Config {
     'chat-reads': ChatRead;
     'payment-threads': PaymentThread;
     'payment-messages': PaymentMessage;
+    'legal-documents': LegalDocument;
+    'legal-signatures': LegalSignature;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -118,6 +120,8 @@ export interface Config {
     'chat-reads': ChatReadsSelect<false> | ChatReadsSelect<true>;
     'payment-threads': PaymentThreadsSelect<false> | PaymentThreadsSelect<true>;
     'payment-messages': PaymentMessagesSelect<false> | PaymentMessagesSelect<true>;
+    'legal-documents': LegalDocumentsSelect<false> | LegalDocumentsSelect<true>;
+    'legal-signatures': LegalSignaturesSelect<false> | LegalSignaturesSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -702,6 +706,71 @@ export interface PaymentMessage {
   createdAt: string;
 }
 /**
+ * Правка юридических текстов: опубликованную версию менять нельзя — выпустите новую (новая запись, свежий номер версии, дата публикации).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-documents".
+ */
+export interface LegalDocument {
+  id: number;
+  kind: 'processing_agreement' | 'parent_consent';
+  /**
+   * Например 2026-08-09. Пара (вид, версия) уникальна.
+   */
+  version: string;
+  title: string;
+  /**
+   * Плейсхолдеры реквизитов филиала: {{OPERATOR_NAME}}, {{OPERATOR_LEGAL_FORM}}, {{OPERATOR_INN}}, {{OPERATOR_ADDRESS}}, {{OPERATOR_EMAIL}}, {{OPERATOR_PHONE}}, {{OPERATOR_RESPONSIBLE}}.
+   */
+  body: string;
+  /**
+   * Считается сервером. Под ним подписываются.
+   */
+  contentHash?: string | null;
+  /**
+   * Пусто — черновик. С датой — действует; текст заморожен навсегда.
+   */
+  publishedAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Неизменяемый журнал: подписания и отзывы. Записи создаёт только сервер.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-signatures".
+ */
+export interface LegalSignature {
+  id: number;
+  kind: 'processing_agreement' | 'parent_consent';
+  action: 'signed' | 'withdrawn';
+  document: number | LegalDocument;
+  /**
+   * Снапшот отпечатка версии на момент подписи.
+   */
+  contentHash: string;
+  branch?: (number | null) | Branch;
+  signer?: (number | null) | User;
+  players?: (number | Player)[] | null;
+  signedAt: string;
+  ip?: string | null;
+  userAgent?: string | null;
+  /**
+   * Реквизиты оператора-филиала на момент подписи.
+   */
+  requisitesSnapshot?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
@@ -812,6 +881,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'payment-messages';
         value: number | PaymentMessage;
+      } | null)
+    | ({
+        relationTo: 'legal-documents';
+        value: number | LegalDocument;
+      } | null)
+    | ({
+        relationTo: 'legal-signatures';
+        value: number | LegalSignature;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1206,6 +1283,39 @@ export interface PaymentMessagesSelect<T extends boolean = true> {
   authorName?: T;
   authorRole?: T;
   body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-documents_select".
+ */
+export interface LegalDocumentsSelect<T extends boolean = true> {
+  kind?: T;
+  version?: T;
+  title?: T;
+  body?: T;
+  contentHash?: T;
+  publishedAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "legal-signatures_select".
+ */
+export interface LegalSignaturesSelect<T extends boolean = true> {
+  kind?: T;
+  action?: T;
+  document?: T;
+  contentHash?: T;
+  branch?: T;
+  signer?: T;
+  players?: T;
+  signedAt?: T;
+  ip?: T;
+  userAgent?: T;
+  requisitesSnapshot?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -32,6 +32,30 @@ const players = await payload.find({
 })
 const playerIds = players.docs.map((item) => item.id)
 
+const find = (collection: string, where: Record<string, unknown>) =>
+  payload.find({
+    collection: collection as never,
+    where: where as never,
+    limit: 10000,
+    depth: 0,
+    pagination: false,
+    overrideAccess: true,
+  })
+
+// Догнано до текущей модели (09.08): платёжные диалоги, чаты, комментарии к матчам,
+// реплики «вопроса тренеру», детские заявки, юридический журнал подписей.
+const [paymentThreads, paymentMessages, chatMessages, chatReads, matchComments, questionMessages, childRegistrations, legalSignatures] =
+  await Promise.all([
+    find('payment-threads', { parent: { equals: user.id } }),
+    find('payment-messages', { author: { equals: user.id } }),
+    find('chat-messages', { author: { equals: user.id } }),
+    find('chat-reads', { user: { equals: user.id } }),
+    find('match-comments', { author: { equals: user.id } }),
+    find('question-messages', { author: { equals: user.id } }),
+    find('child-registrations', { account: { equals: user.id } }),
+    find('legal-signatures', { signer: { equals: user.id } }),
+  ])
+
 const [consents, notifications, rsvps, questions, devices, subscriptions] = await Promise.all([
   payload.find({
     collection: 'consents',
@@ -86,5 +110,27 @@ const [consents, notifications, rsvps, questions, devices, subscriptions] = awai
 ])
 
 process.stdout.write(
-  `${JSON.stringify({ exportedAt: new Date().toISOString(), user, players: players.docs, consents: consents.docs, notifications: notifications.docs, rsvps: rsvps.docs, questions: questions.docs, devices: devices.docs, subscriptions: subscriptions.docs }, null, 2)}\n`,
+  `${JSON.stringify(
+    {
+      exportedAt: new Date().toISOString(),
+      user,
+      players: players.docs,
+      consents: consents.docs,
+      notifications: notifications.docs,
+      rsvps: rsvps.docs,
+      questions: questions.docs,
+      devices: devices.docs,
+      subscriptions: subscriptions.docs,
+      paymentThreads: paymentThreads.docs,
+      paymentMessages: paymentMessages.docs,
+      chatMessages: chatMessages.docs,
+      chatReads: chatReads.docs,
+      matchComments: matchComments.docs,
+      questionMessages: questionMessages.docs,
+      childRegistrations: childRegistrations.docs,
+      legalSignatures: legalSignatures.docs,
+    },
+    null,
+    2,
+  )}\n`,
 )
