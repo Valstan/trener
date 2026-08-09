@@ -132,6 +132,25 @@ export const buildSessionsCreatedMessage = (count: number): PushMessage => ({
   urgency: 'normal',
 })
 
+// Платёжный диалог (доводка 09.08): раньше нить не уведомляла никого — родитель
+// писал в бухгалтерию и ждал, пока туда заглянут. R4: ни сумм, ни текста.
+export const buildPaymentMessage = (to: 'toParent' | 'toStaff'): PushMessage => ({
+  title: to === 'toParent' ? 'Ответ бухгалтерии' : 'Вопрос по оплате',
+  body: 'Откройте приложение — сообщение в разделе «Оплата».',
+  url: to === 'toParent' ? '/parent/payment-chat' : '/coach/payment-chats',
+  tag: 'trener-payment',
+  urgency: 'normal',
+})
+
+// Комментарий к матчу (доводка 09.08) — участникам группы. R4: без текста и имён.
+export const buildMatchCommentMessage = (): PushMessage => ({
+  title: 'Новый комментарий к матчу',
+  body: 'Откройте приложение, чтобы прочитать.',
+  url: '/parent/matches',
+  tag: 'trener-match',
+  urgency: 'normal',
+})
+
 // Сообщение в теме общей комнаты (M9). Адресат — остальные участники группы.
 // 152-ФЗ R4: ни текста сообщения, ни имени автора, ни названия темы в payload —
 // он проходит через Apple/Google, а в реплике родителя запросто окажется имя
