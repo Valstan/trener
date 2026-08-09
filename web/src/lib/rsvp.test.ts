@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { rsvpKey, selectReminderParents, summarizeRsvp } from './rsvp'
+import { rsvpKey, selectReminderParents, sessionNeedsReminder, summarizeRsvp } from './rsvp'
 
 describe('selectReminderParents', () => {
   it('напоминаем родителям детей без RSVP; ответившие и сироты — мимо', () => {
@@ -42,5 +42,32 @@ describe('summarizeRsvp', () => {
   })
   it('ответов больше нет → noResponse не уходит в минус', () => {
     expect(summarizeRsvp(2, ['going', 'going', 'going'])).toMatchObject({ going: 3, noResponse: 0 })
+  })
+})
+
+describe('sessionNeedsReminder', () => {
+  const now = Date.parse('2026-08-09T12:00:00.000Z')
+  const iso = (offsetH: number) => new Date(now + offsetH * 3600_000).toISOString()
+
+  it('впереди и в окне 48 ч → напоминаем', () => {
+    expect(sessionNeedsReminder({ startDate: iso(24) }, now)).toBe(true)
+    expect(sessionNeedsReminder({ startDate: iso(47.9) }, now)).toBe(true)
+  })
+
+  it('за пределами окна или уже прошла → нет', () => {
+    expect(sessionNeedsReminder({ startDate: iso(49) }, now)).toBe(false)
+    expect(sessionNeedsReminder({ startDate: iso(-1) }, now)).toBe(false)
+  })
+
+  it('отменённая → нет', () => {
+    expect(sessionNeedsReminder({ startDate: iso(10), status: 'cancelled' }, now)).toBe(false)
+  })
+
+  it('уже напоминали (дедуп ежедневного таймера × окна 48 ч) → нет', () => {
+    expect(sessionNeedsReminder({ startDate: iso(10), rsvpReminderSentAt: iso(-14) }, now)).toBe(false)
+  })
+
+  it('битая дата → нет (не роняем прогон)', () => {
+    expect(sessionNeedsReminder({ startDate: 'не дата' }, now)).toBe(false)
   })
 })

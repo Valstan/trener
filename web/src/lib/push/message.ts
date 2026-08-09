@@ -23,10 +23,13 @@ export const buildPushMessage = (type: 'changed' | 'cancelled'): PushMessage => 
 })
 
 // Напоминание RSVP-нереспондентам (cron, PR9). Тоже без ПДн (R4).
+// Ссылка — на расписание с RSVP-кнопками: раньше вела на /parent, где ответить
+// было НЕЧЕМ (кнопки жили только в карточке уведомления об изменении) — пуш звал
+// сделать невозможное.
 export const buildRsvpReminderMessage = (): PushMessage => ({
   title: 'Скоро тренировка',
   body: 'Подтвердите в приложении, придёт ли ребёнок.',
-  url: '/parent',
+  url: '/parent/schedule',
   tag: 'trener-rsvp',
   urgency: 'normal',
 })

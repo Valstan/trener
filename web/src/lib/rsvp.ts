@@ -18,6 +18,26 @@ export const selectReminderParents = (slots: PlayerSlot[], respondedKeys: Set<st
   return [...parents]
 }
 
+// Нужно ли сессии cron-напоминание: впереди, в окне 48 ч, не отменена и ещё не
+// напоминали. Отметка — одна на сессию (дедуп: ежедневный таймер × окно 48 ч иначе
+// шлёт один и тот же пуш дважды). Чистый предикат — фильтр в route дублирует его
+// where-клаузой, но границы проверяются здесь, юнит-тестами.
+export const REMINDER_WINDOW_MS = 48 * 60 * 60 * 1000
+
+export type ReminderSession = {
+  startDate: string
+  status?: string | null
+  rsvpReminderSentAt?: string | null
+}
+
+export const sessionNeedsReminder = (s: ReminderSession, nowMs: number): boolean => {
+  if (s.status === 'cancelled') return false
+  if (s.rsvpReminderSentAt) return false
+  const start = Date.parse(s.startDate)
+  if (!Number.isFinite(start)) return false
+  return start > nowMs && start - nowMs <= REMINDER_WINDOW_MS
+}
+
 export type RsvpSummary = { going: number; notGoing: number; noResponse: number; total: number }
 
 // Сводка RSVP по сессии: total = детей в группе; going/notGoing — по ответам;
