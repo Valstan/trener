@@ -17,14 +17,27 @@ trener — под управлением meta-репо `brain_matrica` (`../brai
 
 | Направление | Кто пишет | Где |
 |---|---|---|
-| `brain → trener` | brain | `brain_matrica/mailboxes/trener/from-brain/*.md` (мы только **читаем** через `git pull --ff-only`) |
+| `brain → trener` | brain | `brain_matrica/mailboxes/trener/from-brain/*.md` (мы только **читаем**: локальная копия как есть + GitHub API, без какой-либо синхронизации чужого репо) |
 | `trener → brain` | мы | **`mailbox/to-brain/*.md`** в этом репо (коммитим в свой через PR) |
+
+### Чужие репозитории — только чтение (мандат владельца 2026-08-04)
+
+При старте и в течение сессии `fetch`/`pull --ff-only` допустимы **только в своём**
+репозитории. Соседние репо, включая `brain_matrica`, — **только чтение**: никаких
+`fetch`, `pull`, `checkout` и иных синхронизирующих/изменяющих команд (проект или Мозг
+могут одновременно работать в своей локальной копии, в т.ч. держать незапушенную почту).
 
 ### Шаги в начале каждой сессии (это и делает `/start`)
 
-1. **Sync brain (read-only):** `cd ../brain_matrica && git pull --ff-only && cd -`
-2. **Сканить** `../brain_matrica/mailboxes/trener/from-brain/*.md` (только корень — **не** `DRAFTS/`, **не** `ARCHIVE/`).
-3. **Доложить** пользователю **до** чтения `docs/SESSION_HANDOFF.md`:
+1. **Сканить входящие в два канала** (набор = объединение): локально
+   `../brain_matrica/mailboxes/trener/from-brain/*.md` (только корень — **не** `DRAFTS/`,
+   **не** `ARCHIVE/`) и тот же путь на GitHub `main` через API/веб (без clone/fetch/pull).
+   Одноимённое письмо различается → свежесть по истории **именно этого пути**
+   (незакоммиченная локальная версия — свежее; иначе последний локальный коммит файла
+   vs последний коммит пути на GitHub); порядок не определяется → прочитать обе версии,
+   явно отметить конфликт, ничего не перезаписывать. Свежесть одного письма/репо не
+   переносится на другие.
+2. **Доложить** пользователю **до** чтения `docs/SESSION_HANDOFF.md`:
    ```
    📬 N писем от brain_matrica:
    - [high MUST]     2026-MM-DD-slug — short topic
@@ -32,7 +45,7 @@ trener — под управлением meta-репо `brain_matrica` (`../brai
    - [low MAY]       2026-MM-DD-slug — short topic
    ```
    `[urgency COMPLIANCE]`: **urgency** (`high`/`normal`/`low`) — когда читать; **COMPLIANCE** (`MUST`/`SHOULD`/`MAY`) — насколько обязательно. `urgency: high` упоминать отдельно даже если письмо одно.
-4. **Retroactive** для писем без поля `compliance`: `kind: directive` → **MUST**, `kind: idea` → **SHOULD**.
+3. **Retroactive** для писем без поля `compliance`: `kind: directive` → **MUST**, `kind: idea` → **SHOULD**.
 
 ### Реакция по compliance
 
@@ -56,7 +69,8 @@ kind: idea | directive | question | feedback | report
 compliance: suggest | recommend | mandate   # required для kind=idea и kind=directive
 urgency: low | normal | high
 ref:
-  - brain_matrica/mailboxes/trener/from-brain/<filename>.md   # если отвечаешь
+  - 2026-MM-DD-slug   # если отвечаешь: FULL-SLUG письма-источника (с датой, без .md),
+                      # НЕ номер идеи и не тема — по нему mail_status Мозга гасит директиву
 ---
 ```
 
@@ -68,7 +82,8 @@ ref:
 
 ### Что НЕЛЬЗЯ
 
-- ❌ Писать/коммитить в `../brain_matrica/` что-либо (brain — **read-only** для этой сессии; только `git pull --ff-only`).
+- ❌ Писать/коммитить в `../brain_matrica/` что-либо (brain — **read-only** для этой сессии).
+- ❌ Синхронизировать чужие репо: ни `fetch`, ни `pull`, ни `checkout` в `../brain_matrica/` и любых соседях (мандат 08-04) — почта читается локально как есть + через GitHub API.
 - ❌ Писать в `brain_matrica/mailboxes/trener/to-brain/` — такой папки нет, brain принимает только из нашего `mailbox/to-brain/`.
 - ❌ Архивировать `from-brain/*` — это забота brain'а в его репо.
 - ❌ Писать письма другим проектам напрямую — идея в pool идёт письмом в свой `mailbox/to-brain/` с `kind=idea`.
@@ -111,3 +126,7 @@ M1 каркас + 152-ФЗ floor → M2 ядро (изменение→пуш→
 - `.claude/commands/*.md` — исполняемые памятки, применимые любому агенту несмотря на имя
   каталога. Общие `.claude/settings.json` и команды хранятся в Git; локальные настройки,
   кэши и сессии моделей не коммитятся.
+- **Правило перевода (ADR-0011 §5)** для не-Claude агентов, читающих `.claude/commands/*.md`:
+  `allowed-tools:` игнорируй; `/команда` = выполни шаги соответствующего файла;
+  `AskUserQuestion: …` = задай пользователю вопрос и дождись явного ответа;
+  **форма любая, шаг обязателен** — гейт нельзя пропустить из-за «чужого инструмента».
