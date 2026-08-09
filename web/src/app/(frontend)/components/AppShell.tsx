@@ -69,7 +69,7 @@ export const CHILD_TABS: Tab[] = [
 const staffTabSets = new WeakSet<Tab[]>()
 staffTabSets.add(COACH_TABS)
 
-export const isStaffTabs = (tabs?: Tab[]): boolean => Boolean(tabs && staffTabSets.has(tabs))
+const isStaffTabs = (tabs?: Tab[]): boolean => Boolean(tabs && staffTabSets.has(tabs))
 
 // Табы персонала с учётом роли: владельцу и админу филиала — «Оплата» и «Заявки»
 // в «Ещё» (ключ 'payments' экраны передавали всегда, но самого таба не было —
