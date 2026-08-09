@@ -3,7 +3,9 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { parseTopicCreate } from '@/lib/chatInput'
+import { canCreateTopic } from '@/lib/chatTopicScope'
 import { allowedChatTargets } from '@/access/chatScope'
+import { isOwner } from '@/access/roles'
 
 // POST { groupId, title } → новая тема в комнате группы (M9).
 //
@@ -30,12 +32,16 @@ export const POST = async (req: Request): Promise<Response> => {
 
     try {
       const allowed = await allowedChatTargets({ payload, user } as never)
-      const permitted = input.scope === 'school' ? allowed.school : input.scope === 'branch' ? input.branchId != null && allowed.branches.map(String).includes(String(input.branchId)) : input.groupId != null && (allowed.school || allowed.groups.map(String).includes(String(input.groupId)))
+      // Матрица роль×scope — чистая canCreateTopic (см. её комментарий про дыру
+      // `allowed.school ||`). Гейт «своя группа у тренера» ещё жёстче и срабатывает
+      // в guardTopicGroup — для этого в create передаём user (без него хук слеп).
+      const permitted = canCreateTopic({ owner: isOwner(user), ...allowed }, input)
       if (!permitted) return NextResponse.json({ ok: false }, { status: 403 })
       const topic = await payload.create({
         collection: 'chat-topics',
         data: { title: input.title, scope: input.scope, ...(input.groupId != null ? { group: input.groupId } : {}), ...(input.branchId != null ? { branch: input.branchId } : {}), room: input.room, createdBy: user.id },
         overrideAccess: true,
+        user,
       })
       return NextResponse.json({ ok: true, id: topic.id })
     } catch {

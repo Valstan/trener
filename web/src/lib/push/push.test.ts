@@ -63,6 +63,24 @@ describe('buildQuestionReplyMessage', () => {
   })
 })
 
+// tag по типу события + urgency: изменения расписания — high (kickoff §2), остальное —
+// normal; у каждого builder'а свой tag, чтобы чат не вытеснял с экрана отмену тренировки.
+describe('tag и urgency', () => {
+  it('изменение расписания — high, свой tag', () => {
+    const m = buildPushMessage('cancelled')
+    expect(m.urgency).toBe('high')
+    expect(m.tag).toBe('trener-schedule')
+  })
+  it('остальные типы — normal и различающиеся tag (кроме пары вопрос/ответ)', () => {
+    const rest = [buildAnnouncementMessage(), buildQuestionMessage(), buildChatMessage()]
+    for (const m of rest) expect(m.urgency).toBe('normal')
+    const tags = [...rest, buildPushMessage('changed')].map((m) => m.tag)
+    expect(new Set(tags).size).toBe(tags.length)
+    // вопрос и ответ — одна переписка, общий tag осознанно
+    expect(buildQuestionReplyMessage().tag).toBe(buildQuestionMessage().tag)
+  })
+})
+
 describe('isDeadSubscription', () => {
   it('404/410 → мёртвая (dead-letter)', () => {
     expect(isDeadSubscription(404)).toBe(true)

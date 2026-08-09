@@ -13,7 +13,7 @@
  *
  * Версионируем имя кэша: при изменении логики SW поднять VERSION → activate подчистит старые.
  */
-const VERSION = 'v2'
+const VERSION = 'v3'
 const CACHE = `trener-${VERSION}`
 const OFFLINE_URL = '/offline'
 // Минимальный предкэш: офлайн-страница + манифест. Остальное кэшируется на лету.
@@ -125,9 +125,10 @@ self.addEventListener('push', (event) => {
     body: data.body || 'Откройте приложение.',
     icon: '/icons/icon-192.png',
     badge: '/icons/icon-192.png',
-    data: { url: data.url || '/parent' },
-    // одно изменение = одно уведомление (новая волна вытесняет прошлую на экране)
-    tag: 'trener-schedule',
+    data: { url: data.url || '/home' },
+    // tag по ТИПУ события (schedule/rsvp/chat/…): события одного типа схлопываются
+    // между собой, но чат не вытесняет с экрана «Тренировка отменена».
+    tag: data.tag || 'trener-generic',
     renotify: true,
   }
   event.waitUntil(self.registration.showNotification(title, options))
@@ -136,7 +137,9 @@ self.addEventListener('push', (event) => {
 // Тап по уведомлению → фокус на уже открытой вкладке приложения или новая на data.url.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const target = (event.notification.data && event.notification.data.url) || '/parent'
+  // Фолбэк — /home (общая главная-карточки): пуши получают все роли, /parent
+  // уводил бы тренера и ребёнка на чужой экран с редиректом на лендинг.
+  const target = (event.notification.data && event.notification.data.url) || '/home'
   event.waitUntil(
     (async () => {
       const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })

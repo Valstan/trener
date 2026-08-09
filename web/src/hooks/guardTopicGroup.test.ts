@@ -7,14 +7,26 @@ import { guardTopicGroup } from './guardTopicGroup'
 // Поляны» завёл тему в группе «Малмыжа» и получил 200. Причина — access-функция,
 // вернувшая Where, на СОЗДАНИИ ничего не ограничивает, Payload читает её как «можно».
 // Здесь гейт проверяется напрямую, чтобы дыра не открылась заново.
+//
+// Мок различает служебные find'ы по форме where (как в access/roles.ts):
+//   coaches in [...] → coachGroupIds; branch equals → branchGroupIds;
+//   id in [...] → branchIdsForGroups (докам нужен .branch).
 
-const reqFor = (user: unknown, groupsOfCoach: number[], groupsOfBranch: number[] = []): PayloadRequest =>
+const reqFor = (
+  user: unknown,
+  groupsOfCoach: number[],
+  groupsOfBranch: number[] = [],
+  branchOfGroup: Record<number, number> = {},
+): PayloadRequest =>
   ({
     user,
     payload: {
       find: vi.fn(async ({ collection, where }: { collection: string; where?: Record<string, unknown> }) => {
         if (collection !== 'groups') return { docs: [] }
-        // branchGroupIds фильтрует по branch, coachGroupIds — по coaches.
+        if (where && 'id' in where) {
+          const ids = (where.id as { in: number[] }).in ?? []
+          return { docs: ids.map((id) => ({ id, branch: branchOfGroup[id] ?? null })) }
+        }
         const byBranch = where && 'branch' in where
         const ids = byBranch ? groupsOfBranch : groupsOfCoach
         return { docs: ids.map((id) => ({ id })) }
@@ -57,5 +69,41 @@ describe('guardTopicGroup', () => {
     await expect(
       guardTopicGroup({ data: { title: 'т' }, req, operation: 'create' } as never),
     ).rejects.toThrow(/группа/)
+  })
+
+  it('scope=school — пропускает (границу «кто может» держит маршрут)', async () => {
+    const req = reqFor({ id: 5, roles: ['coach'] }, [1])
+    await expect(
+      guardTopicGroup({ data: { title: 'т', scope: 'school' }, req, operation: 'create' } as never),
+    ).resolves.toBeTruthy()
+  })
+
+  it('scope=branch: тренер — филиал своих групп да, чужой — отказ', async () => {
+    const coach = { id: 5, roles: ['coach'] }
+    const req = reqFor(coach, [1, 2], [], { 1: 7, 2: 7 })
+    await expect(
+      guardTopicGroup({ data: { title: 'т', scope: 'branch', branch: 7 }, req, operation: 'create' } as never),
+    ).resolves.toBeTruthy()
+    const req2 = reqFor(coach, [1, 2], [], { 1: 7, 2: 7 })
+    await expect(
+      guardTopicGroup({ data: { title: 'т', scope: 'branch', branch: 8 }, req: req2, operation: 'create' } as never),
+    ).rejects.toThrow(/своём филиале/)
+  })
+
+  it('scope=branch: админ — только свой филиал', async () => {
+    const admin = { id: 7, roles: ['admin'], branch: 2 }
+    await expect(
+      guardTopicGroup({ data: { title: 'т', scope: 'branch', branch: 2 }, req: reqFor(admin, []), operation: 'create' } as never),
+    ).resolves.toBeTruthy()
+    await expect(
+      guardTopicGroup({ data: { title: 'т', scope: 'branch', branch: 3 }, req: reqFor(admin, []), operation: 'create' } as never),
+    ).rejects.toThrow(/своём филиале/)
+  })
+
+  it('scope=branch без филиала — отказ', async () => {
+    const req = reqFor({ id: 5, roles: ['coach'] }, [1])
+    await expect(
+      guardTopicGroup({ data: { title: 'т', scope: 'branch' }, req, operation: 'create' } as never),
+    ).rejects.toThrow(/филиал/)
   })
 })

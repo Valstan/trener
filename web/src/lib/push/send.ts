@@ -45,12 +45,15 @@ export const sendPushToUser = async (
   const webpush = (await import('web-push')).default
   webpush.setVapidDetails(vapid.subject, vapid.publicKey, vapid.privateKey)
   const body = JSON.stringify(message)
+  // urgency из сообщения (изменения расписания — high, kickoff §2); TTL сутки —
+  // пуш о сегодняшнем событии, доставленный через день, только путает.
+  const options = { urgency: message.urgency ?? 'normal', TTL: 86400 } as const
 
   let anyOk = false
   for (const d of devices.docs) {
     const subscription = { endpoint: d.endpoint, keys: { p256dh: d.p256dh, auth: d.auth } }
     try {
-      await webpush.sendNotification(subscription, body)
+      await webpush.sendNotification(subscription, body, options)
       anyOk = true
       await payload
         .update({

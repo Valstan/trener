@@ -2,7 +2,7 @@ import type { Access, PayloadRequest, Where } from 'payload'
 
 import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isCoach, isOwner, isParent, parentGroupIds } from './roles'
 
-const branchIdsForGroups = async (req: PayloadRequest, groupIds: (string | number)[]): Promise<(string | number)[]> => {
+export const branchIdsForGroups = async (req: PayloadRequest, groupIds: (string | number)[]): Promise<(string | number)[]> => {
   if (!groupIds.length) return []
   const groups = await req.payload.find({ collection: 'groups', where: { id: { in: groupIds } }, depth: 0, limit: 1000, pagination: false, overrideAccess: true })
   return Array.from(new Set(groups.docs.map((group) => typeof group.branch === 'object' && group.branch ? group.branch.id : group.branch).filter((id): id is number => typeof id === 'number')))

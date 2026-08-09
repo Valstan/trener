@@ -12,7 +12,6 @@ import { rsvpKey } from '@/lib/rsvp'
 
 import { AppShell, PARENT_TABS } from '../components/AppShell'
 import { ParentInbox, type InboxItem } from './ParentInbox'
-import { PushSubscribe } from './PushSubscribe'
 
 // Вкладка «Изменения» родителя: очередь непринятых изменений расписания + подтверждение
 // «вижу». Первичный in-app гарант доведения (kickoff §6) — не зависит от пуша.
@@ -116,9 +115,7 @@ const ParentPage = async () => {
       <p className="muted" style={{ margin: '0 0 1.25rem' }}>
         Отметьте «Вижу», чтобы тренер знал, что вы в курсе.
       </p>
-      <div style={{ marginBottom: '1.25rem' }}>
-        <PushSubscribe />
-      </div>
+      {/* Призыв включить пуш теперь в AppShell (для всех ролей); полный статус — в «Аккаунте». */}
       <ParentInbox items={items} />
     </AppShell>
   )

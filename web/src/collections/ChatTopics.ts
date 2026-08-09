@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { readChatScope } from '../access/chatScope'
 import { isOwner } from '../access/roles'
 import { cleanupTopicRelations } from '../hooks/cleanupTopicRelations'
+import { guardTopicGroup } from '../hooks/guardTopicGroup'
 
 // Тема во «взрослой комнате» группы (M9, видение v2 §3.3). Комната — это сама
 // группа: её тренеры + родители её детей. Отдельной сущности «комната» нет
@@ -34,8 +35,9 @@ export const ChatTopics: CollectionConfig = {
       'Темы общих чатов групп: тренеры и родители одной группы. Тему заводит тренер, писать в неё могут все участники группы.',
   },
   hooks: {
-    // Гейт «своя группа» — в beforeValidate, а не только в access: на создании
+    // Гейт «своя цель» — в beforeValidate, а не только в access: на создании
     // access-Where ничего не ограничивает (см. комментарий в guardTopicGroup).
+    beforeValidate: [guardTopicGroup],
     beforeDelete: [cleanupTopicRelations],
   },
   fields: [

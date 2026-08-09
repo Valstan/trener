@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import React from 'react'
 
+import { PushSubscribe } from './PushSubscribe'
 import { ThemeToggle } from './ThemeToggle'
 
 // Оболочка экрана за логином: липкая шапка + контент + нижние табы (нативный
@@ -105,7 +106,14 @@ export const AppShell = ({
       )}
     </header>
 
-    <main className={tabs ? 'page has-tabbar' : 'page'}>{children}</main>
+    <main className={tabs ? 'page has-tabbar' : 'page'}>
+      {/* Призыв включить пуш — для ВСЕХ залогиненных ролей (до 09.08 подписку
+          предлагали только родителю: пуши тренеру/владельцу/ребёнку уходили в
+          пустоту — некому было выдать разрешение). Тихий вариант: после подписки
+          или отказа ничего не рисует; полный статус — на экране «Аккаунт». */}
+      {tabs && <PushSubscribe variant="prompt" />}
+      {children}
+    </main>
 
     {tabs && (
       <nav className="tab-bar" aria-label="Разделы">
