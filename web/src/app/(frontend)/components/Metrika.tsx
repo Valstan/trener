@@ -24,7 +24,15 @@ ym(${id},'init',{ssr:true,accurateTrackBounce:true,trackLinks:true});`}
 
 // Видимый информер посещаемости в подвале — то, ради чего затевался D-017:
 // «кабинет открывают раз в месяц, подвал — каждый раз». Ставится рядом с
-// подписью автора. Формат — компактный, число посетителей.
+// подписью автора.
+//
+// Бейдж 88×31 показывает одно число — уникальных посетителей за сегодня
+// (`_uniques`). Просмотры и визиты видны в расширенной панели, которую tag.js
+// вешает на элемент с классом `ym-advanced-informer`: по наведению открывается
+// таблица «просмотры / визиты / посетители» за сегодня, вчера, неделю и месяц.
+// Поэтому класс и `data-cid`/`data-lang` обязательны — без них останется
+// картинка без всплывающей статистики. Разметка сверена с кодом, который
+// кабинет Метрики отдаёт для этого счётчика (10.08).
 export const MetrikaInformer = () => {
   if (METRIKA_COUNTER_ID == null) return null
   const id = METRIKA_COUNTER_ID
@@ -38,10 +46,13 @@ export const MetrikaInformer = () => {
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={`https://informer.yandex.ru/informer/${id}/3_1_FFFFFFFF_EFEFEFFF_0_pageviews`}
+        src={`https://informer.yandex.ru/informer/${id}/3_1_FFFFFFFF_EFEFEFFF_0_uniques`}
         alt="Яндекс.Метрика"
         width={88}
         height={31}
+        className="ym-advanced-informer"
+        data-cid={id}
+        data-lang="ru"
         style={{ width: 88, height: 31, border: 0 }}
       />
     </a>
