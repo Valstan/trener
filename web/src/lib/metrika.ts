@@ -25,3 +25,21 @@
 //
 // null → скрипт и информер не рендерятся вовсе.
 export const METRIKA_COUNTER_ID: number | null = 111457538
+
+// Тело inline-скрипта счётчика. Вынесено из компонента в чистую функцию ровно
+// ради теста рядом: этот сниппет ломается МОЛЧА — страница рендерится, tag.js
+// отдаётся с 200, а просмотры не отправляются и в кабинете вечный ноль.
+//
+// ⚠️ `?id=<counter>` в src обязателен. Без него tag.js грузится, но очередь
+// `ym.a` остаётся неразобранной: счётчик не инициализируется и ни одного
+// запроса `mc.yandex.ru/watch/<counter>` не уходит. Поймано на проде 10.08 —
+// первая версия D-017 (PR #127) писала src без параметра, потому что счётчика
+// ещё не существовало и проверить было не на чем. Диагноз подтверждён
+// эмпирически: догрузка `tag.js?id=...` в ту же страницу немедленно разобрала
+// очередь и отправила два `watch/...` с 200.
+export const metrikaSnippet = (id: number): string =>
+  `(function(m,e,t,r,i,k,a){m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+m[i].l=1*new Date();for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
+k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)})
+(window,document,'script','https://mc.yandex.ru/metrika/tag.js?id=${id}','ym');
+ym(${id},'init',{ssr:true,accurateTrackBounce:true,trackLinks:true});`
