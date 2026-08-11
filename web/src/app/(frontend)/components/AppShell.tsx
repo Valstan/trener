@@ -2,7 +2,6 @@ import Link from 'next/link'
 import React from 'react'
 
 import { PushSubscribe } from './PushSubscribe'
-import { ThemeToggle } from './ThemeToggle'
 
 // Оболочка экрана за логином: липкая шапка + контент + нижние табы (нативный
 // мобильный паттерн). Активный таб подсвечивается через aria-current — страница
@@ -130,7 +129,6 @@ export const AppShell = ({
           <Link href="/admin">Администрация</Link>
         </nav>
       )}
-      <ThemeToggle />
       {tabs && (
         <Link
           href="/account"

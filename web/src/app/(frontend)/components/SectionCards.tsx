@@ -15,25 +15,111 @@ export type Section = {
 }
 
 const PARENT_SECTIONS: Section[] = [
-  { key: 'changes', href: '/parent', icon: '🔔', title: 'Изменения', text: 'Переносы и отмены — подтвердите «Вижу»' },
-  { key: 'schedule', href: '/parent/schedule', icon: '📅', title: 'Расписание', text: 'Ближайшие тренировки и «придём / не придём»' },
-  { key: 'announcements', href: '/parent/announcements', icon: '📣', title: 'Объявления', text: 'Новости школы и группы' },
-  { key: 'matches', href: '/parent/matches', icon: '🏆', title: 'Результаты', text: 'Матчи и счёт' },
-  { key: 'chat', href: '/chat', icon: '👥', title: 'Чат группы', text: 'Общий разговор тренеров и родителей' },
-  { key: 'ask', href: '/parent/ask', icon: '💬', title: 'Вопрос тренеру', text: 'Личная переписка с тренером' },
+  {
+    key: 'changes',
+    href: '/parent',
+    icon: '🔔',
+    title: 'Изменения',
+    text: 'Переносы и отмены — подтвердите «Вижу»',
+  },
+  {
+    key: 'schedule',
+    href: '/parent/schedule',
+    icon: '📅',
+    title: 'Расписание',
+    text: 'Ближайшие тренировки и «придём / не придём»',
+  },
+  {
+    key: 'announcements',
+    href: '/parent/announcements',
+    icon: '📣',
+    title: 'Объявления',
+    text: 'Новости школы и группы',
+  },
+  {
+    key: 'matches',
+    href: '/parent/matches',
+    icon: '🏆',
+    title: 'Результаты',
+    text: 'Матчи и счёт',
+  },
+  {
+    key: 'chat',
+    href: '/chat',
+    icon: '👥',
+    title: 'Чат группы',
+    text: 'Общий разговор тренеров и родителей',
+  },
+  {
+    key: 'ask',
+    href: '/parent/ask',
+    icon: '💬',
+    title: 'Вопрос тренеру',
+    text: 'Личная переписка с тренером',
+  },
   { key: 'account', href: '/account', icon: '👤', title: 'Аккаунт', text: 'Email, пароль, вход' },
-  { key: 'payments', href: '/parent/payments', icon: '💳', title: 'Оплата', text: 'Абонемент: до когда оплачено и как платить' },
-  { key: 'gallery', href: '#', icon: '📷', title: 'Фотогалерея', text: 'Фото и видео с матчей — скоро', soon: true },
+  {
+    key: 'payments',
+    href: '/parent/payments',
+    icon: '💳',
+    title: 'Оплата',
+    text: 'Абонемент: до когда оплачено и как платить',
+  },
+  {
+    key: 'gallery',
+    href: '#',
+    icon: '📷',
+    title: 'Фотогалерея',
+    text: 'Фото и видео с матчей — скоро',
+    soon: true,
+  },
 ]
 
 const STAFF_SECTIONS: Section[] = [
-  { key: 'schedule', href: '/coach/schedule', icon: '📅', title: 'Расписание', text: 'Тренировки, переносы, coverage' },
-  { key: 'announcements', href: '/coach/announcements', icon: '📣', title: 'Объявления', text: 'Новости группе или всей сети' },
-  { key: 'matches', href: '/coach/matches', icon: '🏆', title: 'Результаты', text: 'Матчи и составы' },
-  { key: 'chat', href: '/chat', icon: '👥', title: 'Чат группы', text: 'Общий разговор тренеров и родителей' },
-  { key: 'questions', href: '/coach/questions', icon: '💬', title: 'Вопросы', text: 'Переписка с родителями' },
+  {
+    key: 'schedule',
+    href: '/coach/schedule',
+    icon: '📅',
+    title: 'Расписание',
+    text: 'Тренировки, переносы, coverage',
+  },
+  {
+    key: 'announcements',
+    href: '/coach/announcements',
+    icon: '📣',
+    title: 'Объявления',
+    text: 'Новости группе или всей сети',
+  },
+  {
+    key: 'matches',
+    href: '/coach/matches',
+    icon: '🏆',
+    title: 'Результаты',
+    text: 'Матчи и составы',
+  },
+  {
+    key: 'chat',
+    href: '/chat',
+    icon: '👥',
+    title: 'Чат группы',
+    text: 'Общий разговор тренеров и родителей',
+  },
+  {
+    key: 'questions',
+    href: '/coach/questions',
+    icon: '💬',
+    title: 'Вопросы',
+    text: 'Переписка с родителями',
+  },
   { key: 'account', href: '/account', icon: '👤', title: 'Аккаунт', text: 'Email, пароль, вход' },
-  { key: 'gallery', href: '#', icon: '📷', title: 'Фотогалерея', text: 'Фото и видео с матчей — скоро', soon: true },
+  {
+    key: 'gallery',
+    href: '#',
+    icon: '📷',
+    title: 'Фотогалерея',
+    text: 'Фото и видео с матчей — скоро',
+    soon: true,
+  },
 ]
 
 const PAYMENTS_SECTION: Section = {
@@ -82,15 +168,31 @@ const IMPORT_SECTION: Section = {
   text: 'Список из Excel → ссылки-приглашения родителям',
 }
 
-const PLAYERS_SECTION: Section = { key: 'players', href: '/coach/players', icon: '🔄', title: 'Дети и группы', text: 'Быстро перевести ребёнка в другую группу' }
+const PLAYERS_SECTION: Section = {
+  key: 'players',
+  href: '/coach/players',
+  icon: '🔄',
+  title: 'Дети и группы',
+  text: 'Быстро перевести ребёнка в другую группу',
+}
 
-export const sectionsForRoles = (user: { roles?: string[] | null } | null | undefined): Section[] => {
+export const sectionsForRoles = (
+  user: { roles?: string[] | null } | null | undefined,
+): Section[] => {
   const roles = Array.isArray(user?.roles) ? user!.roles! : []
   const staff = roles.includes('owner') || roles.includes('admin') || roles.includes('coach')
   if (!staff) return PARENT_SECTIONS
   const manager = roles.includes('owner') || roles.includes('admin')
   return manager
-    ? [...STAFF_SECTIONS, REQUESTS_SECTION, PAYMENTS_SECTION, MANAGER_SECTION, PLAYERS_SECTION, IMPORT_SECTION, LEGAL_SECTION]
+    ? [
+        ...STAFF_SECTIONS,
+        REQUESTS_SECTION,
+        PAYMENTS_SECTION,
+        MANAGER_SECTION,
+        PLAYERS_SECTION,
+        IMPORT_SECTION,
+        LEGAL_SECTION,
+      ]
     : [...STAFF_SECTIONS, PLAYERS_SECTION, IMPORT_SECTION]
 }
 
@@ -119,11 +221,22 @@ export const SectionCards = ({ sections, locked }: { sections: Section[]; locked
         </>
       )
       return disabled ? (
-        <div key={s.key} className="card row" style={{ alignItems: 'flex-start', opacity: 0.55 }}>
+        <div
+          key={s.key}
+          className="card row section-card"
+          data-section={s.key}
+          style={{ alignItems: 'flex-start', opacity: 0.55 }}
+        >
           {inner}
         </div>
       ) : (
-        <Link key={s.key} href={s.href} className="card row" style={{ alignItems: 'flex-start' }}>
+        <Link
+          key={s.key}
+          href={s.href}
+          className="card row section-card"
+          data-section={s.key}
+          style={{ alignItems: 'flex-start' }}
+        >
           {inner}
         </Link>
       )
