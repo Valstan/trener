@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import React from 'react'
 
 import './globals.css'
+import { AppearanceControls } from './components/ThemeToggle'
 import { InstallPrompt } from './components/InstallPrompt'
 import { ServiceWorkerRegister } from './components/ServiceWorkerRegister'
 
@@ -37,7 +38,7 @@ export const viewport: Viewport = {
   ],
 }
 
-const themeBoot = `try{var t=localStorage.getItem('trener-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t}catch(e){}`
+const themeBoot = `try{var t=localStorage.getItem('trener-theme');if(t==='light'||t==='dark')document.documentElement.dataset.theme=t;var s=localStorage.getItem('trener-style');document.documentElement.dataset.style=s==='football'?'football':'classic'}catch(e){document.documentElement.dataset.style='classic'}`
 
 const RootLayout = ({ children }: { children: React.ReactNode }) => (
   <html lang="ru" suppressHydrationWarning>
@@ -46,6 +47,13 @@ const RootLayout = ({ children }: { children: React.ReactNode }) => (
     </head>
     <body>
       <ServiceWorkerRegister />
+      <AppearanceControls />
+      <div className="football-prop-rack" aria-hidden>
+        <span className="football-prop football-prop-whistle" />
+        <span className="football-prop football-prop-boot" />
+        <span className="football-prop football-prop-gloves" />
+        <span className="football-prop football-prop-cones" />
+      </div>
       {children}
       <InstallPrompt />
     </body>

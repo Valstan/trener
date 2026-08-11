@@ -87,6 +87,7 @@ export function InstallPrompt() {
 
   return (
     <div
+      className="install-prompt"
       role="dialog"
       aria-label="Установить приложение"
       style={{

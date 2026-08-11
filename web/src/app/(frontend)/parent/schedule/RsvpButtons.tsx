@@ -8,7 +8,13 @@ import React, { useState } from 'react'
 // при ошибке откатываем и просим повторить.
 type ChildRow = { id: number; name: string; rsvp: 'going' | 'not_going' | null }
 
-export const RsvpButtons = ({ sessionId, childRows }: { sessionId: number; childRows: ChildRow[] }) => {
+export const RsvpButtons = ({
+  sessionId,
+  childRows,
+}: {
+  sessionId: number
+  childRows: ChildRow[]
+}) => {
   const [rows, setRows] = useState(childRows)
   const [error, setError] = useState(false)
 
@@ -34,8 +40,14 @@ export const RsvpButtons = ({ sessionId, childRows }: { sessionId: number; child
   return (
     <div className="stack-sm">
       <span className="muted small">Придёте на тренировку?</span>
+      <span className="football-only muted small" aria-hidden>
+        ⚽ «Придём» — выходим в старте · 🪑 «Не придём» — сегодня на скамейке
+      </span>
       {rows.map((c) => (
-        <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <div
+          key={c.id}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}
+        >
           <span style={{ flex: '1 1 auto', minWidth: 0 }}>{c.name}</span>
           <div className="seg">
             <button
