@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import React from 'react'
 
+import { DemoRibbon } from './DemoRibbon'
 import { PushSubscribe } from './PushSubscribe'
 
 // Оболочка экрана за логином: липкая шапка + контент + нижние табы (нативный
@@ -110,6 +111,10 @@ export const AppShell = ({
   children: React.ReactNode
 }) => (
   <>
+    {/* Первым элементом — до шапки: сама рисует себя только в демо-режиме
+        (auth внутри), в обычном потоке, не перекрывая sticky-шапку ниже. */}
+    <DemoRibbon />
+
     <header className="app-header">
       {back ? (
         <Link href={back.href} className="app-back" aria-label={back.label ?? 'Назад'}>
