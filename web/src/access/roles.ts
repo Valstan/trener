@@ -72,9 +72,12 @@ export const adminBranchId = (user: Branchish): string | number | null => {
 export const adminOrStaffField: FieldAccess = ({ req: { user } }) =>
   hasRole(user, 'owner', 'admin', 'coach')
 
-// Field-level: менять может только владелец (напр. SSO-привязка — защита от
-// самоперепривязки чужого sub; до M5 гейт назывался adminField).
-export const ownerField: FieldAccess = ({ req: { user } }) => isOwner(user)
+// Field-level: менять может только ЖИВОЙ owner (напр. SSO-привязка, users.demo —
+// защита от самоперепривязки чужого sub; до M5 гейт назывался adminField).
+// isFullOwner, не isOwner: демо-owner формально имеет roles: ['owner'], но не
+// должен уметь снять с себя собственный demo-флаг (эскалация до полного owner)
+// или переписать себе authProvider/externalId/login (D-029).
+export const ownerField: FieldAccess = ({ req: { user } }) => isFullOwner(user as Branchish)
 
 // Field-level гейт назначения ролей (защита от самоповышения):
 //   • owner назначает любые роли;

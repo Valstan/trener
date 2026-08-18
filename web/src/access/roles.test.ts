@@ -10,6 +10,7 @@ import {
   isDemo,
   isFullOwner,
   isParent,
+  ownerField,
 } from './roles'
 
 // Ролевой гейт #015 — security-critical: на нём держится write-authz и edit-gate.
@@ -89,5 +90,9 @@ describe('демо-скоупинг (D-029)', () => {
   })
   it('adminBranchId: живой owner без branch — null (как раньше)', () => {
     expect(adminBranchId({ roles: ['owner'] })).toBeNull()
+  })
+  it('ownerField: демо-owner — false, живой owner — true', () => {
+    expect(ownerField({ req: { user: demoOwner } } as never)).toBe(false)
+    expect(ownerField({ req: { user: { roles: ['owner'] } } } as never)).toBe(true)
   })
 })
