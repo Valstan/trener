@@ -24,7 +24,10 @@ export const createLoginToken = async (
     overrideAccess: true,
   })
   const user = users.docs[0]
-  if (!user) return null
+  // Демо-юзеру письмо не отправляем (D-029/#133: витринный аккаунт не должен
+  // рассылать реальную почту), но ответ вызывающей стороне НЕ отличаем от
+  // «пользователь не найден» — иначе по факту отправки можно перебирать демо-email.
+  if (!user || user.demo) return null
 
   const raw = generateRawToken()
   const expiresAt = new Date(Date.now() + LOGIN_TOKEN_TTL_MINUTES * 60_000).toISOString()

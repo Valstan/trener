@@ -2,7 +2,8 @@ import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOrCoachOwnGroup } from '../access/byGroup'
 import { cleanupPlayerRelations } from '../hooks/cleanupPlayerRelations'
-import { adminBranchId, branchGroupIds, coachGroupIds, hasRole, isChild, isCoach, isOwner, isParent, ownerField } from '../access/roles'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
+import { adminBranchId, branchGroupIds, coachGroupIds, hasRole, isChild, isCoach, isFullOwner, isParent, ownerField } from '../access/roles'
 
 // Ребёнок (игрок).
 //
@@ -16,7 +17,7 @@ import { adminBranchId, branchGroupIds, coachGroupIds, hasRole, isChild, isCoach
 const readPlayers: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   // Админ филиала — контент групп своего филиала (M5).
   const branch = adminBranchId(user)
   if (branch != null) {
@@ -58,9 +59,19 @@ export const Players: CollectionConfig = {
       '152-ФЗ: минимизация. Только имя + группа + контакт родителя. Без дат рождения, фото, здоровья, адресов, СНИЛС.',
   },
   hooks: {
+    beforeChange: [demoGuestLimit],
     beforeDelete: [cleanupPlayerRelations],
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'name',
       type: 'text',

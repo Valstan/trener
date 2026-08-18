@@ -1,6 +1,6 @@
 import type { Payload } from 'payload'
 
-import { isOwner } from '@/access/roles'
+import { isFullOwner } from '@/access/roles'
 import { readBranchCtx } from '@/lib/branchContext'
 
 // Контекст филиала владельца для coach-экранов (M5 PR-D). Для не-owner — нейтрально
@@ -15,9 +15,9 @@ export type OwnerBranchCtx = {
 
 export const loadOwnerBranch = async (
   payload: Payload,
-  user: { roles?: string[] | null } | null | undefined,
+  user: { roles?: string[] | null; demo?: boolean | null } | null | undefined,
 ): Promise<OwnerBranchCtx> => {
-  if (!isOwner(user)) return { branches: null, ctx: null, ctxGroupIds: null }
+  if (!isFullOwner(user)) return { branches: null, ctx: null, ctxGroupIds: null }
 
   const branches = (
     await payload.find({

@@ -13,9 +13,12 @@ export const Users: CollectionConfig = {
     plural: 'Пользователи',
   },
   access: {
-    // Вход в админку: персонал (owner + admin + coach). Родители работают в
-    // PWA-клиенте, не в админ-панели.
-    admin: ({ req: { user } }) => hasRole(user, 'owner', 'admin', 'coach'),
+    // Вход в админку: персонал (owner + admin + coach), КРОМЕ демо-юзеров.
+    // Родители работают в PWA-клиенте, не в админ-панели. Демо — витринный тур,
+    // /admin — рабочее место живого staff (D-029/#133): даже демо-owner/admin
+    // в панель не пускаем.
+    admin: ({ req: { user } }) =>
+      hasRole(user, 'owner', 'admin', 'coach') && !(user as { demo?: boolean } | null)?.demo,
     create: adminOnly,
     delete: adminOnly,
     read: adminOrSelf,
@@ -66,6 +69,17 @@ export const Users: CollectionConfig = {
         // Защита от самоповышения: owner — любые роли; админ филиала — только
         // coach/parent в своём филиале (rolesField, M5).
         update: rolesField,
+      },
+    },
+    {
+      name: 'demo',
+      type: 'checkbox',
+      label: 'Демо-аккаунт',
+      defaultValue: false,
+      saveToJWT: true,
+      access: { create: ownerField, update: ownerField },
+      admin: {
+        description: 'Общий витринный аккаунт D-029; исходящие пуш/email глушатся.',
       },
     },
     {

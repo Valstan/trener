@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
 
-import { isOwner } from '../access/roles'
+import { isFullOwner } from '../access/roles'
 import { guardLegalDocument } from '../hooks/guardLegalDocument'
 
 // Версионируемые юридические документы (D-016): договор поручения на обработку ПДн
@@ -22,8 +22,8 @@ export const LegalDocuments: CollectionConfig = {
   labels: { singular: 'Юридический документ', plural: 'Юридические документы' },
   access: {
     read: () => true,
-    create: ({ req }) => isOwner(req.user),
-    update: ({ req }) => isOwner(req.user),
+    create: ({ req }) => isFullOwner(req.user),
+    update: ({ req }) => isFullOwner(req.user),
     // Удаление запрещено всем: на версию могут ссылаться подписи.
     delete: () => false,
   },

@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
-import { adminBranchId, branchSessionIds, coachSessionIds, isOwner, isCoach, isParent } from '../access/roles'
+import { adminBranchId, branchSessionIds, coachSessionIds, isFullOwner, isCoach, isParent } from '../access/roles'
 
 // RSVP родителя: «придёт ли ребёнок на тренировку» (going / not_going).
 //
@@ -23,7 +23,7 @@ import { adminBranchId, branchSessionIds, coachSessionIds, isOwner, isCoach, isP
 const readRsvps: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   // Админ филиала — уведомления/RSVP сессий групп своего филиала (M5).
   const branch = adminBranchId(user)
   if (branch != null) {

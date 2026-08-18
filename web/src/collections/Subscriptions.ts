@@ -4,9 +4,10 @@ import {
   adminBranchId,
   branchGroupIds,
   isCoach,
-  isOwner,
+  isFullOwner,
   isParent,
 } from '../access/roles'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { stampSubscription } from '../hooks/stampSubscription'
 import { MAX_PAYMENT_AMOUNT, paidRangeValid } from '../lib/paymentInput'
 
@@ -41,7 +42,7 @@ const playerIdsByGroups = async (
 export const readSubscriptions: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const ids = await playerIdsByGroups(req, await branchGroupIds(req, branch))
@@ -73,7 +74,7 @@ export const readSubscriptions: Access = async ({ req }) => {
 const createSubscriptions: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const ids = await playerIdsByGroups(req, await branchGroupIds(req, branch))
@@ -87,7 +88,7 @@ const createSubscriptions: Access = async ({ req }) => {
 
 // Правка/удаление — ТОЛЬКО владелец: журнал оплат админ филиала не переписывает
 // (создать может, стереть след — нет; «кто её потом стёр» должно иметь ответ).
-const ownerOnly: Access = ({ req }) => isOwner(req.user)
+const ownerOnly: Access = ({ req }) => isFullOwner(req.user)
 
 export const Subscriptions: CollectionConfig = {
   slug: 'subscriptions',
@@ -108,10 +109,20 @@ export const Subscriptions: CollectionConfig = {
     hidden: ({ user }) => isCoach(user as unknown as { roles?: string[] | null }),
   },
   hooks: {
-    // Штамп «кто записал» + денорм филиала + G211-гейт границы админа.
-    beforeChange: [stampSubscription],
+    // Штамп «кто записал» + денорм филиала + G211-гейт границы админа;
+    // лимит демо-посетителя — до штампа, чтобы не тратить find'ы на отказ.
+    beforeChange: [demoGuestLimit, stampSubscription],
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'player',
       type: 'relationship',

@@ -1,7 +1,8 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
-import { adminBranchId, branchGroupIds, coachGroupIds, isOwner, isCoach, isParent } from '../access/roles'
+import { adminBranchId, branchGroupIds, coachGroupIds, isFullOwner, isCoach, isParent } from '../access/roles'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutQuestionReply } from '../hooks/fanOutQuestionReply'
 
 // Сообщение в нитке «вопрос тренеру» — двусторонний чат M4 (kickoff §4/§8).
@@ -18,7 +19,7 @@ import { fanOutQuestionReply } from '../hooks/fanOutQuestionReply'
 const readMessages: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   // Админ филиала — контент групп своего филиала (M5).
   const branch = adminBranchId(user)
   if (branch != null) {
@@ -58,8 +59,18 @@ export const QuestionMessages: CollectionConfig = {
   },
   hooks: {
     afterChange: [fanOutQuestionReply],
+    beforeChange: [demoGuestLimit],
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'question',
       type: 'relationship',

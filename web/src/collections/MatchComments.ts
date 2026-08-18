@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
-import { isOwner } from '../access/roles'
+import { isFullOwner } from '../access/roles'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutMatchComment } from '../hooks/fanOutMatchComment'
 import { readMatchParticipants } from './Matches'
 
@@ -11,7 +12,7 @@ export const MatchComments: CollectionConfig = {
     create: () => false,
     read: readMatchParticipants,
     update: () => false,
-    delete: ({ req }) => isOwner(req.user),
+    delete: ({ req }) => isFullOwner(req.user),
   },
   admin: {
     useAsTitle: 'authorName',
@@ -19,8 +20,17 @@ export const MatchComments: CollectionConfig = {
     description: 'Комментарии участников группы. Редактирование запрещено; владелец может удалить сообщение при модерации.',
   },
   // Пуш участникам группы (раньше комментарии создавались молча).
-  hooks: { afterChange: [fanOutMatchComment] },
+  hooks: { afterChange: [fanOutMatchComment], beforeChange: [demoGuestLimit] },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     { name: 'match', type: 'relationship', relationTo: 'matches', required: true, index: true },
     { name: 'group', type: 'relationship', relationTo: 'groups', required: true, index: true, admin: { readOnly: true } },
     { name: 'author', type: 'relationship', relationTo: 'users', admin: { readOnly: true } },

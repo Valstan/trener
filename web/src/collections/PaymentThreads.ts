@@ -1,7 +1,8 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
-import { adminBranchId, isOwner, isParent } from '../access/roles'
+import { adminBranchId, isFullOwner, isParent } from '../access/roles'
 import { cleanupPaymentThread } from '../hooks/cleanupPaymentThread'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutPaymentMessage } from '../hooks/fanOutPaymentMessage'
 
 // Доводка 09.08: админ филиала — ведёт учёт оплат филиала, но был отрезан от
@@ -10,7 +11,7 @@ import { fanOutPaymentMessage } from '../hooks/fanOutPaymentMessage'
 // оплате — нет. Теперь он видит нити СВОЕГО филиала.
 export const readPaymentThreads: Access = ({ req: { user } }) => {
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const where: Where = { branch: { equals: branch } }
@@ -26,7 +27,7 @@ export const readPaymentThreads: Access = ({ req: { user } }) => {
 export const readPaymentMessages: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   const scope: Where | null = branch != null
     ? { branch: { equals: branch } }
@@ -56,9 +57,18 @@ export const PaymentThreads: CollectionConfig = {
     defaultColumns: ['parent', 'branch', 'lastMessageAt'],
     description: 'Неудаляемые личные диалоги родителей с бухгалтерией. Ведутся из приложения.',
   },
-  hooks: { beforeDelete: [cleanupPaymentThread] },
+  hooks: { beforeChange: [demoGuestLimit], beforeDelete: [cleanupPaymentThread] },
   indexes: [{ fields: ['parent', 'branch'], unique: true }],
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     { name: 'parent', type: 'relationship', relationTo: 'users', required: true, index: true },
     { name: 'branch', type: 'relationship', relationTo: 'branches', index: true },
     { name: 'lastMessageAt', type: 'date', required: true, index: true, admin: { readOnly: true } },
@@ -72,8 +82,17 @@ export const PaymentMessages: CollectionConfig = {
   access: { create: () => false, read: readPaymentMessages, update: () => false, delete: () => false },
   admin: { defaultColumns: ['thread', 'authorName', 'createdAt'], description: 'История неизменяема и не удаляется.' },
   // Пуш второй стороне диалога (родителю или бухгалтерии) — раньше нить молчала.
-  hooks: { afterChange: [fanOutPaymentMessage] },
+  hooks: { afterChange: [fanOutPaymentMessage], beforeChange: [demoGuestLimit] },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     { name: 'thread', type: 'relationship', relationTo: 'payment-threads', required: true, index: true },
     { name: 'author', type: 'relationship', relationTo: 'users' },
     { name: 'authorName', type: 'text', required: true, maxLength: 120 },

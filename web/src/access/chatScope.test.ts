@@ -17,4 +17,10 @@ describe('chat scopes', () => {
   it('владелец видит все области', async () => {
     await expect(chatScopeForUser({ user: { id: 1, roles: ['owner'] } } as never)).resolves.toBe(true)
   })
+
+  it('демо-owner НЕ получает school:true — падает в branch-скоуп своего демо-филиала (D-029)', async () => {
+    const demoOwner = { id: 1, roles: ['owner'], demo: true, branch: 7 }
+    const where = await chatScopeForUser({ user: demoOwner, payload: { find: vi.fn() } } as never)
+    expect(where).toEqual({ or: [{ scope: { equals: 'school' } }, { and: [{ scope: { equals: 'branch' } }, { branch: { in: [7] } }] }] })
+  })
 })

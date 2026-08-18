@@ -1,6 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
+import { isDemo, isFullOwner, ownerField } from '../access/roles'
 
 // Филиал сети (M5, docs/m5-design.md §1) — верхняя граница видимости: участник
 // живёт в одном филиале, контент наследует филиал через groups.branch.
@@ -14,7 +15,15 @@ export const Branches: CollectionConfig = {
   access: {
     create: adminOnly,
     delete: adminOnly,
-    read: ({ req: { user } }) => Boolean(user),
+    // Обе стороны изоляции D-029: демо видит ТОЛЬКО демо-филиал, живые не видят демо
+    // («ФК Звёздочка» не всплывает в переключателе родителя). Живой owner видит всё —
+    // ему демо-филиал нужен для присмотра.
+    read: ({ req: { user } }) => {
+      if (!user) return false
+      if (isDemo(user)) return { isDemo: { equals: true } }
+      if (isFullOwner(user)) return true
+      return { isDemo: { not_equals: true } }
+    },
     update: adminOnly,
   },
   admin: {
@@ -120,6 +129,16 @@ export const Branches: CollectionConfig = {
       defaultValue: true,
       admin: {
         description: 'Снять галочку = закрыть филиал, не удаляя его историю.',
+      },
+    },
+    {
+      name: 'isDemo',
+      type: 'checkbox',
+      label: 'Демо-филиал',
+      defaultValue: false,
+      access: { create: ownerField, update: ownerField },
+      admin: {
+        description: 'Витрина D-029: содержимое пересевается ночью, живым пользователям не показывается.',
       },
     },
   ],

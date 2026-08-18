@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
+import { adminOnly } from './adminOnly'
 import { adminOrSelf } from './adminOrSelf'
 import { adminBranchId, isOwner, rolesField } from './roles'
 
@@ -47,6 +48,20 @@ describe('adminOrSelf (users, M5)', () => {
 
   it('родитель — только себя', () => {
     expect(call({ id: 4, roles: ['parent'], branch: 5 })).toEqual({ id: { equals: 4 } })
+  })
+
+  it('демо-owner в adminOrSelf получает branch-where, не полный доступ', async () => {
+    const demoOwner = { id: 1, roles: ['owner'], demo: true, branch: 7 }
+    const res = adminOrSelf({ req: { user: demoOwner } } as never)
+    expect(res).toEqual({ or: [{ id: { equals: 1 } }, { branch: { equals: 7 } }] })
+  })
+})
+
+describe('adminOnly (D-029)', () => {
+  it('adminOnly: демо-owner — false', () => {
+    expect(adminOnly({ req: { user: { roles: ['owner'], demo: true, branch: 7 } } } as never)).toBe(
+      false,
+    )
   })
 })
 

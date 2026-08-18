@@ -1,6 +1,17 @@
 import { describe, it, expect } from 'vitest'
 
-import { childGroupIds, hasRole, isAdmin, isChild, isCoach, isParent } from './roles'
+import {
+  adminBranchId,
+  childGroupIds,
+  hasRole,
+  isAdmin,
+  isChild,
+  isCoach,
+  isDemo,
+  isFullOwner,
+  isParent,
+  ownerField,
+} from './roles'
 
 // Ролевой гейт #015 — security-critical: на нём держится write-authz и edit-gate.
 // Тесты фиксируют поведение на «грязных» входах (null/undefined/не-массив roles),
@@ -65,5 +76,23 @@ describe('childGroupIds', () => {
   it('без привязанного player не даёт ни одной группы', async () => {
     const find = async () => ({ docs: [] })
     await expect(childGroupIds({ payload: { find } } as never, 7)).resolves.toEqual([])
+  })
+})
+
+describe('демо-скоупинг (D-029)', () => {
+  const demoOwner = { roles: ['owner'], demo: true, branch: 7 }
+  it('isFullOwner: живой owner — да, демо-owner — нет', () => {
+    expect(isFullOwner({ roles: ['owner'] })).toBe(true)
+    expect(isFullOwner(demoOwner)).toBe(false)
+  })
+  it('adminBranchId: демо-owner скоупится своим филиалом как branch-admin', () => {
+    expect(adminBranchId(demoOwner)).toBe(7)
+  })
+  it('adminBranchId: живой owner без branch — null (как раньше)', () => {
+    expect(adminBranchId({ roles: ['owner'] })).toBeNull()
+  })
+  it('ownerField: демо-owner — false, живой owner — true', () => {
+    expect(ownerField({ req: { user: demoOwner } } as never)).toBe(false)
+    expect(ownerField({ req: { user: { roles: ['owner'] } } } as never)).toBe(true)
   })
 })

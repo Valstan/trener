@@ -7,12 +7,13 @@ import {
   hasRole,
   adminBranchId,
   branchGroupIds,
-  isOwner,
+  isFullOwner,
   isCoach,
   isParent,
   parentGroupIds,
 } from '../access/roles'
 import { cleanupSessionRelations } from '../hooks/cleanupSessionRelations'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutScheduleChange } from '../hooks/fanOutScheduleChange'
 import { revalidateSchedule, revalidateScheduleDelete } from '../hooks/revalidateSchedule'
 import { trackSessionChange } from '../hooks/trackSessionChange'
@@ -27,7 +28,7 @@ import { trackSessionChange } from '../hooks/trackSessionChange'
 const readSessions: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   // Админ филиала — контент групп своего филиала (M5).
   const branch = adminBranchId(user)
   if (branch != null) {
@@ -68,13 +69,22 @@ export const TrainingSessions: CollectionConfig = {
   // (afterChange) → каскадная чистка связей при удалении (afterDelete).
   // Подробности и решения критика — docs/m2-core-design.md.
   hooks: {
-    beforeChange: [trackSessionChange],
+    beforeChange: [demoGuestLimit, trackSessionChange],
     afterChange: [fanOutScheduleChange, revalidateSchedule],
     // cleanup — beforeDelete (FK SET NULL ⨯ NOT NULL: чистим детей до удаления родителя).
     beforeDelete: [cleanupSessionRelations],
     afterDelete: [revalidateScheduleDelete],
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'group',
       type: 'relationship',

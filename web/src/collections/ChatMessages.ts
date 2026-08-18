@@ -1,7 +1,8 @@
 import type { CollectionConfig } from 'payload'
 
 import { readChatScope } from '../access/chatScope'
-import { isOwner } from '../access/roles'
+import { isFullOwner } from '../access/roles'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutChatMessage } from '../hooks/fanOutChatMessage'
 
 // Сообщение в теме общей комнаты (M9). Пишет любой участник группы — но только
@@ -24,10 +25,11 @@ export const ChatMessages: CollectionConfig = {
     create: () => false, // только /chat/message (overrideAccess после проверки участия)
     read: readChatScope,
     update: () => false,
-    delete: ({ req }) => isOwner(req.user),
+    delete: ({ req }) => isFullOwner(req.user),
   },
   hooks: {
     afterChange: [fanOutChatMessage],
+    beforeChange: [demoGuestLimit],
   },
   admin: {
     defaultColumns: ['topic', 'authorName', 'createdAt'],
@@ -35,6 +37,15 @@ export const ChatMessages: CollectionConfig = {
     description: 'Сообщения в темах общих чатов. Заводить и править вручную не нужно — пишутся из приложения.',
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'scope', type: 'select', defaultValue: 'group', index: true,
       options: [{ label: 'Группа', value: 'group' }, { label: 'Филиал', value: 'branch' }, { label: 'Вся школа', value: 'school' }], admin: { readOnly: true },

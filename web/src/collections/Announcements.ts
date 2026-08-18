@@ -5,11 +5,12 @@ import {
   adminBranchId,
   branchGroupIds,
   coachGroupIds,
-  isOwner,
+  isFullOwner,
   isCoach,
   isParent,
   parentGroupIds,
 } from '../access/roles'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutAnnouncement } from '../hooks/fanOutAnnouncement'
 
 // Объявление тренера группе (M3-PR10) + общесетевые объявления владельца (M5 PR-C,
@@ -25,7 +26,7 @@ import { fanOutAnnouncement } from '../hooks/fanOutAnnouncement'
 const readAnnouncements: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
 
   // Филиал пользователя — для видимости branch-объявлений.
   const userBranch = (user as { branch?: { id: number } | number | null }).branch
@@ -56,7 +57,7 @@ const readAnnouncements: Access = async ({ req }) => {
 // Write: owner — всё; тренер/админ — только групповые своих групп (по полю group).
 const writeAnnouncements: Access = async (args) => {
   const { req } = args
-  if (isOwner(req.user)) return true
+  if (isFullOwner(req.user)) return true
   // Тренер/админ не трогают сетевые/филиальные — только scope=group.
   const base = await adminOrCoachOwnGroup(args)
   if (base === true || base === false) return base
@@ -82,13 +83,14 @@ export const Announcements: CollectionConfig = {
   },
   hooks: {
     afterChange: [fanOutAnnouncement],
+    beforeChange: [demoGuestLimit],
     beforeValidate: [
       // Гейт охвата (M5): scope≠group и pinned может выставить только владелец.
       // beforeValidate работает и на server-mediated путях с overrideAccess.
       async ({ data, req }) => {
         if (!data) return data
         const scope = data.scope ?? 'group'
-        if ((scope !== 'group' || data.pinned) && !isOwner(req?.user)) {
+        if ((scope !== 'group' || data.pinned) && !isFullOwner(req?.user)) {
           throw new Error('Сетевые/филиальные и закреплённые объявления создаёт только владелец')
         }
         if (scope === 'group' && data.group == null) {
@@ -102,6 +104,15 @@ export const Announcements: CollectionConfig = {
     ],
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'author',
       type: 'relationship',

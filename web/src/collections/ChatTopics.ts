@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { readChatScope } from '../access/chatScope'
-import { isOwner } from '../access/roles'
+import { isFullOwner } from '../access/roles'
 import { cleanupTopicRelations } from '../hooks/cleanupTopicRelations'
 import { guardTopicGroup } from '../hooks/guardTopicGroup'
 
@@ -25,8 +25,8 @@ export const ChatTopics: CollectionConfig = {
   access: {
     create: () => false,
     read: readChatScope,
-    update: ({ req }) => isOwner(req.user),
-    delete: ({ req }) => isOwner(req.user),
+    update: ({ req }) => isFullOwner(req.user),
+    delete: ({ req }) => isFullOwner(req.user),
   },
   admin: {
     defaultColumns: ['title', 'group', 'lastMessageAt', 'closed'],

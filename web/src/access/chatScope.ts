@@ -1,6 +1,6 @@
 import type { Access, PayloadRequest, Where } from 'payload'
 
-import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isCoach, isOwner, isParent, parentGroupIds } from './roles'
+import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isCoach, isFullOwner, isParent, parentGroupIds } from './roles'
 
 export const branchIdsForGroups = async (req: PayloadRequest, groupIds: (string | number)[]): Promise<(string | number)[]> => {
   if (!groupIds.length) return []
@@ -11,7 +11,7 @@ export const branchIdsForGroups = async (req: PayloadRequest, groupIds: (string 
 export const chatScopeForUser = async (req: PayloadRequest): Promise<true | Where | false> => {
   const user = req.user
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   if (isChild(user)) {
     const groups = await childGroupIds(req, user.id)
     return groups.length ? { and: [{ scope: { equals: 'group' } }, { group: { in: groups } }, { room: { equals: 'children' } }] } : false
@@ -32,7 +32,7 @@ export const readChatScope: Access = ({ req }) => chatScopeForUser(req)
 export const allowedChatTargets = async (req: PayloadRequest): Promise<{ groups: (string | number)[]; branches: (string | number)[]; school: boolean }> => {
   const user = req.user
   if (!user || isChild(user) || isParent(user)) return { groups: [], branches: [], school: false }
-  if (isOwner(user)) return { groups: [], branches: [], school: true }
+  if (isFullOwner(user)) return { groups: [], branches: [], school: true }
   const adminBranch = adminBranchId(user)
   if (adminBranch != null) return { groups: await branchGroupIds(req, adminBranch), branches: [adminBranch], school: false }
   const ownGroups = isCoach(user) ? await coachGroupIds(req, user.id) : []
