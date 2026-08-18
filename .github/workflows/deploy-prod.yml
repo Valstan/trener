@@ -178,6 +178,8 @@ jobs:
           scp -q deploy/systemd/trener.service TRENERBOX:/tmp/trener.service
           scp -q deploy/systemd/trener-rsvp-reminders.service TRENERBOX:/tmp/trener-rsvp-reminders.service
           scp -q deploy/systemd/trener-rsvp-reminders.timer TRENERBOX:/tmp/trener-rsvp-reminders.timer
+          scp -q deploy/systemd/trener-demo-reseed.service TRENERBOX:/tmp/trener-demo-reseed.service
+          scp -q deploy/systemd/trener-demo-reseed.timer TRENERBOX:/tmp/trener-demo-reseed.timer
           scp -q deploy/systemd/trener-backup.service TRENERBOX:/tmp/trener-backup.service
           scp -q deploy/systemd/trener-backup.timer TRENERBOX:/tmp/trener-backup.timer
           scp -q deploy/backup/trener-backup.sh TRENERBOX:/tmp/trener-backup.sh
@@ -195,10 +197,10 @@ jobs:
           install -m 0755 /tmp/trener-backup.sh "$BASE/bin/trener-backup.sh"
           rm -f /tmp/trener-backup.sh
           # Юниты ставятся идемпотентно из артефакта-деплоя ПЕРЕД restart (sudo cp + reload):
-          # основной сервис + RSVP-cron + offsite-backup. Юниты в /etc/systemd/system
-          # переживают смену релиза (вне дерева releases/).
+          # основной сервис + RSVP-cron + demo-reseed-cron + offsite-backup. Юниты в
+          # /etc/systemd/system переживают смену релиза (вне дерева releases/).
           RELOAD=0
-          for U in trener.service trener-rsvp-reminders.service trener-rsvp-reminders.timer trener-backup.service trener-backup.timer; do
+          for U in trener.service trener-rsvp-reminders.service trener-rsvp-reminders.timer trener-demo-reseed.service trener-demo-reseed.timer trener-backup.service trener-backup.timer; do
             if ! cmp -s "/tmp/$U" "/etc/systemd/system/$U" 2>/dev/null; then
               sudo cp "/tmp/$U" "/etc/systemd/system/$U"
               RELOAD=1
@@ -212,6 +214,9 @@ jobs:
           # одноразовой настройки (trener-backup.env + gpg-ключ); владелец включит сам (docs/backups.md).
           # oneshot-сервисы не enable'им (их запускают таймеры).
           sudo systemctl enable --now trener-rsvp-reminders.timer >/dev/null 2>&1 || true
+          # Demo-reseed-таймер — как RSVP: enable+start сразу, гард CRON_SECRET решает,
+          # включён ли эндпоинт по факту (403, если секрета нет в env бокса).
+          sudo systemctl enable --now trener-demo-reseed.timer >/dev/null 2>&1 || true
           sudo systemctl restart trener
           ls -1dt "$BASE"/releases/*/ 2>/dev/null | grep -v '/current/$' | tail -n +4 | xargs -r rm -rf
           echo "deployed $SHA"
