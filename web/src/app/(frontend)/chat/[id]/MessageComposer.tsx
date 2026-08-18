@@ -22,14 +22,15 @@ export const MessageComposer = ({ topicId }: { topicId: number }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topicId, body }),
       })
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; reason?: string }
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; reason?: string; error?: string }
       if (res.ok && data.ok) {
         setBody('')
         router.refresh()
       } else if (data.reason === 'closed') {
         setError('Тему закрыли, пока вы писали. Обновите страницу.')
       } else {
-        setError('Не удалось отправить. Попробуйте ещё раз.')
+        // Сервер мог прислать осмысленный текст (например, лимит демо D-029).
+        setError(data.error || 'Не удалось отправить. Попробуйте ещё раз.')
       }
     } catch {
       setError('Не удалось отправить. Попробуйте ещё раз.')

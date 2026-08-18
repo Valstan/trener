@@ -1,3 +1,4 @@
+import { APIError } from 'payload'
 import type { CollectionBeforeChangeHook } from 'payload'
 
 import { DEMO_GUEST_LIMIT, DEMO_LIMIT_MESSAGE } from '../lib/demo/constants'
@@ -22,6 +23,9 @@ export const demoGuestLimit: CollectionBeforeChangeHook = async ({ req, operatio
     where: { demoGuest: { equals: true } },
     overrideAccess: true,
   })
-  if (totalDocs >= DEMO_GUEST_LIMIT) throw new Error(DEMO_LIMIT_MESSAGE)
+  // APIError(400, isPublic) вместо голого Error: голый Error Payload превращает в 500,
+  // и кастомные роуты отдают формам generic-текст. 400 + isPublic — роуты пробрасывают
+  // текст лимита клиенту (см. lib/apiErrorResponse), формы показывают его как есть.
+  if (totalDocs >= DEMO_GUEST_LIMIT) throw new APIError(DEMO_LIMIT_MESSAGE, 400, undefined, true)
   return { ...data, demoGuest: true }
 }
