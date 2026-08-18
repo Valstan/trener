@@ -14,9 +14,14 @@ import { DEMO_EMAILS } from '@/lib/demo/constants'
 export const dynamic = 'force-dynamic'
 
 export const POST = async (req: Request): Promise<Response> => {
+  // База для redirect — NEXT_PUBLIC_SERVER_URL, а не req.url: за reverse-proxy
+  // req.url — внутренний origin (например localhost:3007), на прод-приёмке
+  // D-029 браузер уезжал именно туда. Паттерн — как в auth/vk/callback/route.ts.
+  const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || new URL(req.url).origin
+
   const formData = await req.formData()
   const role = parseDemoRole(formData.get('role'))
-  if (!role) return NextResponse.redirect(new URL('/demo', req.url))
+  if (!role) return NextResponse.redirect(new URL('/demo', serverUrl))
 
   const payload = await getPayload({ config })
   // Гейт demo: { equals: true } в where — обязателен: даже если живой юзер
@@ -28,11 +33,11 @@ export const POST = async (req: Request): Promise<Response> => {
     overrideAccess: true,
   })
   const user = found.docs[0]
-  if (!user) return NextResponse.redirect(new URL('/demo?state=preparing', req.url))
+  if (!user) return NextResponse.redirect(new URL('/demo?state=preparing', serverUrl))
 
   const cookie = await buildAuthCookie(payload, user)
   const home = role === 'owner' || role === 'admin' ? '/coach/schedule' : homePathForUser(user)
-  const res = NextResponse.redirect(new URL(home, req.url), 303)
+  const res = NextResponse.redirect(new URL(home, serverUrl), 303)
   res.headers.set('Set-Cookie', cookie)
   return res
 }
