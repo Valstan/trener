@@ -1,0 +1,16 @@
+[Unit]
+Description=trener — ночной reseed демо-филиала D-029 (03:30 MSK)
+
+[Timer]
+# Бокс — Europe/Moscow; суффикс зоны пинит время даже при смене TZ бокса (systemd>=252; на боксе 255).
+# 03:30 — вне окна RSVP-напоминаний (09:00) и вне окна offsite-backup, минимальная нагрузка на бокс.
+OnCalendar=*-*-* 03:30:00 Europe/Moscow
+# Пропущенный запуск (бокс был выключен) — выполнить при старте.
+Persistent=true
+# Не бить ровно в 03:30 одновременно с соседними проектными таймерами.
+# (systemd НЕ допускает inline-комментарии на строке директивы — только отдельной строкой.)
+RandomizedDelaySec=3m
+AccuracySec=1m
+
+[Install]
+WantedBy=timers.target
