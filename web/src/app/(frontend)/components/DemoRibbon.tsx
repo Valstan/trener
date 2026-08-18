@@ -15,14 +15,29 @@ import { isDemo } from '@/access/roles'
 // (см. coach/schedule/page.tsx): AppShell сам по себе синхронный, но допускает
 // async-детей (RSC), поэтому auth не нужно поднимать выше.
 //
+// Почему СВОЙ auth, а не проп user сверху (ruling контролёра): проп пришлось бы
+// прокидывать через ~30 страниц, каждая из которых уже вызывает AppShell.
+// Забытый проп на новой странице молча снимает маркировку демо-режима — плашка
+// «смывается» без единой ошибки. Одна точка вкрутки внутри компонента делает
+// маркировку несмываемой ценой одного лишнего auth-lookup на SSR-страницу.
+//
 // Рендерится ПЕРЕД <header className="app-header"> в обычном потоке (не sticky),
 // чтобы не перекрывать липкую шапку: шапка сама sticky top:0, а плашка просто
 // сдвигает её вниз на высоту своей строки.
 export const DemoRibbon = async () => {
-  const payload = await getPayload({ config })
-  const { user } = await payload.auth({ headers: await nextHeaders() })
+  // Плашка — украшение, не источник правды: если свой auth здесь упадёт
+  // (сеть, БД, что угодно), молча гасим её, а не роняем страницу. Судьбу
+  // СВОЕГО auth решает сама страница — это лишь дублирующая проверка сверху.
+  let isDemoUser = false
+  try {
+    const payload = await getPayload({ config })
+    const { user } = await payload.auth({ headers: await nextHeaders() })
+    isDemoUser = isDemo(user)
+  } catch {
+    return null
+  }
 
-  if (!isDemo(user)) return null
+  if (!isDemoUser) return null
 
   return (
     <div className="demo-ribbon">
