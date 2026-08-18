@@ -87,7 +87,7 @@ export const SessionComposer = ({ groups }: { groups: GroupOption[] }) => {
           note: note.trim() || undefined,
         }),
       })
-      const data = (await res.json()) as { ok?: boolean; created?: number }
+      const data = (await res.json()) as { ok?: boolean; created?: number; error?: string }
       if (res.ok && data.ok) {
         const n = data.created ?? 1
         setStartDate('')
@@ -101,7 +101,8 @@ export const SessionComposer = ({ groups }: { groups: GroupOption[] }) => {
         router.refresh()
         setTimeout(() => setDone(''), 3500)
       } else {
-        setError('Не удалось сохранить. Попробуйте ещё раз.')
+        // Сервер мог прислать осмысленный текст (например, лимит демо D-029).
+        setError(data.error || 'Не удалось сохранить. Попробуйте ещё раз.')
       }
     } catch {
       setError('Не удалось сохранить. Попробуйте ещё раз.')

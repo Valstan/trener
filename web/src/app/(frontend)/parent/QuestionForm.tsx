@@ -29,13 +29,14 @@ export const QuestionForm = ({ groups }: { groups: GroupOption[] }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ groupId, body: body.trim() }),
       })
-      const data = (await res.json()) as { ok?: boolean }
+      const data = (await res.json()) as { ok?: boolean; error?: string }
       if (res.ok && data.ok) {
         setBody('')
         setDone(true)
         setTimeout(() => setDone(false), 3000)
       } else {
-        setError('Не удалось отправить. Попробуйте ещё раз.')
+        // Сервер мог прислать осмысленный текст (например, лимит демо D-029).
+        setError(data.error || 'Не удалось отправить. Попробуйте ещё раз.')
       }
     } catch {
       setError('Не удалось отправить. Попробуйте ещё раз.')

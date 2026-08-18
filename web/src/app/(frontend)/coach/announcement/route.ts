@@ -2,6 +2,8 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
+import { apiErrorResponse } from '@/lib/apiErrorResponse'
+
 import { isOwner, isCoach } from '@/access/roles'
 
 // POST { groupId, title, body, triggersPush? } → объявление тренера группе (M3-PR10).
@@ -100,6 +102,9 @@ export const POST = async (req: Request): Promise<Response> => {
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[coach/announcement]', err)
+    // Публичная ошибка Payload (лимит демо D-029) — отдаём её текст и статус форме.
+    const known = apiErrorResponse(err)
+    if (known) return known
     return NextResponse.json({ ok: false }, { status: 500 })
   }
 }

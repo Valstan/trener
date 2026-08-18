@@ -67,7 +67,7 @@ export const MatchComposer = ({
           note: note.trim() || undefined,
         }),
       })
-      const data = (await res.json()) as { ok?: boolean }
+      const data = (await res.json()) as { ok?: boolean; error?: string }
       if (res.ok && data.ok) {
         setOpponent('')
         setMatchDate('')
@@ -81,7 +81,8 @@ export const MatchComposer = ({
         router.refresh()
         setTimeout(() => setDone(false), 2500)
       } else {
-        setError('Не удалось сохранить. Попробуйте ещё раз.')
+        // Сервер мог прислать осмысленный текст (например, лимит демо D-029).
+        setError(data.error || 'Не удалось сохранить. Попробуйте ещё раз.')
       }
     } catch {
       setError('Не удалось сохранить. Попробуйте ещё раз.')

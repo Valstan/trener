@@ -27,12 +27,13 @@ export const ReplyForm = ({ action, placeholder }: { action: string; placeholder
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body: text }),
       })
-      const data = (await res.json()) as { ok?: boolean }
+      const data = (await res.json()) as { ok?: boolean; error?: string }
       if (res.ok && data.ok) {
         setBody('')
         router.refresh()
       } else {
-        setError('Не удалось отправить. Попробуйте ещё раз.')
+        // Сервер мог прислать осмысленный текст (например, лимит демо D-029).
+        setError(data.error || 'Не удалось отправить. Попробуйте ещё раз.')
       }
     } catch {
       setError('Не удалось отправить. Попробуйте ещё раз.')

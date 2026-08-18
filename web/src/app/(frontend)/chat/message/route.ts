@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { adminBranchId, isChild, isCoach, isOwner } from '@/access/roles'
+import { apiErrorResponse } from '@/lib/apiErrorResponse'
 import { parseMessageCreate } from '@/lib/chatInput'
 import { markTopicRead } from '@/lib/chatRead'
 import { relId } from '@/lib/relId'
@@ -84,6 +85,9 @@ export const POST = async (req: Request): Promise<Response> => {
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[chat/message POST]', err)
+    // Публичная ошибка Payload (лимит демо D-029) — отдаём её текст и статус форме.
+    const known = apiErrorResponse(err)
+    if (known) return known
     return NextResponse.json({ ok: false }, { status: 500 })
   }
 }

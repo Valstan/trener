@@ -14,7 +14,9 @@ export const MatchCommentForm = ({ matchId }: { matchId: number }) => {
     if (!body.trim()) return
     setBusy(true); setError('')
     const response = await fetch('/match/comment', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId, body }) })
-    if (response.ok) { setBody(''); router.refresh() } else setError('Не удалось отправить комментарий.')
+    const data = (await response.json().catch(() => ({}))) as { error?: string }
+    // Сервер мог прислать осмысленный текст (например, лимит демо D-029).
+    if (response.ok) { setBody(''); router.refresh() } else setError(data.error || 'Не удалось отправить комментарий.')
     setBusy(false)
   }}>
     <label htmlFor="match-comment"><strong>Оставить комментарий</strong></label>

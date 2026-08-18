@@ -2,6 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
+import { apiErrorResponse } from '@/lib/apiErrorResponse'
 import { parseTopicCreate } from '@/lib/chatInput'
 import { canCreateTopic } from '@/lib/chatTopicScope'
 import { allowedChatTargets } from '@/access/chatScope'
@@ -44,7 +45,10 @@ export const POST = async (req: Request): Promise<Response> => {
         user,
       })
       return NextResponse.json({ ok: true, id: topic.id })
-    } catch {
+    } catch (err) {
+      // Публичная ошибка Payload (лимит демо D-029) — отдаём её текст и статус форме.
+      const known = apiErrorResponse(err)
+      if (known) return known
       // Нет прав ИЛИ нет такой группы — не различаем (анти-enumeration, как /parent/ack).
       return NextResponse.json({ ok: false }, { status: 403 })
     }
