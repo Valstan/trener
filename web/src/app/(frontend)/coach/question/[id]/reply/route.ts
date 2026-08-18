@@ -54,6 +54,8 @@ export const POST = async (req: Request, ctx: { params: Promise<{ id: string }> 
         authorRole: 'coach',
         body,
       },
+      // user — иначе demoGuestLimit хук не увидит демо-автора и лимит 5 не сработает (C2).
+      user,
       overrideAccess: true,
     })
 

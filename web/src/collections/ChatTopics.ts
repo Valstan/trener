@@ -3,6 +3,7 @@ import type { CollectionConfig } from 'payload'
 import { readChatScope } from '../access/chatScope'
 import { isFullOwner } from '../access/roles'
 import { cleanupTopicRelations } from '../hooks/cleanupTopicRelations'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { guardTopicGroup } from '../hooks/guardTopicGroup'
 
 // Тема во «взрослой комнате» группы (M9, видение v2 §3.3). Комната — это сама
@@ -38,9 +39,20 @@ export const ChatTopics: CollectionConfig = {
     // Гейт «своя цель» — в beforeValidate, а не только в access: на создании
     // access-Where ничего не ограничивает (см. комментарий в guardTopicGroup).
     beforeValidate: [guardTopicGroup],
+    beforeChange: [demoGuestLimit],
     beforeDelete: [cleanupTopicRelations],
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод). Раньше поля/хука
+    // здесь не было вовсе — демо-тренер мог наплодить неограниченно тем чата (C2).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'scope', type: 'select', label: 'Область', defaultValue: 'group', index: true,
       options: [{ label: 'Группа', value: 'group' }, { label: 'Филиал', value: 'branch' }, { label: 'Вся школа', value: 'school' }],

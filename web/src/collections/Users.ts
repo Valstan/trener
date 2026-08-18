@@ -1,8 +1,8 @@
-import type { CollectionConfig } from 'payload'
+import type { Access, CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
 import { adminOrSelf } from '../access/adminOrSelf'
-import { hasRole, ownerField, rolesField } from '../access/roles'
+import { hasRole, isDemo, ownerField, rolesField } from '../access/roles'
 import { cleanupUserRelations } from '../hooks/cleanupUserRelations'
 import { ensureFirstUserAdmin } from '../hooks/ensureFirstUserAdmin'
 
@@ -22,7 +22,12 @@ export const Users: CollectionConfig = {
     create: adminOnly,
     delete: adminOnly,
     read: adminOrSelf,
-    update: adminOrSelf,
+    // Демо-юзерам update users закрыт целиком (I1, D-029): демо-аккаунты общие —
+    // любой посетитель мог бы сменить себе email/password/name через
+    // adminOrSelf.update и сломать /demo/login до ночного reseed'а, а вписав
+    // чужой реальный email — засквоттить его через users.email unique. «Сменить
+    // роль» в демо-туре правки users не требует, так что запрет ничего не ломает.
+    update: ((args) => (isDemo(args.req.user) ? false : adminOrSelf(args))) as Access,
   },
   admin: {
     defaultColumns: ['name', 'email', 'requestedRole', 'roles', 'status', 'branch'],

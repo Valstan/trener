@@ -17,7 +17,8 @@ export const POST = async (req: Request): Promise<Response> => {
     const match = await payload.findByID({ collection: 'matches', id: matchId, depth: 0, user, overrideAccess: false })
     const authorRole = isOwner(user) ? 'staff' : isCoach(user) ? 'coach' : isParent(user) ? 'parent' : isChild(user) ? 'child' : null
     if (!authorRole) return NextResponse.json({ ok: false }, { status: 403 })
-    await payload.create({ collection: 'match-comments', data: { match: match.id, group: relId(match.group)!, author: user.id, authorName: user.name || 'Участник', authorRole, body }, overrideAccess: true })
+    // user — иначе demoGuestLimit хук не увидит демо-автора и лимит 5 не сработает (C2).
+    await payload.create({ collection: 'match-comments', data: { match: match.id, group: relId(match.group)!, author: user.id, authorName: user.name || 'Участник', authorRole, body }, user, overrideAccess: true })
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ ok: false }, { status: 403 })

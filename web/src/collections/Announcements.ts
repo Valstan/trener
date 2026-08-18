@@ -5,6 +5,7 @@ import {
   adminBranchId,
   branchGroupIds,
   coachGroupIds,
+  isDemo,
   isFullOwner,
   isCoach,
   isParent,
@@ -32,8 +33,10 @@ const readAnnouncements: Access = async ({ req }) => {
   const userBranch = (user as { branch?: { id: number } | number | null }).branch
   const userBranchId = typeof userBranch === 'object' && userBranch !== null ? userBranch.id : userBranch
 
-  const wide: Where[] = [{ scope: { equals: 'network' } }]
-  if (userBranchId != null) {
+  // D-029: демо-юзер не видит сетевые/филиальные объявления живой школы — общий
+  // информационный канал живых, витринному туру там делать нечего (утечка).
+  const wide: Where[] = isDemo(user) ? [] : [{ scope: { equals: 'network' } }]
+  if (!isDemo(user) && userBranchId != null) {
     wide.push({ and: [{ scope: { equals: 'branch' } }, { branches: { in: [userBranchId] } }] })
   }
 

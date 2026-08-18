@@ -108,6 +108,8 @@ export const POST = async (req: Request): Promise<Response> => {
         scorers,
         note: note || undefined,
       },
+      // user — иначе demoGuestLimit хук не увидит демо-автора и лимит 5 не сработает (C2).
+      user,
       overrideAccess: true,
     })
 

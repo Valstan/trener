@@ -35,13 +35,13 @@ export const sendPushToUser = async (
   // Демо-пуш чужому телефону = инцидент (D-029/#133). Belt+suspenders: подписки
   // демо-юзеру и так не создаются (push/subscribe отвечает 403), но проверяем
   // здесь тоже — на случай устаревших/ручных записей Devices.
-  const target = await payload.findByID({
-    collection: 'users',
-    id: userId,
-    depth: 0,
-    overrideAccess: true,
-  })
-  if (target?.demo) return 'skipped'
+  // Гонка с удалением юзера: новый findByID (в отличие от старого поведения)
+  // кидает NotFound вместо null — ловим явно, иначе полез бы наверх как 'failed'
+  // вместо тихого 'skipped' (аккаунт удалили между постановкой пуша и отправкой).
+  const target = await payload
+    .findByID({ collection: 'users', id: userId, depth: 0, overrideAccess: true })
+    .catch(() => null)
+  if (!target || target.demo) return 'skipped'
 
   const devices = await payload.find({
     collection: 'devices',
