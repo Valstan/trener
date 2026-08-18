@@ -3,6 +3,7 @@ import type { Access, CollectionConfig, Where } from 'payload'
 import { adminOrCoachOwnGroup } from '../access/byGroup'
 import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isFullOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
 import { cleanupMatchRelations } from '../hooks/cleanupMatchRelations'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutMatchChange } from '../hooks/fanOutMatchChange'
 
 // Матчи (дорожная карта §4, после M3): расписание будущих игр (видение §3.1 —
@@ -80,13 +81,22 @@ export const Matches: CollectionConfig = {
   },
   // Пуш родителям группы: назначен матч / перенесён / появился счёт (push-only,
   // без ack-очереди — ров остаётся у изменений расписания).
-  hooks: { afterChange: [fanOutMatchChange], beforeDelete: [cleanupMatchRelations] },
+  hooks: { afterChange: [fanOutMatchChange], beforeChange: [demoGuestLimit], beforeDelete: [cleanupMatchRelations] },
   admin: {
     defaultColumns: ['matchDate', 'group', 'opponent', 'homeAway'],
     useAsTitle: 'opponent',
     description: 'Расписание игр и результаты — информационный раздел: подтверждения от родителей здесь не запрашиваются. Счёт пуст = будущий матч.',
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'group',
       type: 'relationship',

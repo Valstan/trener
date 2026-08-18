@@ -3,6 +3,7 @@ import type { Access, CollectionConfig, Where } from 'payload'
 import { adminOnly } from '../access/adminOnly'
 import { adminBranchId, branchGroupIds, coachGroupIds, isFullOwner, isCoach, isParent } from '../access/roles'
 import { cleanupQuestionRelations } from '../hooks/cleanupQuestionRelations'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutQuestion } from '../hooks/fanOutQuestion'
 
 // Вопрос родителя тренеру (M3-PR11) — суррогат чата (kickoff §4/§8). ОДНО сообщение,
@@ -61,10 +62,20 @@ export const Questions: CollectionConfig = {
   },
   hooks: {
     afterChange: [fanOutQuestion],
+    beforeChange: [demoGuestLimit],
     // M4: реплики нитки — required FK на вопрос; чистим до удаления головы.
     beforeDelete: [cleanupQuestionRelations],
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'parent',
       type: 'relationship',

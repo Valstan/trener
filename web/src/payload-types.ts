@@ -263,6 +263,7 @@ export interface Branch {
  */
 export interface Group {
   id: number;
+  demoGuest?: boolean | null;
   name: string;
   /**
    * Кто ведёт группу. Тренер видит и правит только свои группы.
@@ -288,6 +289,7 @@ export interface Group {
  */
 export interface Player {
   id: number;
+  demoGuest?: boolean | null;
   name: string;
   /**
    * Только для возрастной группы; не показывается участникам чатов.
@@ -315,6 +317,7 @@ export interface Player {
  */
 export interface TrainingSession {
   id: number;
+  demoGuest?: boolean | null;
   group: number | Group;
   startDate: string;
   endDate?: string | null;
@@ -469,6 +472,7 @@ export interface Rsvp {
  */
 export interface Announcement {
   id: number;
+  demoGuest?: boolean | null;
   author?: (number | null) | User;
   /**
    * Филиалы/сеть — только владелец. Группа — классическое объявление тренера.
@@ -504,6 +508,7 @@ export interface Announcement {
  */
 export interface Question {
   id: number;
+  demoGuest?: boolean | null;
   parent: number | User;
   group: number | Group;
   session?: (number | null) | TrainingSession;
@@ -525,6 +530,7 @@ export interface Question {
  */
 export interface QuestionMessage {
   id: number;
+  demoGuest?: boolean | null;
   question: number | Question;
   group: number | Group;
   parent: number | User;
@@ -542,6 +548,7 @@ export interface QuestionMessage {
  */
 export interface Match {
   id: number;
+  demoGuest?: boolean | null;
   group: number | Group;
   matchDate: string;
   opponent: string;
@@ -571,6 +578,7 @@ export interface Match {
  */
 export interface MatchComment {
   id: number;
+  demoGuest?: boolean | null;
   match: number | Match;
   group: number | Group;
   author?: (number | null) | User;
@@ -604,6 +612,7 @@ export interface ChildRegistration {
  */
 export interface Subscription {
   id: number;
+  demoGuest?: boolean | null;
   player: number | Player;
   paidFrom?: string | null;
   paidUntil: string;
@@ -653,6 +662,7 @@ export interface ChatTopic {
  */
 export interface ChatMessage {
   id: number;
+  demoGuest?: boolean | null;
   scope?: ('group' | 'branch' | 'school') | null;
   room: 'adults' | 'children';
   branch?: (number | null) | Branch;
@@ -693,6 +703,7 @@ export interface ChatRead {
  */
 export interface PaymentThread {
   id: number;
+  demoGuest?: boolean | null;
   parent: number | User;
   branch?: (number | null) | Branch;
   lastMessageAt: string;
@@ -707,6 +718,7 @@ export interface PaymentThread {
  */
 export interface PaymentMessage {
   id: number;
+  demoGuest?: boolean | null;
   thread: number | PaymentThread;
   author?: (number | null) | User;
   authorName: string;
@@ -1003,6 +1015,7 @@ export interface BranchesSelect<T extends boolean = true> {
  * via the `definition` "groups_select".
  */
 export interface GroupsSelect<T extends boolean = true> {
+  demoGuest?: T;
   name?: T;
   coaches?: T;
   description?: T;
@@ -1016,6 +1029,7 @@ export interface GroupsSelect<T extends boolean = true> {
  * via the `definition` "players_select".
  */
 export interface PlayersSelect<T extends boolean = true> {
+  demoGuest?: T;
   name?: T;
   dateOfBirth?: T;
   group?: T;
@@ -1030,6 +1044,7 @@ export interface PlayersSelect<T extends boolean = true> {
  * via the `definition` "training-sessions_select".
  */
 export interface TrainingSessionsSelect<T extends boolean = true> {
+  demoGuest?: T;
   group?: T;
   startDate?: T;
   endDate?: T;
@@ -1124,6 +1139,7 @@ export interface RsvpsSelect<T extends boolean = true> {
  * via the `definition` "announcements_select".
  */
 export interface AnnouncementsSelect<T extends boolean = true> {
+  demoGuest?: T;
   author?: T;
   scope?: T;
   branches?: T;
@@ -1141,6 +1157,7 @@ export interface AnnouncementsSelect<T extends boolean = true> {
  * via the `definition` "questions_select".
  */
 export interface QuestionsSelect<T extends boolean = true> {
+  demoGuest?: T;
   parent?: T;
   group?: T;
   session?: T;
@@ -1156,6 +1173,7 @@ export interface QuestionsSelect<T extends boolean = true> {
  * via the `definition` "question-messages_select".
  */
 export interface QuestionMessagesSelect<T extends boolean = true> {
+  demoGuest?: T;
   question?: T;
   group?: T;
   parent?: T;
@@ -1170,6 +1188,7 @@ export interface QuestionMessagesSelect<T extends boolean = true> {
  * via the `definition` "matches_select".
  */
 export interface MatchesSelect<T extends boolean = true> {
+  demoGuest?: T;
   group?: T;
   matchDate?: T;
   opponent?: T;
@@ -1193,6 +1212,7 @@ export interface MatchesSelect<T extends boolean = true> {
  * via the `definition` "match-comments_select".
  */
 export interface MatchCommentsSelect<T extends boolean = true> {
+  demoGuest?: T;
   match?: T;
   group?: T;
   author?: T;
@@ -1222,6 +1242,7 @@ export interface ChildRegistrationsSelect<T extends boolean = true> {
  * via the `definition` "subscriptions_select".
  */
 export interface SubscriptionsSelect<T extends boolean = true> {
+  demoGuest?: T;
   player?: T;
   paidFrom?: T;
   paidUntil?: T;
@@ -1253,6 +1274,7 @@ export interface ChatTopicsSelect<T extends boolean = true> {
  * via the `definition` "chat-messages_select".
  */
 export interface ChatMessagesSelect<T extends boolean = true> {
+  demoGuest?: T;
   scope?: T;
   room?: T;
   branch?: T;
@@ -1281,6 +1303,7 @@ export interface ChatReadsSelect<T extends boolean = true> {
  * via the `definition` "payment-threads_select".
  */
 export interface PaymentThreadsSelect<T extends boolean = true> {
+  demoGuest?: T;
   parent?: T;
   branch?: T;
   lastMessageAt?: T;
@@ -1292,6 +1315,7 @@ export interface PaymentThreadsSelect<T extends boolean = true> {
  * via the `definition` "payment-messages_select".
  */
 export interface PaymentMessagesSelect<T extends boolean = true> {
+  demoGuest?: T;
   thread?: T;
   author?: T;
   authorName?: T;

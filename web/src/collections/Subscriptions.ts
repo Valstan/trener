@@ -7,6 +7,7 @@ import {
   isFullOwner,
   isParent,
 } from '../access/roles'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { stampSubscription } from '../hooks/stampSubscription'
 import { MAX_PAYMENT_AMOUNT, paidRangeValid } from '../lib/paymentInput'
 
@@ -108,10 +109,20 @@ export const Subscriptions: CollectionConfig = {
     hidden: ({ user }) => isCoach(user as unknown as { roles?: string[] | null }),
   },
   hooks: {
-    // Штамп «кто записал» + денорм филиала + G211-гейт границы админа.
-    beforeChange: [stampSubscription],
+    // Штамп «кто записал» + денорм филиала + G211-гейт границы админа;
+    // лимит демо-посетителя — до штампа, чтобы не тратить find'ы на отказ.
+    beforeChange: [demoGuestLimit, stampSubscription],
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'player',
       type: 'relationship',

@@ -10,6 +10,7 @@ import {
   isParent,
   parentGroupIds,
 } from '../access/roles'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 
 // Группа (команда) детской футбольной школы: имя + филиал + тренер(ы) + состав
 // (Players). Филиал группы — ось многофилиальности M5: весь групповой контент
@@ -102,7 +103,19 @@ export const Groups: CollectionConfig = {
     defaultColumns: ['name', 'branch', 'coaches'],
     useAsTitle: 'name',
   },
+  hooks: {
+    beforeChange: [demoGuestLimit],
+  },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'name',
       type: 'text',

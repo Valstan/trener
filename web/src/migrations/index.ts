@@ -21,6 +21,7 @@ import * as migration_20260809_161403_parent_schedule_rsvp_reminder from './2026
 import * as migration_20260809_165619_legal_docs_d016 from './20260809_165619_legal_docs_d016';
 import * as migration_20260809_171123_payments_hardening from './20260809_171123_payments_hardening';
 import * as migration_20260818_185925_demo_mode_flags from './20260818_185925_demo_mode_flags';
+import * as migration_20260818_193347_demo_guest_flags from './20260818_193347_demo_guest_flags';
 
 export const migrations = [
   {
@@ -136,6 +137,11 @@ export const migrations = [
   {
     up: migration_20260818_185925_demo_mode_flags.up,
     down: migration_20260818_185925_demo_mode_flags.down,
-    name: '20260818_185925_demo_mode_flags'
+    name: '20260818_185925_demo_mode_flags',
+  },
+  {
+    up: migration_20260818_193347_demo_guest_flags.up,
+    down: migration_20260818_193347_demo_guest_flags.down,
+    name: '20260818_193347_demo_guest_flags'
   },
 ];

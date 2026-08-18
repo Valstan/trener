@@ -10,6 +10,7 @@ import {
   isParent,
   parentGroupIds,
 } from '../access/roles'
+import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutAnnouncement } from '../hooks/fanOutAnnouncement'
 
 // Объявление тренера группе (M3-PR10) + общесетевые объявления владельца (M5 PR-C,
@@ -82,6 +83,7 @@ export const Announcements: CollectionConfig = {
   },
   hooks: {
     afterChange: [fanOutAnnouncement],
+    beforeChange: [demoGuestLimit],
     beforeValidate: [
       // Гейт охвата (M5): scope≠group и pinned может выставить только владелец.
       // beforeValidate работает и на server-mediated путях с overrideAccess.
@@ -102,6 +104,15 @@ export const Announcements: CollectionConfig = {
     ],
   },
   fields: [
+    // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
+    // demoGuestLimit (field-access режет только клиентский ввод).
+    {
+      name: 'demoGuest',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: { hidden: true },
+      access: { create: () => false, update: () => false },
+    },
     {
       name: 'author',
       type: 'relationship',
