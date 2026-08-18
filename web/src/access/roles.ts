@@ -19,12 +19,30 @@ import type { FieldAccess, PayloadRequest } from 'payload'
 // ─────────────────────────────────────────────────────────────────────────────
 
 type Roleish = { roles?: string[] | null } | null | undefined
-type Branchish = Roleish & { branch?: { id: string | number } | string | number | null }
+type Branchish = Roleish & {
+  demo?: boolean | null
+  branch?: { id: string | number } | string | number | null
+}
 
 export const hasRole = (user: Roleish, ...roles: string[]): boolean =>
   Boolean(user && Array.isArray(user.roles) && roles.some((r) => user.roles!.includes(r)))
 
 export const isOwner = (user: Roleish): boolean => hasRole(user, 'owner')
+
+// Демо-режим (D-029): поле users.demo (saveToJWT) — пользователь порождён
+// демо-туром, а не живой регистрацией. Флаг read-only для самого юзера,
+// но виден в access-проверках через JWT-claim.
+export const isDemo = (user: ({ demo?: boolean | null } & Roleish) | null | undefined): boolean =>
+  Boolean(user?.demo)
+
+// Полный owner-доступ (сетевой, без скоупа филиалом) — только у живого владельца.
+// Демо-owner формально имеет roles: ['owner'], но в access-решениях должен вести
+// себя как филиальный админ своего демо-филиала (см. adminBranchId ниже), иначе
+// демо-тур получает доступ ко всей сети. UI-роутинг (какой дашборд открыть)
+// остаётся на isOwner — это только про write/read-authz.
+export const isFullOwner = (
+  user: ({ demo?: boolean | null } & Roleish) | null | undefined,
+): boolean => isOwner(user) && !isDemo(user)
 
 // Модерация входа (M5 PR-B): самореги ждут подтверждения владельцем/админом.
 // Пропущенный статус = approved: JWT-сессии, выписанные ДО ввода поля, статуса
@@ -39,6 +57,12 @@ export const isChild = (user: Roleish): boolean => hasRole(user, 'child')
 // Филиал, которым управляет админ: users.branch (id). null — не админ или филиал
 // не назначен (админ без филиала не управляет ничем — fail-closed).
 export const adminBranchId = (user: Branchish): string | number | null => {
+  // Демо-owner/admin (D-029) скоупится своим демо-филиалом, как обычный
+  // branch-admin — поверх проверенного M5-скоупинга ниже. Полный
+  // сетевой owner-доступ остаётся только у живого владельца (isFullOwner).
+  if (isDemo(user) && hasRole(user, 'owner', 'admin') && user?.branch) {
+    return typeof user.branch === 'object' ? user.branch.id : user.branch
+  }
   if (!isAdmin(user) || !user?.branch) return null
   return typeof user.branch === 'object' ? user.branch.id : user.branch
 }
