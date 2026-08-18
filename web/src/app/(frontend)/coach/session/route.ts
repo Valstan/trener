@@ -67,6 +67,8 @@ export const POST = async (req: Request): Promise<Response> => {
           note: input.note,
           status: 'planned',
         },
+        // user — иначе demoGuestLimit хук не увидит демо-автора и лимит 5 не сработает (C2).
+        user,
         overrideAccess: true,
       })
     }

@@ -1,6 +1,6 @@
 import type { Access, PayloadRequest, Where } from 'payload'
 
-import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isCoach, isFullOwner, isParent, parentGroupIds } from './roles'
+import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isCoach, isDemo, isFullOwner, isParent, parentGroupIds } from './roles'
 
 export const branchIdsForGroups = async (req: PayloadRequest, groupIds: (string | number)[]): Promise<(string | number)[]> => {
   if (!groupIds.length) return []
@@ -19,7 +19,9 @@ export const chatScopeForUser = async (req: PayloadRequest): Promise<true | Wher
   const adminBranch = adminBranchId(user)
   const groups = adminBranch != null ? [] : isCoach(user) ? await coachGroupIds(req, user.id) : isParent(user) ? await parentGroupIds(req, user.id) : []
   const branches = adminBranch != null ? [adminBranch] : await branchIdsForGroups(req, groups)
-  const clauses: Where[] = [{ scope: { equals: 'school' } }]
+  // D-029: демо-аноним не читает живой чат «Вся школа» — это общий канал живых
+  // пользователей, витринному туру там делать нечего (утечка + шум в реальном чате).
+  const clauses: Where[] = isDemo(user) ? [] : [{ scope: { equals: 'school' } }]
   if (groups.length) clauses.push(isParent(user)
     ? { and: [{ scope: { equals: 'group' } }, { group: { in: groups } }, { room: { equals: 'adults' } }] }
     : { and: [{ scope: { equals: 'group' } }, { group: { in: groups } }] })
@@ -38,5 +40,7 @@ export const allowedChatTargets = async (req: PayloadRequest): Promise<{ groups:
   const ownGroups = isCoach(user) ? await coachGroupIds(req, user.id) : []
   const branches = await branchIdsForGroups(req, ownGroups)
   const groups = (await Promise.all(branches.map((branch) => branchGroupIds(req, branch)))).flat()
-  return { groups, branches, school: isCoach(user) }
+  // D-029: демо-тренер не создаёт тему «Вся школа» — она видна живым пользователям
+  // и не сносится ночным reseed'ом (осталась бы мусором в реальном чате навсегда).
+  return { groups, branches, school: isCoach(user) && !isDemo(user) }
 }

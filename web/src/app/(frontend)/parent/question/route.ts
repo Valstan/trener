@@ -63,6 +63,8 @@ export const POST = async (req: Request): Promise<Response> => {
         body: bodyStr,
         status: 'new',
       },
+      // user — иначе demoGuestLimit хук не увидит демо-автора и лимит 5 не сработает (C2).
+      user,
       overrideAccess: true,
     })
 

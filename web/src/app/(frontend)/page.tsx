@@ -119,6 +119,18 @@ const HomePage = async () => {
       <p className="note" style={{ marginTop: '0.85rem' }}>
         Без пароля — пришлём ссылку для входа на email.
       </p>
+      {/* D-029: витрина демо-режима — дополнительный CTA рядом с основным входом.
+          Позволяет гостю сразу увидеть приложение в действии в разных ролях. */}
+      <Link
+        href="/demo"
+        className="btn btn-block"
+        style={{ maxWidth: 320, margin: '0.85rem auto 0', opacity: 0.9 }}
+      >
+        Посмотреть ДЕМО приложения
+      </Link>
+      <p className="note" style={{ marginTop: '0.35rem' }}>
+        Потрогать изнутри в разных ролях
+      </p>
     </section>
 
     <section className="stack" style={{ margin: '1rem 0 1rem' }}>

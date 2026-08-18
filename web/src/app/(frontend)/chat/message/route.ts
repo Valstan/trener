@@ -62,6 +62,9 @@ export const POST = async (req: Request): Promise<Response> => {
         authorRole,
         body: input.body,
       },
+      // user — иначе demoGuestLimit хук (req.user.demo) не увидит демо-автора и лимит
+      // 5 сущностей на витринного посетителя не сработает (C2).
+      user,
       overrideAccess: true,
     })
 

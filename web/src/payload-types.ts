@@ -634,6 +634,7 @@ export interface Subscription {
  */
 export interface ChatTopic {
   id: number;
+  demoGuest?: boolean | null;
   scope?: ('group' | 'branch' | 'school') | null;
   room: 'adults' | 'children';
   branch?: (number | null) | Branch;
@@ -1258,6 +1259,7 @@ export interface SubscriptionsSelect<T extends boolean = true> {
  * via the `definition` "chat-topics_select".
  */
 export interface ChatTopicsSelect<T extends boolean = true> {
+  demoGuest?: T;
   scope?: T;
   room?: T;
   branch?: T;
