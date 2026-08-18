@@ -13,9 +13,12 @@ export const Users: CollectionConfig = {
     plural: 'Пользователи',
   },
   access: {
-    // Вход в админку: персонал (owner + admin + coach). Родители работают в
-    // PWA-клиенте, не в админ-панели.
-    admin: ({ req: { user } }) => hasRole(user, 'owner', 'admin', 'coach'),
+    // Вход в админку: персонал (owner + admin + coach), КРОМЕ демо-юзеров.
+    // Родители работают в PWA-клиенте, не в админ-панели. Демо — витринный тур,
+    // /admin — рабочее место живого staff (D-029/#133): даже демо-owner/admin
+    // в панель не пускаем.
+    admin: ({ req: { user } }) =>
+      hasRole(user, 'owner', 'admin', 'coach') && !(user as { demo?: boolean } | null)?.demo,
     create: adminOnly,
     delete: adminOnly,
     read: adminOrSelf,

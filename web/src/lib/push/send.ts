@@ -32,6 +32,17 @@ export const sendPushToUser = async (
   const vapid = getVapidConfig()
   if (!vapid) return 'skipped'
 
+  // Демо-пуш чужому телефону = инцидент (D-029/#133). Belt+suspenders: подписки
+  // демо-юзеру и так не создаются (push/subscribe отвечает 403), но проверяем
+  // здесь тоже — на случай устаревших/ручных записей Devices.
+  const target = await payload.findByID({
+    collection: 'users',
+    id: userId,
+    depth: 0,
+    overrideAccess: true,
+  })
+  if (target?.demo) return 'skipped'
+
   const devices = await payload.find({
     collection: 'devices',
     where: { user: { equals: userId } },

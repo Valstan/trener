@@ -15,6 +15,12 @@ export const POST = async (req: Request): Promise<Response> => {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user) return NextResponse.json({ ok: false }, { status: 401 })
+    // Демо-юзер не подписывается на пуш: демо-тур не должен будить чужой телефон
+    // (D-029/#133). Без этой записи sendPushToUser и так бы не нашёл устройств,
+    // но 403 явно и сразу говорит клиенту, что подписки в демо не будет.
+    if ((user as { demo?: boolean }).demo) {
+      return NextResponse.json({ ok: false, reason: 'demo' }, { status: 403 })
+    }
 
     let sub: SubJSON | undefined
     let platform: string | undefined
