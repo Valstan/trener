@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOrCoachOwnGroup } from '../access/byGroup'
-import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
+import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isFullOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
 import { cleanupMatchRelations } from '../hooks/cleanupMatchRelations'
 import { fanOutMatchChange } from '../hooks/fanOutMatchChange'
 
@@ -26,7 +26,7 @@ import { fanOutMatchChange } from '../hooks/fanOutMatchChange'
 const readMatches: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   // Админ филиала — контент групп своего филиала (M5).
   const branch = adminBranchId(user)
   if (branch != null) {

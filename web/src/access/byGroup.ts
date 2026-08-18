@@ -5,7 +5,7 @@ import {
   branchGroupIds,
   coachGroupIds,
   isCoach,
-  isOwner,
+  isFullOwner,
 } from './roles'
 
 // Запись/удаление записей, привязанных к группе (Players, TrainingSessions):
@@ -15,7 +15,7 @@ import {
 export const adminOrCoachOwnGroup: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const ids = await branchGroupIds(req, branch)

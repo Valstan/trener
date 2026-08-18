@@ -4,6 +4,7 @@ import {
   adminBranchId,
   branchGroupIds,
   isCoach,
+  isFullOwner,
   isOwner,
   isParent,
 } from '../access/roles'
@@ -41,7 +42,7 @@ const playerIdsByGroups = async (
 export const readSubscriptions: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const ids = await playerIdsByGroups(req, await branchGroupIds(req, branch))
@@ -73,7 +74,7 @@ export const readSubscriptions: Access = async ({ req }) => {
 const createSubscriptions: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const ids = await playerIdsByGroups(req, await branchGroupIds(req, branch))

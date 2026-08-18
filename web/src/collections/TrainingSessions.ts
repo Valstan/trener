@@ -7,7 +7,7 @@ import {
   hasRole,
   adminBranchId,
   branchGroupIds,
-  isOwner,
+  isFullOwner,
   isCoach,
   isParent,
   parentGroupIds,
@@ -27,7 +27,7 @@ import { trackSessionChange } from '../hooks/trackSessionChange'
 const readSessions: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   // Админ филиала — контент групп своего филиала (M5).
   const branch = adminBranchId(user)
   if (branch != null) {

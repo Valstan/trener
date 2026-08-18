@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
-import { adminBranchId, branchGroupIds, coachGroupIds, isOwner, isCoach, isParent } from '../access/roles'
+import { adminBranchId, branchGroupIds, coachGroupIds, isFullOwner, isCoach, isParent } from '../access/roles'
 import { cleanupQuestionRelations } from '../hooks/cleanupQuestionRelations'
 import { fanOutQuestion } from '../hooks/fanOutQuestion'
 
@@ -21,7 +21,7 @@ import { fanOutQuestion } from '../hooks/fanOutQuestion'
 const readQuestions: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   // Админ филиала — контент групп своего филиала (M5).
   const branch = adminBranchId(user)
   if (branch != null) {

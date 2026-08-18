@@ -1,6 +1,6 @@
 import type { Access, PayloadRequest, Where } from 'payload'
 
-import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isCoach, isOwner, isParent, parentGroupIds } from './roles'
+import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isCoach, isFullOwner, isOwner, isParent, parentGroupIds } from './roles'
 
 export const branchIdsForGroups = async (req: PayloadRequest, groupIds: (string | number)[]): Promise<(string | number)[]> => {
   if (!groupIds.length) return []
@@ -11,7 +11,7 @@ export const branchIdsForGroups = async (req: PayloadRequest, groupIds: (string 
 export const chatScopeForUser = async (req: PayloadRequest): Promise<true | Where | false> => {
   const user = req.user
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   if (isChild(user)) {
     const groups = await childGroupIds(req, user.id)
     return groups.length ? { and: [{ scope: { equals: 'group' } }, { group: { in: groups } }, { room: { equals: 'children' } }] } : false

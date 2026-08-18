@@ -5,6 +5,7 @@ import {
   adminBranchId,
   branchGroupIds,
   coachGroupIds,
+  isFullOwner,
   isOwner,
   isCoach,
   isParent,
@@ -25,7 +26,7 @@ import { fanOutAnnouncement } from '../hooks/fanOutAnnouncement'
 const readAnnouncements: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
 
   // Филиал пользователя — для видимости branch-объявлений.
   const userBranch = (user as { branch?: { id: number } | number | null }).branch

@@ -82,7 +82,7 @@ export const ownerField: FieldAccess = ({ req: { user } }) => isOwner(user)
 //     (сверка branch цели — в rolesWithinAdminBranch ниже, где есть doc/data);
 //   • остальные роли менять не могут.
 export const rolesField: FieldAccess = ({ req: { user }, data, doc }) => {
-  if (isOwner(user)) return true
+  if (isFullOwner(user as Branchish)) return true
   if (!isAdmin(user)) return false
   const proposed: unknown = data?.roles
   if (Array.isArray(proposed) && proposed.some((r) => r === 'owner' || r === 'admin')) return false

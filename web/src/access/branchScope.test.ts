@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
+import { adminOnly } from './adminOnly'
 import { adminOrSelf } from './adminOrSelf'
 import { adminBranchId, isOwner, rolesField } from './roles'
 

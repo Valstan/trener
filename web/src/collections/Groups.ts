@@ -2,9 +2,11 @@ import type { Access, CollectionConfig, Where } from 'payload'
 
 import {
   adminBranchId,
+  branchGroupIds,
   coachGroupIds,
   isCoach,
-  isOwner,
+  isDemo,
+  isFullOwner,
   isParent,
   parentGroupIds,
 } from '../access/roles'
@@ -15,7 +17,17 @@ import {
 const readGroups: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  // Зеркало изоляции D-029 (Branches.read): демо видит только группы демо-филиала,
+  // живым исключать нечего вручную — их скоупы (свои группы/дети) в демо-филиал не
+  // указывают. Плоский список id — критик M2 H2 (не вложенный relationship-where).
+  if (isDemo(user)) {
+    const demoBranch = (user as { branch?: { id: number } | number | null }).branch
+    const demoBranchId = typeof demoBranch === 'object' && demoBranch !== null ? demoBranch.id : demoBranch
+    if (demoBranchId == null) return false
+    const ids = await branchGroupIds(req, demoBranchId)
+    return ids.length ? { id: { in: ids } } : false
+  }
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const where: Where = { branch: { equals: branch } }
@@ -38,7 +50,7 @@ const readGroups: Access = async ({ req }) => {
 // Тренер правит только свои группы; владелец — все; админ — группы своего филиала.
 const updateGroups: Access = ({ req: { user } }) => {
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const where: Where = { branch: { equals: branch } }
@@ -55,7 +67,7 @@ const updateGroups: Access = ({ req: { user } }) => {
 // (на create сверяем присланный branch — id или объект; fail-closed).
 const createGroups: Access = ({ req: { user }, data }) => {
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch == null) return false
   const target = data?.branch
@@ -65,7 +77,7 @@ const createGroups: Access = ({ req: { user }, data }) => {
 
 const deleteGroups: Access = ({ req: { user } }) => {
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const where: Where = { branch: { equals: branch } }

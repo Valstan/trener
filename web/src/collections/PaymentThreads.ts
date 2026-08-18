@@ -1,6 +1,6 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
-import { adminBranchId, isOwner, isParent } from '../access/roles'
+import { adminBranchId, isFullOwner, isParent } from '../access/roles'
 import { cleanupPaymentThread } from '../hooks/cleanupPaymentThread'
 import { fanOutPaymentMessage } from '../hooks/fanOutPaymentMessage'
 
@@ -10,7 +10,7 @@ import { fanOutPaymentMessage } from '../hooks/fanOutPaymentMessage'
 // оплате — нет. Теперь он видит нити СВОЕГО филиала.
 export const readPaymentThreads: Access = ({ req: { user } }) => {
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   if (branch != null) {
     const where: Where = { branch: { equals: branch } }
@@ -26,7 +26,7 @@ export const readPaymentThreads: Access = ({ req: { user } }) => {
 export const readPaymentMessages: Access = async ({ req }) => {
   const { user } = req
   if (!user) return false
-  if (isOwner(user)) return true
+  if (isFullOwner(user)) return true
   const branch = adminBranchId(user)
   const scope: Where | null = branch != null
     ? { branch: { equals: branch } }
