@@ -6,7 +6,6 @@ import {
   branchGroupIds,
   coachGroupIds,
   isFullOwner,
-  isOwner,
   isCoach,
   isParent,
   parentGroupIds,
@@ -57,7 +56,7 @@ const readAnnouncements: Access = async ({ req }) => {
 // Write: owner — всё; тренер/админ — только групповые своих групп (по полю group).
 const writeAnnouncements: Access = async (args) => {
   const { req } = args
-  if (isOwner(req.user)) return true
+  if (isFullOwner(req.user)) return true
   // Тренер/админ не трогают сетевые/филиальные — только scope=group.
   const base = await adminOrCoachOwnGroup(args)
   if (base === true || base === false) return base
@@ -89,7 +88,7 @@ export const Announcements: CollectionConfig = {
       async ({ data, req }) => {
         if (!data) return data
         const scope = data.scope ?? 'group'
-        if ((scope !== 'group' || data.pinned) && !isOwner(req?.user)) {
+        if ((scope !== 'group' || data.pinned) && !isFullOwner(req?.user)) {
           throw new Error('Сетевые/филиальные и закреплённые объявления создаёт только владелец')
         }
         if (scope === 'group' && data.group == null) {

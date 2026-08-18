@@ -5,7 +5,6 @@ import {
   branchGroupIds,
   isCoach,
   isFullOwner,
-  isOwner,
   isParent,
 } from '../access/roles'
 import { stampSubscription } from '../hooks/stampSubscription'
@@ -88,7 +87,7 @@ const createSubscriptions: Access = async ({ req }) => {
 
 // Правка/удаление — ТОЛЬКО владелец: журнал оплат админ филиала не переписывает
 // (создать может, стереть след — нет; «кто её потом стёр» должно иметь ответ).
-const ownerOnly: Access = ({ req }) => isOwner(req.user)
+const ownerOnly: Access = ({ req }) => isFullOwner(req.user)
 
 export const Subscriptions: CollectionConfig = {
   slug: 'subscriptions',

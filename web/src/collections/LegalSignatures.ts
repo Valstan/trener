@@ -1,6 +1,6 @@
 import type { Access, CollectionConfig } from 'payload'
 
-import { isOwner, isParent } from '../access/roles'
+import { isFullOwner, isParent } from '../access/roles'
 
 // Журнал юридических фактов (D-016): подписания договора поручения (филиал) и
 // согласия родителя, а также ОТЗЫВЫ согласий. Требование мандата: подпись — не
@@ -12,7 +12,7 @@ import { isOwner, isParent } from '../access/roles'
 // не правка старой. Проверка мандата: «через год родитель отзывает согласие — можно
 // показать точный текст, который он видел» → hash + неизменяемые версии документов.
 const read: Access = ({ req }) => {
-  if (isOwner(req.user)) return true
+  if (isFullOwner(req.user)) return true
   if (isParent(req.user)) return { signer: { equals: req.user!.id } }
   return false
 }

@@ -1,7 +1,7 @@
 import type { CollectionConfig } from 'payload'
 
 import { readChatScope } from '../access/chatScope'
-import { isOwner } from '../access/roles'
+import { isFullOwner } from '../access/roles'
 import { fanOutChatMessage } from '../hooks/fanOutChatMessage'
 
 // Сообщение в теме общей комнаты (M9). Пишет любой участник группы — но только
@@ -24,7 +24,7 @@ export const ChatMessages: CollectionConfig = {
     create: () => false, // только /chat/message (overrideAccess после проверки участия)
     read: readChatScope,
     update: () => false,
-    delete: ({ req }) => isOwner(req.user),
+    delete: ({ req }) => isFullOwner(req.user),
   },
   hooks: {
     afterChange: [fanOutChatMessage],

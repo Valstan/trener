@@ -1,6 +1,6 @@
 import type { Payload, Where } from 'payload'
 
-import { adminBranchId, isCoach, isOwner } from '@/access/roles'
+import { adminBranchId, isCoach, isFullOwner } from '@/access/roles'
 import { createInviteToken } from '@/lib/auth/invite'
 import { branchCanAcceptConsents } from '@/lib/legal'
 import { sendPlayerJoinEmail } from '@/lib/email/magicLinkEmail'
@@ -48,7 +48,7 @@ const resolveScope = async (
   user: ImportUser,
   branchId: number | null | undefined,
 ): Promise<{ ok: true; groups: ScopeGroup[] } | ScopeError> => {
-  if (isOwner(user)) {
+  if (isFullOwner(user)) {
     if (branchId == null) return { ok: false, errorCode: 'branch-required' }
     return { ok: true, groups: await findScopeGroups(payload, { branch: { equals: branchId } }) }
   }

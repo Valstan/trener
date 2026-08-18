@@ -1,6 +1,6 @@
 import type { CollectionConfig } from 'payload'
 
-import { isOwner } from '../access/roles'
+import { isFullOwner } from '../access/roles'
 import { fanOutMatchComment } from '../hooks/fanOutMatchComment'
 import { readMatchParticipants } from './Matches'
 
@@ -11,7 +11,7 @@ export const MatchComments: CollectionConfig = {
     create: () => false,
     read: readMatchParticipants,
     update: () => false,
-    delete: ({ req }) => isOwner(req.user),
+    delete: ({ req }) => isFullOwner(req.user),
   },
   admin: {
     useAsTitle: 'authorName',
