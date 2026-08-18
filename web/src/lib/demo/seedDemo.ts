@@ -8,11 +8,17 @@
  * демо-филиалу» (все снос/посев — по where-фильтрам от branchId/groupId/userId
  * демо-контура).
  *
- * Демо-юзеры (DEMO_EMAILS) НЕ удаляются между прогонами — find-or-create с
- * стабильными id: активная сессия посетителя, залогиненного вчера, не должна
- * протухать при ночном reseed. Пароль перевыпускается каждый прогон случайным
- * (`crypto.randomUUID()`) и нигде не публикуется — вход только через /demo/login
- * (server-side, overrideAccess), обычный email+пароль для демо-юзеров не работает.
+ * Демо-юзеры (5 ролей из DEMO_EMAILS + фоновые персонажи типа bgParent) НЕ
+ * удаляются между прогонами — find-or-create с стабильными id: активная сессия
+ * посетителя, залогиненного вчера, не должна протухать при ночном reseed. Пароль
+ * перевыпускается каждый прогон случайным (`crypto.randomUUID()`) и нигде не
+ * публикуется — вход только через /demo/login (server-side, overrideAccess),
+ * обычный email+пароль для демо-юзеров не работает.
+ *
+ * Снос содержимого при этом должен захватывать ВСЕХ демо-юзеров, не только
+ * перечисленных в DEMO_EMAILS: фильтр по `demo=true` + `branch=демо-филиал`
+ * (НЕ по списку email) — иначе фоновые персонажи типа bgParent теряют свои
+ * consents/announcements между прогонами (сироты копятся при каждом reseed).
  *
  * Все создания контента — Local API, `overrideAccess: true`, БЕЗ `req.user`:
  * тогда хук `demoGuestLimit` не проставляет `demoGuest: true` (это поле — только
@@ -128,10 +134,15 @@ export const seedDemo = async (
       : { docs: [] }
     const topicIds = topicsRes.docs.map((t) => t.id)
 
+    // ⚠️ НЕ по списку DEMO_EMAILS: фоновые персонажи (bgParent1/2 и любые будущие
+    // добавления) — тоже демо-юзеры демо-филиала, но не входят в DEMO_EMAILS.
+    // Фильтр email-списком однажды уже пропустил их consents мимо сноса (сироты
+    // копились при каждом ночном reseed, т.к. players пересоздаются с новыми id).
+    // `demo=true` + branch=демо-филиал захватывает ВСЕХ демо-юзеров без списка.
     const demoUsersRes = await payload.find({
       collection: 'users',
-      where: { email: { in: Object.values(DEMO_EMAILS) } },
-      limit: 20,
+      where: { demo: { equals: true }, branch: { equals: previousBranchId } },
+      limit: 50,
       pagination: false,
       overrideAccess: true,
     })
@@ -275,6 +286,9 @@ export const seedDemo = async (
   }
 
   // ─── 2. Филиал: find-or-create ─────────────────────────────────────────────
+  // Ключ поиска — { isDemo: true }, а не имя/город: демо-филиал ровно один во
+  // всей системе (осознанно, D-029) — по флагу, а не по совпадению текста,
+  // которое кто-нибудь может унести правкой DEMO_BRANCH_NAME/города.
   const foundBranch = await payload.find({
     collection: 'branches',
     where: { isDemo: { equals: true } },
@@ -329,8 +343,18 @@ export const seedDemo = async (
       overrideAccess: true,
     })
     if (found.docs[0]) {
-      log(`user ✔ ${email}`)
-      return found.docs[0]
+      // Ротация пароля на КАЖДОМ прогоне (не только при создании): пароль нигде
+      // не публикуется (вход только через /demo/login, overrideAccess), поэтому
+      // держать его стабильным незачем — а свежий на каждый сид ближе к
+      // «одноразовому секрету», которым он задуман.
+      const u = await payload.update({
+        collection: 'users',
+        id: found.docs[0].id,
+        data: { password: crypto.randomUUID() },
+        overrideAccess: true,
+      })
+      log(`user ✔ ${email} (пароль перевыпущен)`)
+      return u
     }
     const u = await payload.create({
       collection: 'users',
@@ -364,7 +388,16 @@ export const seedDemo = async (
       limit: 1,
       overrideAccess: true,
     })
-    if (found.docs[0]) return found.docs[0]
+    if (found.docs[0]) {
+      // Единообразие с findOrCreateDemoUser: ротация пароля на каждом прогоне.
+      const u = await payload.update({
+        collection: 'users',
+        id: found.docs[0].id,
+        data: { password: crypto.randomUUID() },
+        overrideAccess: true,
+      })
+      return u
+    }
     return payload.create({
       collection: 'users',
       data: {
@@ -579,7 +612,7 @@ export const seedDemo = async (
     },
     overrideAccess: true,
   })
-  await payload.create({
+  const matchFuture = await payload.create({
     collection: 'matches',
     data: {
       group: g2018.id,
@@ -789,31 +822,46 @@ export const seedDemo = async (
   log('questions + создан (1 вопрос с ответом)')
 
   // ─── 5. Счётчики (для лога cron и приёмки) ──────────────────────────────────
+  // ⚠️ ЖИВЫЕ payload.count() по реальным where-фильтрам демо-контура, не
+  // литералы: только так двойной прогон реально ДОКАЗЫВАЕТ идемпотентность
+  // (совпадение счётчиков), а не повторяет одну и ту же константу.
   const groupIds = [g2016.id, g2018.id]
+  const playerIds = [
+    plTimur.id,
+    plMark.id,
+    plEva.id,
+    plYaroslav.id,
+    plPolina.id,
+    plDanil.id,
+    plAlisa.id,
+    plFedor.id,
+  ]
+  const demoUserIdsAfterSeed = [dOwner.id, dAdmin.id, dCoach.id, dParent.id, dChild.id, bgParent1.id, bgParent2.id]
+  const matchIdsAfterSeed = [matchPlayed1.id, matchPlayed2.id, matchFuture.id]
+
+  const countOf = async (
+    collection: Parameters<Payload['count']>[0]['collection'],
+    where: Parameters<Payload['count']>[0]['where'],
+  ): Promise<number> => (await payload.count({ collection, where, overrideAccess: true })).totalDocs
+
   const counts: Record<string, number> = {
-    branches: 1,
-    users: 5 + 2, // 5 демо-ролей + 2 фоновых родителя
-    groups: groupIds.length,
-    players: 8,
-    consents: 3,
-    'training-sessions': 7,
-    notifications: (
-      await payload.count({
-        collection: 'notifications',
-        where: { session: { in: [s1.id] } },
-        overrideAccess: true,
-      })
-    ).totalDocs,
-    matches: 3,
-    'match-comments': 3,
-    'chat-topics': 1,
-    'chat-messages': 5,
-    subscriptions: 5,
-    'payment-threads': 1,
-    'payment-messages': 2,
-    announcements: 2,
-    questions: 1,
-    'question-messages': 1,
+    branches: await countOf('branches', { isDemo: { equals: true } }),
+    users: await countOf('users', { demo: { equals: true }, branch: { equals: branch.id } }),
+    groups: await countOf('groups', { branch: { equals: branch.id } }),
+    players: await countOf('players', { id: { in: playerIds } }),
+    consents: await countOf('consents', { parent: { in: demoUserIdsAfterSeed } }),
+    'training-sessions': await countOf('training-sessions', { group: { in: groupIds } }),
+    notifications: await countOf('notifications', { session: { in: [s1.id] } }),
+    matches: await countOf('matches', { group: { in: groupIds } }),
+    'match-comments': await countOf('match-comments', { match: { in: matchIdsAfterSeed } }),
+    'chat-topics': await countOf('chat-topics', { group: { in: groupIds } }),
+    'chat-messages': await countOf('chat-messages', { topic: { equals: topic.id } }),
+    subscriptions: await countOf('subscriptions', { player: { in: playerIds } }),
+    'payment-threads': await countOf('payment-threads', { branch: { equals: branch.id } }),
+    'payment-messages': await countOf('payment-messages', { thread: { equals: thread.id } }),
+    announcements: await countOf('announcements', { group: { in: groupIds } }),
+    questions: await countOf('questions', { group: { in: groupIds } }),
+    'question-messages': await countOf('question-messages', { question: { equals: question.id } }),
   }
 
   log(`готово: филиал #${branch.id}, счётчики: ${JSON.stringify(counts)}`)
