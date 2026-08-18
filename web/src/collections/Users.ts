@@ -69,6 +69,17 @@ export const Users: CollectionConfig = {
       },
     },
     {
+      name: 'demo',
+      type: 'checkbox',
+      label: 'Демо-аккаунт',
+      defaultValue: false,
+      saveToJWT: true,
+      access: { create: ownerField, update: ownerField },
+      admin: {
+        description: 'Общий витринный аккаунт D-029; исходящие пуш/email глушатся.',
+      },
+    },
+    {
       name: 'requestedRole',
       type: 'select',
       label: 'Роль, выбранная при регистрации',

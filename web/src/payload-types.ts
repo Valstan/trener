@@ -171,6 +171,10 @@ export interface User {
   phone?: string | null;
   roles: ('owner' | 'admin' | 'coach' | 'parent' | 'child' | 'applicant')[];
   /**
+   * Общий витринный аккаунт D-029; исходящие пуш/email глушатся.
+   */
+  demo?: boolean | null;
+  /**
    * Самостоятельный выбор до одобрения заявки.
    */
   requestedRole?: ('parent' | 'coach' | 'child') | null;
@@ -246,6 +250,10 @@ export interface Branch {
    * Снять галочку = закрыть филиал, не удаляя его историю.
    */
   active?: boolean | null;
+  /**
+   * Витрина D-029: содержимое пересевается ночью, живым пользователям не показывается.
+   */
+  isDemo?: boolean | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -942,6 +950,7 @@ export interface UsersSelect<T extends boolean = true> {
   name?: T;
   phone?: T;
   roles?: T;
+  demo?: T;
   requestedRole?: T;
   login?: T;
   authProvider?: T;
@@ -985,6 +994,7 @@ export interface BranchesSelect<T extends boolean = true> {
   monthlyFee?: T;
   paymentUrl?: T;
   active?: T;
+  isDemo?: T;
   updatedAt?: T;
   createdAt?: T;
 }

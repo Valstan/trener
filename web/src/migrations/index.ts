@@ -20,6 +20,7 @@ import * as migration_20260804_111204_self_registration_onboarding from './20260
 import * as migration_20260809_161403_parent_schedule_rsvp_reminder from './20260809_161403_parent_schedule_rsvp_reminder';
 import * as migration_20260809_165619_legal_docs_d016 from './20260809_165619_legal_docs_d016';
 import * as migration_20260809_171123_payments_hardening from './20260809_171123_payments_hardening';
+import * as migration_20260818_185925_demo_mode_flags from './20260818_185925_demo_mode_flags';
 
 export const migrations = [
   {
@@ -130,6 +131,11 @@ export const migrations = [
   {
     up: migration_20260809_171123_payments_hardening.up,
     down: migration_20260809_171123_payments_hardening.down,
-    name: '20260809_171123_payments_hardening'
+    name: '20260809_171123_payments_hardening',
+  },
+  {
+    up: migration_20260818_185925_demo_mode_flags.up,
+    down: migration_20260818_185925_demo_mode_flags.down,
+    name: '20260818_185925_demo_mode_flags'
   },
 ];
