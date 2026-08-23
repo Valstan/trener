@@ -1,0 +1,49 @@
+# gitleaks — правила поверх дефолтных (#170 «пробуй гейт классом, который реально течёт»).
+#
+# Мутация 23.08.2026 на СОБСТВЕННЫХ классах секретов trener (одноразовая ветка, PR #150):
+# дефолтные правила (generic-api-key) ловят PAYLOAD_SECRET / CRON_SECRET / VAPID_PRIVATE_KEY /
+# skm_-токен KARMAN / RADAR_CLIENT_SECRET, но ПРОПУСКАЮТ два класса, которые у нас реально
+# ходят: URL подключения к БД с паролем (DATABASE_URL — самый критичный секрет прода) и
+# SMTP_PASS=… (нет ключевого слова из списка generic-api-key). Ниже — правила ровно под них.
+#
+# Allowlist — только dev/CI-плейсхолдеры, которые лежат в репо намеренно
+# (postgres:postgres на рабочих станциях и в CI-контейнере, USER:PASS и <…> в шаблонах).
+# Приёмка правил — той же мутацией: случайные значения красные, плейсхолдеры зелёные.
+
+title = "trener — собственные классы секретов поверх дефолтных правил"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "trener-db-url-with-password"
+description = "URL подключения к БД/брокеру с паролем (DATABASE_URL и т.п.)"
+regex = '''(?i)\b(?:postgres(?:ql)?|mysql|mariadb|redis|amqps?|mongodb(?:\+srv)?)://[^\s:/@"'`]+:([^\s@"'`]{6,})@'''
+secretGroup = 1
+entropy = 2.0
+keywords = ["postgres", "postgresql", "mysql", "mariadb", "redis", "amqp", "mongodb"]
+
+  [rules.allowlist]
+  regexTarget = "match"
+  regexes = [
+    '''://postgres:postgres@''',
+    '''://USER:PASS@''',
+    '''://[^:]+:<[^>]*>@''',
+    '''(?i)://[^:]+:(?:pass|password|secret|changeme|example)@''',
+  ]
+
+[[rules]]
+id = "trener-env-password-assignment"
+description = "ENV-присваивание *_PASS / *_PASSWORD / *_PWD с реальным значением"
+# Только форма KEY=value с заглавным ключом в начале строки (не YAML `key: value`,
+# не код `password: body.password`). Значение ≥ 8 символов без пробелов/кавычек.
+regex = '''(?m)^\s*(?:export\s+)?[A-Z][A-Z0-9_]*(?:PASS|PASSWORD|PWD)\s*=\s*["']?([^\s"'#]{8,})'''
+secretGroup = 1
+entropy = 2.5
+keywords = ["pass", "pwd"]
+
+  [rules.allowlist]
+  regexTarget = "match"
+  regexes = [
+    '''=\s*["']?(?:\$\{?[A-Za-z_]|<[^>]*>|your[_-]|changeme|example|placeholder|postgres\b|\*{3,}|x{3,})''',
+  ]
