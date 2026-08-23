@@ -78,19 +78,19 @@ SMTP-relay. **Код полностью готов** — настройка чи
 `SMTP_USER` Yandex принимает в обоих видах. За счёт `SMTP_FROM_NAME` получатель видит
 «Футбольная школа», а не сам адрес.
 
-## Вариант B — почта на хостинге myjino
+## Вариант B — почта у хостера
 
-Если почта домена ведётся на myjino: завести ящик в панели myjino, взять параметры
-SMTP оттуда (обычно `smtp.jino.ru`, порт 465 SSL), `SMTP_USER` — полный адрес ящика,
-`SMTP_PASS` — его пароль. DNS (MX/SPF/DKIM) — по инструкции myjino. Остальное идентично.
+Если почта домена ведётся у хостера: завести ящик в панели хостера, взять параметры
+SMTP оттуда (хост relay, обычно порт 465 SSL), `SMTP_USER` — полный адрес ящика,
+`SMTP_PASS` — его пароль. DNS (MX/SPF/DKIM) — по инструкции хостера. Остальное идентично.
 
 ## Применение на проде (SSH)
 
 Секреты — только в `/etc/trener/trener.env` (root:0640), НЕ в репозитории. Дописать
-блок и перезапустить сервис:
+блок и перезапустить сервис (`<box>` — ssh-алиас прод-бокса из локального `~/.ssh/config`):
 
 ```bash
-ssh GONBA
+ssh <box>
 sudo tee -a /etc/trener/trener.env >/dev/null <<'EOF'
 
 # SMTP (magic-link)
@@ -121,7 +121,7 @@ curl -sS -X POST https://интер.вмалмыже.рф/auth/request-login \
 секунды. Если нет — смотреть логи сервиса:
 
 ```bash
-ssh GONBA 'sudo journalctl -u trener.service -n 50 --no-pager | grep -i "magic-link\|email\|smtp"'
+ssh <box> 'sudo journalctl -u trener.service -n 50 --no-pager | grep -i "magic-link\|email\|smtp"'
 ```
 
 ## Troubleshooting

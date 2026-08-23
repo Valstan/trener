@@ -7,7 +7,8 @@ After=network.target
 
 [Service]
 Type=oneshot
-User=valstan
+# __DEPLOY_USER__ / __DEPLOY_HOME__ рендерит remote-скрипт деплоя (D-038), см. trener.service.
+User=__DEPLOY_USER__
 # Конфиг бэкапа (отдельный от рантайм-env приложения). Обязателен → без него сервис падает.
 EnvironmentFile=/etc/trener/trener-backup.env
-ExecStart=/home/valstan/trener/bin/trener-backup.sh
+ExecStart=__DEPLOY_HOME__/trener/bin/trener-backup.sh

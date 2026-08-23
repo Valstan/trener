@@ -49,6 +49,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      # D-038: публичный репозиторий — recon-поверхность. Generic-грепы по отслеживаемым
+      # файлам (тех-хостнейм VPS, «Бокс N», публичный IPv4, /home/<user>/, ssh-алиас,
+      # unix-пользователь); правило и исключения — AGENTS.md. Внутри required-джоба,
+      # чтобы гейт был обязательным без правки branch protection.
+      - name: Recon-lint (D-038)
+        working-directory: .
+        run: bash scripts/recon-lint.sh
+
       # pnpm/action-setup ставит pnpm напрямую (без corepack) → обходит G53
       # («download pnpm? Y/n» виснет на headless) и corepack-в-subdir (packageManager
       # лежит в web/package.json, не в корне). Версия пинится под packageManager.

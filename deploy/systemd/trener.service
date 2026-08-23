@@ -4,36 +4,38 @@ After=network.target
 
 [Service]
 Type=simple
-User=valstan
-# Рантайм сервится из готового standalone-артефакта, собранного в CI (deploy-prod.yml,
-# «Бокс 1»): build-спайков на боксе нет (G20/G24 — общий бокс с GONBA/KARMAN/малмыж).
+# __DEPLOY_USER__ / __DEPLOY_HOME__ рендерит remote-скрипт деплоя (deploy-prod.yml) из
+# текущего пользователя бокса; в репо имя пользователя и путь не лежат (D-038).
+# Ручная установка: sed -e "s#__DEPLOY_USER__#$(id -un)#g" -e "s#__DEPLOY_HOME__#$HOME#g".
+User=__DEPLOY_USER__
+# Рантайм сервится из готового standalone-артефакта, собранного в CI (deploy-prod.yml):
+# build-спайков на боксе нет (G20/G24 — бокс общий с другими проектами, runtime-only).
 # Симлинк releases/current переключается деплоем атомарно; юнит ставится идемпотентно
 # remote-скриптом деплоя из этого файла (sudo cp + daemon-reload) ПЕРЕД restart.
-WorkingDirectory=/home/valstan/trener/releases/current
+WorkingDirectory=__DEPLOY_HOME__/trener/releases/current
 Environment=NODE_ENV=production
-# Секреты/конфиг — из /etc/trener/trener.env (root:valstan, 0640), вне дерева репо
+# Секреты/конфиг — из /etc/trener/trener.env (root:<deploy-user>, 0640), вне дерева репо
 # (#008 / ADR-0005). NEXT_PUBLIC_* запекаются в бандл на CI-сборке (TRENER_BUILD_ENV);
 # здесь env нужен для runtime-секретов (DATABASE_URL, PAYLOAD_SECRET, VAPID_PRIVATE_KEY,
-# CRON_SECRET, SMTP_*).
+# CRON_SECRET, SMTP_*) и для PORT (порт за прокси — тоже в env, не в репо: D-038).
 EnvironmentFile=-/etc/trener/trener.env
 # Токен менеджера секретов KARMAN — ОТДЕЛЬНЫМ файлом (не в trener.env!), чтобы он
 # пережил потерю trener.env: при потере приложение восстановит секреты из KARMAN по
 # этому токену (web/src/instrumentation.ts → secretsBootstrap, docs/secrets-manager.md).
 # Опционален (-): нет токена → восстановление просто не сработает, старт не блокируется.
 EnvironmentFile=-/etc/trener/secrets-token.env
-# standalone server.js читает HOSTNAME/PORT из env (флагов нет). Порт 3007 — свободен на
-# Боксе 1 (заняты: gonba 3000, karman 3002, vmalmyzhe 3004, dkmalmyzh 3005, kalinino 3006).
-Environment=PORT=3007
+# standalone server.js читает HOSTNAME/PORT из env (флагов нет). PORT — в trener.env
+# (EnvironmentFile перекрывает Environment=); слушаем только loopback, снаружи — nginx.
 Environment=HOSTNAME=127.0.0.1
-# G234 (профилактика, замер 09.08). Гонка keep-alive у нас НЕ воспроизводится:
-# в nginx нет ни одного upstream-блока с `keepalive N` — прокси не держит пул
-# соединений к бэкенду. Значение всё равно задаём явно и с запасом (65 c > 60 c
-# nginx-idle): если пул однажды появится, дефолтные 5 c Node дадут ровно ту самую
-# «случайную 502 при пустых логах». standalone server.js читает эту env сам.
-Environment=KEEP_ALIVE_TIMEOUT=65000
-# Окно дренажа при остановке (lib/gracefulShutdown): в standalone-сборке Next
-# обработчика SIGTERM НЕТ (проверено grep'ом по server.js), поэтому рестарт рвал
-# запросы в полёте. Приложение само откладывает выход на это время.
+# G234 (профилактика, замер 09.08; амендмент-2 от 23.08 — см. web/src/lib/gracefulShutdown.ts).
+# Гонка keep-alive у нас НЕ воспроизводится: прокси не держит idle-пул к бэкенду.
+# Значение задаём явно, но НЕ выше дефолтного headersTimeout Node (60 c): больший
+# keep-alive без закрытия соединений при SIGTERM не защищает, а удлиняет простой
+# рестарта. standalone server.js читает эту env сам.
+Environment=KEEP_ALIVE_TIMEOUT=60000
+# Окно дренажа при остановке (lib/gracefulShutdown): обработчик SIGTERM приходит из
+# фреймворка (start-server.js), но без дренажа рестарт рвал запросы в полёте.
+# Приложение само откладывает выход на это время.
 Environment=SHUTDOWN_DRAIN_MS=5000
 ExecStart=/usr/bin/node server.js
 Restart=on-failure
@@ -41,8 +43,8 @@ RestartSec=3
 # Запас над окном дренажа: systemd не должен добивать процесс раньше, чем тот
 # успеет доответить (по умолчанию 90 c, фиксируем явно).
 TimeoutStopSec=20
-# Noisy-neighbor гард (server-consolidation §6 шаг4): RAM на боксе тесная (~2 ГБ).
-# OOM локализуется в cgroup проекта, а не валит соседей/Postgres.
+# Noisy-neighbor гард (server-consolidation §6 шаг4): бокс общий, память тесная.
+# OOM локализуется в cgroup проекта, а не валит соседей.
 MemoryHigh=450M
 MemoryMax=600M
 

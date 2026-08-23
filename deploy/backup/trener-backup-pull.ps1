@@ -5,8 +5,10 @@
 # Регистрируется как Scheduled Task "trener-backup-pull". См. docs/backups.md.
 $ErrorActionPreference = 'Stop'
 $Dest   = 'D:\YandexDisk\Backups\trener'
-$Remote = 'GONBA:/home/valstan/trener/backups/trener-*.dump.gpg'
-$Scp    = 'C:\Windows\System32\OpenSSH\scp.exe'   # системный OpenSSH: читает ~/.ssh/config (alias GONBA)
+$BoxAlias = $env:TRENER_BOX_SSH_ALIAS
+if (-not $BoxAlias) { throw 'TRENER_BOX_SSH_ALIAS не задан (ssh-алиас прод-бокса из ~/.ssh/config)' }
+$Remote = "$($BoxAlias):trener/backups/trener-*.dump.gpg"   # путь относительно домашнего каталога deploy-пользователя
+$Scp    = 'C:\Windows\System32\OpenSSH\scp.exe'   # системный OpenSSH: читает ~/.ssh/config (алиас бокса из $env:TRENER_BOX_SSH_ALIAS)
 $Log    = Join-Path $Dest '_pull.log'
 
 New-Item -ItemType Directory -Force -Path $Dest | Out-Null

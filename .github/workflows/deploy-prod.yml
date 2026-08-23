@@ -1,14 +1,15 @@
 name: Deploy to production
 
-# Сборка едет в CI (мандат «Бокс 1»): прод-бокс общий с GONBA/KARMAN/малмыж-сайтами,
+# Сборка едет в CI (мандат консолидации серверов): прод-бокс общий с другими проектами,
 # on-box `next build` недопустим (build-спайк бьёт соседей — G20/G24). На сервер по SSH
 # кладём готовый standalone-артефакт и рестартим systemd-сервис; бокс — runtime-only.
 #
-# Сборка на Node 20 = версия рантайма на боксе (/usr/bin/node v20.x). У trener страницы
-# динамические (нет [slug]-prerender из БД, как у GONBA) → build'у нужен лишь досягаемый
-# Postgres для payload.init: поднимаем service-контейнер, БЕЗ туннеля к проду.
+# Сборка на Node 20 = мажорная версия рантайма на боксе. У trener страницы динамические
+# (нет [slug]-prerender из БД) → build'у нужен лишь досягаемый Postgres для payload.init:
+# поднимаем service-контейнер, БЕЗ туннеля к проду.
 # NEXT_PUBLIC_* — публичные значения (VAPID public по дизайну публичный) → в env job,
-# запекаются в клиентский бандл здесь. Единственный секрет — SSH_PRIVATE_KEY (деплой-ключ).
+# запекаются в клиентский бандл здесь. Секреты: SSH_PRIVATE_KEY (деплой-ключ),
+# PROD_SSH_HOST / PROD_SSH_USER (адрес и пользователь бокса — D-038, не в репо).
 
 on:
   workflow_run:
@@ -99,6 +100,8 @@ jobs:
         working-directory: .
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
         run: |
           set -e
           if [ -z "${SSH_PRIVATE_KEY}" ]; then
@@ -108,12 +111,17 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H 831d0ce99bdf.vps.myjino.ru >> ~/.ssh/known_hosts 2>/dev/null
-          cat > ~/.ssh/config <<'EOF'
+          # Адрес и пользователь бокса — из GitHub secrets (D-038: публичный репозиторий —
+          # recon-поверхность, хостнейм/пользователь прод-бокса в отслеживаемых файлах не лежат).
+          if [ -z "${PROD_SSH_HOST}" ] || [ -z "${PROD_SSH_USER}" ]; then
+            echo "::error::Secrets PROD_SSH_HOST / PROD_SSH_USER не заданы."
+            exit 1
+          fi
+          ssh-keyscan -H "${PROD_SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<EOF
           Host TRENERBOX
-            HostName 831d0ce99bdf.vps.myjino.ru
-            Port 22
-            User valstan
+            HostName ${PROD_SSH_HOST}
+            User ${PROD_SSH_USER}
             IdentityFile ~/.ssh/id_ed25519
             IdentitiesOnly yes
             StrictHostKeyChecking yes
@@ -186,7 +194,7 @@ jobs:
           ssh TRENERBOX 'bash -s' "$SHA" <<'REMOTE'
           set -e
           SHA="$1"
-          BASE=/home/valstan/trener
+          BASE="$HOME/trener"
           REL="$BASE/releases/$SHA"
           rm -rf "$REL"; mkdir -p "$REL"
           tar xzf /tmp/trener-app.tgz -C "$REL"
@@ -199,14 +207,20 @@ jobs:
           # Юниты ставятся идемпотентно из артефакта-деплоя ПЕРЕД restart (sudo cp + reload):
           # основной сервис + RSVP-cron + demo-reseed-cron + offsite-backup. Юниты в
           # /etc/systemd/system переживают смену релиза (вне дерева releases/).
+          # Плейсхолдеры __DEPLOY_USER__ / __DEPLOY_HOME__ рендерятся здесь из текущего
+          # пользователя (D-038: имя пользователя и домашний путь бокса в репо не лежат).
           RELOAD=0
           for U in trener.service trener-rsvp-reminders.service trener-rsvp-reminders.timer trener-demo-reseed.service trener-demo-reseed.timer trener-backup.service trener-backup.timer; do
-            if ! cmp -s "/tmp/$U" "/etc/systemd/system/$U" 2>/dev/null; then
-              sudo cp "/tmp/$U" "/etc/systemd/system/$U"
+            sed -e "s#__DEPLOY_USER__#$(id -un)#g" -e "s#__DEPLOY_HOME__#$HOME#g" "/tmp/$U" > "/tmp/$U.rendered"
+            if grep -q '__DEPLOY_' "/tmp/$U.rendered"; then
+              echo "unit $U: неотрендеренный плейсхолдер" >&2; exit 1
+            fi
+            if ! cmp -s "/tmp/$U.rendered" "/etc/systemd/system/$U" 2>/dev/null; then
+              sudo cp "/tmp/$U.rendered" "/etc/systemd/system/$U"
               RELOAD=1
               echo "unit $U обновлён"
             fi
-            rm -f "/tmp/$U"
+            rm -f "/tmp/$U" "/tmp/$U.rendered"
           done
           [ "$RELOAD" = 1 ] && sudo systemctl daemon-reload || true
           sudo systemctl enable trener >/dev/null 2>&1 || true
@@ -228,7 +242,8 @@ jobs:
         run: |
           set -e
           sleep 6
-          STATUS=$(ssh TRENERBOX "curl -s -o /dev/null -w '%{http_code}' --max-time 15 http://127.0.0.1:3007/health")
+          # Порт сервиса — из env бокса (#008), не из репо (D-038).
+          STATUS=$(ssh TRENERBOX 'P=$(grep -m1 "^PORT=" /etc/trener/trener.env | cut -d= -f2); curl -s -o /dev/null -w "%{http_code}" --max-time 15 "http://127.0.0.1:${P:?PORT не задан в trener.env}/health"')
           echo "local /health: ${STATUS}"
           [ "${STATUS}" = "200" ] || { echo "::error::local /health = ${STATUS}, ожидался 200"; exit 1; }
 

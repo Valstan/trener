@@ -58,6 +58,8 @@ jobs:
         working-directory: .
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+          PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
         run: |
           set -e
           if [ -z "${SSH_PRIVATE_KEY}" ]; then
@@ -67,12 +69,17 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "${SSH_PRIVATE_KEY}" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan -H 831d0ce99bdf.vps.myjino.ru >> ~/.ssh/known_hosts 2>/dev/null
-          cat > ~/.ssh/config <<'EOF'
+          # Адрес и пользователь бокса — из GitHub secrets (D-038: публичный репозиторий —
+          # recon-поверхность, хостнейм/пользователь прод-бокса в отслеживаемых файлах не лежат).
+          if [ -z "${PROD_SSH_HOST}" ] || [ -z "${PROD_SSH_USER}" ]; then
+            echo "::error::Secrets PROD_SSH_HOST / PROD_SSH_USER не заданы."
+            exit 1
+          fi
+          ssh-keyscan -H "${PROD_SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<EOF
           Host TRENERBOX
-            HostName 831d0ce99bdf.vps.myjino.ru
-            Port 22
-            User valstan
+            HostName ${PROD_SSH_HOST}
+            User ${PROD_SSH_USER}
             IdentityFile ~/.ssh/id_ed25519
             IdentitiesOnly yes
             StrictHostKeyChecking yes

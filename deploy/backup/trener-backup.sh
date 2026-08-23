@@ -14,7 +14,7 @@ set -eu
 
 : "${BACKUP_DATABASE_URL:?нет в trener-backup.env (роль с правом дампа)}"
 : "${BACKUP_GPG_RECIPIENT_FILE:?нет (путь к public-ключу, напр. /etc/trener/backup-pubkey.asc)}"
-WORK="${BACKUP_WORKDIR:-/home/valstan/trener/backups}"
+WORK="${BACKUP_WORKDIR:-$HOME/trener/backups}"
 RETAIN_DAYS="${BACKUP_RETENTION_DAYS:-30}"
 
 [ -f "$BACKUP_GPG_RECIPIENT_FILE" ] || { echo "нет public-ключа: $BACKUP_GPG_RECIPIENT_FILE" >&2; exit 1; }
