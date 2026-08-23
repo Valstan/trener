@@ -2,7 +2,8 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { isOwner, isCoach } from '@/access/roles'
+import { isCoach, isOwner } from '@/access/roles'
+import { staffCanManageGroup } from '@/lib/groupScope'
 import { relId } from '@/lib/relId'
 
 // POST { matchId, scoreOur, scoreOpponent, scorers: [{ playerId, goals }] } → внести
@@ -44,17 +45,10 @@ export const POST = async (req: Request): Promise<Response> => {
     const groupId = match ? relId(match.group) : null
     if (groupId == null) return NextResponse.json({ ok: false }, { status: 404 })
 
-    // Владение: тренер — только своя группа; админ — любая.
-    if (!isOwner(user)) {
-      const owned = await payload.find({
-        collection: 'groups',
-        where: { and: [{ id: { equals: groupId } }, { coaches: { in: [user.id] } }] },
-        limit: 1,
-        depth: 0,
-        pagination: false,
-        overrideAccess: true,
-      })
-      if (!owned.docs.length) return NextResponse.json({ ok: false }, { status: 403 })
+    // Владение — лестница lib/groupScope (живой владелец — любая; admin и демо-владелец —
+    // свой филиал; тренер — свои). `if (!isOwner)` пропускал демо-владельца к живым матчам.
+    if (!(await staffCanManageGroup(payload, user, groupId))) {
+      return NextResponse.json({ ok: false }, { status: 403 })
     }
 
     // Авторы голов: только дети группы матча (чужих тихо отбрасываем, как в /coach/match).

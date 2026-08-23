@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server'
 
 import { apiErrorResponse } from '@/lib/apiErrorResponse'
 
-import { isOwner, isCoach } from '@/access/roles'
+import { adminBranchId, isCoach, isFullOwner, isOwner } from '@/access/roles'
+import { staffCanManageGroup } from '@/lib/groupScope'
 
 // POST { groupId, title, body, triggersPush? } → объявление тренера группе (M3-PR10).
 // #015: тренер шлёт ТОЛЬКО в свои группы (проверяем владение: группа.coaches ∋ user).
@@ -51,9 +52,12 @@ export const POST = async (req: Request): Promise<Response> => {
     const bodyStr = typeof body === 'string' ? body.trim() : ''
     if (!titleStr || !bodyStr) return NextResponse.json({ ok: false }, { status: 400 })
 
-    // Охват (M5 PR-C): сеть/филиалы — только владелец; тренеру — группа как раньше.
+    // Охват (M5 PR-C): сеть и закреп — только ЖИВОЙ владелец; филиал — живой владелец любой,
+    // admin/демо-владелец — только свой (adminBranchId); тренеру — группа как раньше.
+    // `isOwner` здесь пропускал демо-владельца к живым филиалам (D-029/#166, 23.08).
     const scopeStr = scope === 'branch' || scope === 'network' ? scope : 'group'
-    if ((scopeStr !== 'group' || pinned === true) && !isOwner(user)) {
+    const fullOwner = isFullOwner(user)
+    if ((scopeStr === 'network' || pinned === true) && !fullOwner) {
       return NextResponse.json({ ok: false }, { status: 403 })
     }
     const branchList =
@@ -63,21 +67,20 @@ export const POST = async (req: Request): Promise<Response> => {
     if (scopeStr === 'branch' && !branchList.length) {
       return NextResponse.json({ ok: false }, { status: 400 })
     }
+    if (scopeStr === 'branch' && !fullOwner) {
+      const myBranch = adminBranchId(user)
+      if (myBranch == null || branchList.some((b) => String(b) !== String(myBranch))) {
+        return NextResponse.json({ ok: false }, { status: 403 })
+      }
+    }
     if (scopeStr === 'group' && typeof groupId !== 'number') {
       return NextResponse.json({ ok: false }, { status: 400 })
     }
 
-    // Владение: тренер — только своя группа; владелец — любая.
-    if (scopeStr === 'group' && !isOwner(user)) {
-      const owned = await payload.find({
-        collection: 'groups',
-        where: { and: [{ id: { equals: groupId as number } }, { coaches: { in: [user.id] } }] },
-        limit: 1,
-        depth: 0,
-        pagination: false,
-        overrideAccess: true,
-      })
-      if (!owned.docs.length) return NextResponse.json({ ok: false }, { status: 403 })
+    // Владение группой — лестница lib/groupScope (живой владелец — любая; admin и
+    // демо-владелец — свой филиал; тренер — свои).
+    if (scopeStr === 'group' && !(await staffCanManageGroup(payload, user, groupId as number))) {
+      return NextResponse.json({ ok: false }, { status: 403 })
     }
 
     await payload.create({

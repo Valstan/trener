@@ -2,7 +2,8 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { isOwner, isCoach } from '@/access/roles'
+import { isCoach, isOwner } from '@/access/roles'
+import { staffCanManageGroup } from '@/lib/groupScope'
 import { apiErrorResponse } from '@/lib/apiErrorResponse'
 import { buildSessionsCreatedMessage } from '@/lib/push/message'
 import { sendPushToUser } from '@/lib/push/send'
@@ -43,16 +44,11 @@ export const POST = async (req: Request): Promise<Response> => {
     const input = batch ?? (single ? { ...single, occurrences: [{ startDate: single.startDate, endDate: single.endDate }] } : null)
     if (!input) return NextResponse.json({ ok: false }, { status: 400 })
 
-    if (!isOwner(user)) {
-      const owned = await payload.find({
-        collection: 'groups',
-        where: { and: [{ id: { equals: input.groupId } }, { coaches: { in: [user.id] } }] },
-        limit: 1,
-        depth: 0,
-        pagination: false,
-        overrideAccess: true,
-      })
-      if (!owned.docs.length) return NextResponse.json({ ok: false }, { status: 403 })
+    // Скоуп группы — одна лестница (lib/groupScope): живой владелец — любая, admin и
+    // ДЕМО-владелец — свой филиал, тренер — свои группы. Раньше `if (!isOwner)` пропускал
+    // демо-владельца к живым группам (D-029/#166, 23.08) — вместе с пушами живым родителям.
+    if (!(await staffCanManageGroup(payload, user, input.groupId))) {
+      return NextResponse.json({ ok: false }, { status: 403 })
     }
 
     // Последовательно, а не Promise.all: сотня параллельных create на одном ядре

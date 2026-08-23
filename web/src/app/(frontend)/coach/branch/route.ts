@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { NextResponse } from 'next/server'
 import { getPayload } from 'payload'
 
-import { isOwner } from '@/access/roles'
+import { isFullOwner } from '@/access/roles'
 import { BRANCH_CTX_COOKIE } from '@/lib/branchContext'
 
 // POST { branchId: number | null } → выбор контекста филиала владельцем (M5 PR-D).
@@ -14,7 +14,9 @@ export const POST = async (req: Request): Promise<Response> => {
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || !isOwner(user)) return NextResponse.json({ ok: false }, { status: 401 })
+    // Селектор филиала — фича живого владельца (cookie honored только для isFullOwner,
+    // см. lib/ownerBranch); для демо инертна. Приводим к isFullOwner для единообразия.
+    if (!user || !isFullOwner(user)) return NextResponse.json({ ok: false }, { status: 401 })
 
     let branchId: unknown
     try {

@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { isOwner } from '@/access/roles'
+import { isFullOwner } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 // GET ?q=<строка> → до 20 подтверждённых родителей по подстроке имени/email.
@@ -14,7 +14,8 @@ export const GET = async (req: Request): Promise<Response> => {
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || !isOwner(user)) return NextResponse.json({ ok: false }, { status: 403 })
+    // Только ЖИВОЙ владелец: поиск отдаёт ПДн живых родителей (имя+email) — не в демо (D-029/#166).
+    if (!user || !isFullOwner(user)) return NextResponse.json({ ok: false }, { status: 403 })
 
     const q = (new URL(req.url).searchParams.get('q') ?? '').trim()
     if (q.length < 2) return NextResponse.json({ ok: true, parents: [] })

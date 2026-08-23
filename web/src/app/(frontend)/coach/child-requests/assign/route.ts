@@ -2,12 +2,13 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { isOwner, isParent } from '@/access/roles'
+import { isFullOwner, isParent } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 export const POST = async (req: Request): Promise<Response> => {
   const payload = await getPayload({ config }); const { user } = await payload.auth({ headers: req.headers })
-  if (!user || !isOwner(user)) return NextResponse.json({ ok: false }, { status: 403 })
+  // Только ЖИВОЙ владелец: назначение живого родителя живой заявке — не демо (D-029/#166).
+  if (!user || !isFullOwner(user)) return NextResponse.json({ ok: false }, { status: 403 })
   const body = await req.json().catch(() => null) as { requestId?: unknown; parentId?: unknown } | null
   const requestId = Number(body?.requestId); const parentId = Number(body?.parentId)
   if (!Number.isInteger(requestId) || !Number.isInteger(parentId)) return NextResponse.json({ ok: false }, { status: 400 })
