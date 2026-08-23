@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { hasRole } from '@/access/roles'
+import { hasRole, isDemo } from '@/access/roles'
 import type { ImportApplyRowInput } from '@/lib/import/importPlayers'
 import { applyImport, previewImport } from '@/lib/import/importPlayers'
 import { APPLY_ROW_LIMIT, MAX_IMPORT_TEXT_BYTES } from '@/lib/import/parsePlayersCsv'
@@ -24,6 +24,20 @@ export const POST = async (req: Request): Promise<Response> => {
     if (!user) return NextResponse.json({ ok: false }, { status: 401 })
     if (!hasRole(user, 'owner', 'admin', 'coach')) {
       return NextResponse.json({ ok: false }, { status: 403 })
+    }
+    // Демо не импортирует детей (D-029/#166, belt-and-suspenders к D-016-гейту
+    // applyImport). Сегодня демо-владелец безопасен и без этой проверки: resolveScope
+    // на isFullOwner скоупит его демо-филиалом, а branchCanAcceptConsents гейтит apply
+    // (демо-филиал не подписан). Но это защита второго порядка — если реквизиты
+    // демо-филиала когда-нибудь заполнит сид с подписью, D-016-гейт откроется и apply
+    // начнёт слать join-приглашения родителям на произвольные адреса из публичной
+    // витрины. Явный ранний отказ от гейта не зависит (по образцу coach/legal/sign,
+    // coach/staff/invite из #166).
+    if (isDemo(user)) {
+      return NextResponse.json(
+        { ok: false, errorCode: 'demo', error: 'В демо импорт детей недоступен' },
+        { status: 400 },
+      )
     }
 
     let body: Record<string, unknown> = {}
