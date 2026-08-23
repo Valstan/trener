@@ -20,8 +20,9 @@ export const TopicComposer = ({ groups, branches, canSchool }: { groups: Option[
   return <form className="stack-sm card" style={{ marginBottom: '1rem' }} onSubmit={async (event) => {
     event.preventDefault(); setBusy(true); setError('')
     const response = await fetch('/chat/topic', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ scope, groupId, branchId, room, title }) })
-    const data = await response.json().catch(() => ({})) as { id?: number }
-    if (response.ok && data.id) router.push(`/chat/${data.id}`); else { setError('Не удалось создать чат.'); setBusy(false) }
+    const data = await response.json().catch(() => ({})) as { id?: number; error?: string }
+    // Сервер мог прислать осмысленный текст (например, лимит демо D-029).
+    if (response.ok && data.id) router.push(`/chat/${data.id}`); else { setError(data.error || 'Не удалось создать чат.'); setBusy(false) }
   }}>
     <div className="field"><label htmlFor="chat-scope">Кто видит чат</label><select id="chat-scope" className="select" value={scope} onChange={(event) => { const value = event.target.value as typeof scope; setScope(value); if (value !== 'group') setRoom('adults') }}>
       <option value="group">Одна группа</option>{branches.length > 0 && <option value="branch">Весь филиал</option>}{canSchool && <option value="school">Вся школа</option>}

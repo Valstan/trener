@@ -59,7 +59,7 @@ export const AnnouncementComposer = ({
           ...(isOwner ? { scope, branchIds, pinned } : {}),
         }),
       })
-      const data = (await res.json()) as { ok?: boolean }
+      const data = (await res.json()) as { ok?: boolean; error?: string }
       if (res.ok && data.ok) {
         setTitle('')
         setBody('')
@@ -69,7 +69,8 @@ export const AnnouncementComposer = ({
         router.refresh()
         setTimeout(() => setDone(false), 2500)
       } else {
-        setError('Не удалось отправить. Попробуйте ещё раз.')
+        // Сервер мог прислать осмысленный текст (например, лимит демо D-029).
+        setError(data.error || 'Не удалось отправить. Попробуйте ещё раз.')
       }
     } catch {
       setError('Не удалось отправить. Попробуйте ещё раз.')

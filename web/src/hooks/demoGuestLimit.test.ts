@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { APIError } from 'payload'
 import type { PayloadRequest } from 'payload'
 
 import { demoGuestLimit } from './demoGuestLimit'
@@ -57,11 +58,15 @@ describe('demoGuestLimit', () => {
     })
   })
 
-  it('демо create при count>=5: бросает с текстом лимита', async () => {
+  it('демо create при count>=5: бросает публичный APIError 400 с текстом лимита', async () => {
     const req = makeReq(true, 5)
     const data = { name: 'Группа' }
-    await expect(
-      demoGuestLimit({ req, operation: 'create', data, collection } as never),
-    ).rejects.toThrow(DEMO_LIMIT_MESSAGE)
+    const promise = demoGuestLimit({ req, operation: 'create', data, collection } as never)
+    await expect(promise).rejects.toThrow(APIError)
+    await expect(promise).rejects.toMatchObject({
+      message: DEMO_LIMIT_MESSAGE,
+      status: 400,
+      isPublic: true,
+    })
   })
 })

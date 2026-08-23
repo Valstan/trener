@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { isChild, isCoach, isOwner, isParent } from '@/access/roles'
+import { apiErrorResponse } from '@/lib/apiErrorResponse'
 import { relId } from '@/lib/relId'
 
 export const POST = async (req: Request): Promise<Response> => {
@@ -20,7 +21,10 @@ export const POST = async (req: Request): Promise<Response> => {
     // user — иначе demoGuestLimit хук не увидит демо-автора и лимит 5 не сработает (C2).
     await payload.create({ collection: 'match-comments', data: { match: match.id, group: relId(match.group)!, author: user.id, authorName: user.name || 'Участник', authorRole, body }, user, overrideAccess: true })
     return NextResponse.json({ ok: true })
-  } catch {
+  } catch (err) {
+    // Публичная ошибка Payload (лимит демо D-029) — отдаём её текст и статус форме.
+    const known = apiErrorResponse(err)
+    if (known) return known
     return NextResponse.json({ ok: false }, { status: 403 })
   }
 }

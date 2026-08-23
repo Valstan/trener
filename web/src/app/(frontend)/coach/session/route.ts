@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { isOwner, isCoach } from '@/access/roles'
+import { apiErrorResponse } from '@/lib/apiErrorResponse'
 import { buildSessionsCreatedMessage } from '@/lib/push/message'
 import { sendPushToUser } from '@/lib/push/send'
 import { relId } from '@/lib/relId'
@@ -101,6 +102,9 @@ export const POST = async (req: Request): Promise<Response> => {
     return NextResponse.json({ ok: true, created: input.occurrences.length })
   } catch (err) {
     console.error('[coach/session POST]', err)
+    // Публичная ошибка Payload (лимит демо D-029) — отдаём её текст и статус форме.
+    const known = apiErrorResponse(err)
+    if (known) return known
     return NextResponse.json({ ok: false }, { status: 500 })
   }
 }

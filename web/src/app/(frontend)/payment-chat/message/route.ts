@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { adminBranchId, isOwner, isParent } from '@/access/roles'
+import { apiErrorResponse } from '@/lib/apiErrorResponse'
 import { relId } from '@/lib/relId'
 
 export const POST = async (req: Request): Promise<Response> => {
@@ -29,7 +30,14 @@ export const POST = async (req: Request): Promise<Response> => {
     if (!ownsBranch) return NextResponse.json({ ok: false }, { status: 403 })
     const existing = await payload.find({ collection: 'payment-threads', where: { and: [{ parent: { equals: user.id } }, { branch: { equals: branchId } }] }, depth: 0, limit: 1, overrideAccess: true })
     // user — иначе demoGuestLimit хук не увидит демо-автора и лимит 5 не сработает (C2).
-    thread = existing.docs[0] ?? await payload.create({ collection: 'payment-threads', data: { parent: user.id, branch: branchId, lastMessageAt: new Date().toISOString() }, user, overrideAccess: true })
+    try {
+      thread = existing.docs[0] ?? await payload.create({ collection: 'payment-threads', data: { parent: user.id, branch: branchId, lastMessageAt: new Date().toISOString() }, user, overrideAccess: true })
+    } catch (err) {
+      // Публичная ошибка Payload (лимит демо D-029) — отдаём её текст и статус форме.
+      const known = apiErrorResponse(err)
+      if (known) return known
+      throw err
+    }
     threadId = thread.id
   }
 
