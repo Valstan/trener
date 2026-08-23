@@ -9,7 +9,12 @@ import { bootstrapSecretsFromManager } from './secretsBootstrap'
 //  • KARMAN недоступен → не валим старт;
 //  • в env попадают ТОЛЬКО ключи из allowlist — цель выбирает клиент, а не хранилище
 //    (иначе комната могла бы подложить NODE_OPTIONS/LD_PRELOAD = RCE на проде);
-//  • запрос с таймаутом: висящий KARMAN не держит старт.
+//  • запрос с таймаутом: висящий KARMAN не держит старт;
+//  • адрес менеджера ТОЛЬКО из env (D-038: хостнейм бокса в коде не зашит) —
+//    без SECRETS_MANAGER_URL в сеть не ходим.
+
+// Адрес в тестах — заведомо несуществующий: дефолта в коде нет, fetch застаблен.
+const MANAGER_URL = 'https://vault.invalid/api/secrets'
 
 describe('bootstrapSecretsFromManager', () => {
   afterEach(() => {
@@ -43,6 +48,17 @@ describe('bootstrapSecretsFromManager', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
   })
 
+  it('не ходит в сеть, если секреты потеряны, токен есть, но SECRETS_MANAGER_URL не задан', async () => {
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
+
+    const res = await bootstrapSecretsFromManager(env)
+
+    expect(res).toEqual({ recovered: 0, reason: 'no-manager-url' })
+    expect(fetchSpy).not.toHaveBeenCalled()
+  })
+
   it('тянет из KARMAN и наполняет недостающее, не перетирая существующее', async () => {
     const fetchSpy = vi.fn(async () => ({
       ok: true,
@@ -51,7 +67,7 @@ describe('bootstrapSecretsFromManager', () => {
       }),
     })) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchSpy)
-    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't', CRON_SECRET: 'keep' }
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't', SECRETS_MANAGER_URL: MANAGER_URL, CRON_SECRET: 'keep' }
 
     const res = await bootstrapSecretsFromManager(env)
 
@@ -60,6 +76,7 @@ describe('bootstrapSecretsFromManager', () => {
     expect(env.PAYLOAD_SECRET).toBe('ps')
     expect(env.CRON_SECRET).toBe('keep') // уже было задано → не перетёрто
     expect(fetchSpy).toHaveBeenCalledOnce()
+    expect((fetchSpy as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0]).toBe(MANAGER_URL)
   })
 
   it('не валит старт, если KARMAN недоступен', async () => {
@@ -69,7 +86,7 @@ describe('bootstrapSecretsFromManager', () => {
       json: async () => ({}),
     })) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchSpy)
-    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't', SECRETS_MANAGER_URL: MANAGER_URL }
 
     const res = await bootstrapSecretsFromManager(env)
 
@@ -89,7 +106,7 @@ describe('bootstrapSecretsFromManager', () => {
       }),
     })) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchSpy)
-    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't', SECRETS_MANAGER_URL: MANAGER_URL }
 
     const res = await bootstrapSecretsFromManager(env)
 
@@ -108,11 +125,11 @@ describe('bootstrapSecretsFromManager', () => {
       }),
     })) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchSpy)
-    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't', SECRETS_MANAGER_URL: MANAGER_URL }
 
     await bootstrapSecretsFromManager(env)
 
-    expect(env.SECRETS_MANAGER_URL).toBeUndefined()
+    expect(env.SECRETS_MANAGER_URL).toBe(MANAGER_URL) // не подменён значением из комнаты
   })
 
   it('передаёт AbortSignal (таймаут) в запрос к KARMAN', async () => {
@@ -121,7 +138,7 @@ describe('bootstrapSecretsFromManager', () => {
       json: async () => ({ secrets: {} }),
     })) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchSpy)
-    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't', SECRETS_MANAGER_URL: MANAGER_URL }
 
     await bootstrapSecretsFromManager(env)
 
@@ -134,7 +151,7 @@ describe('bootstrapSecretsFromManager', () => {
       throw new DOMException('The operation was aborted due to timeout', 'TimeoutError')
     }) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchSpy)
-    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't' }
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 't', SECRETS_MANAGER_URL: MANAGER_URL }
 
     const res = await bootstrapSecretsFromManager(env)
 
@@ -147,7 +164,7 @@ describe('bootstrapSecretsFromManager', () => {
       json: async () => ({ secrets: {} }),
     })) as unknown as typeof fetch
     vi.stubGlobal('fetch', fetchSpy)
-    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 'tok123' }
+    const env: Record<string, string | undefined> = { SECRETS_TOKEN: 'tok123', SECRETS_MANAGER_URL: MANAGER_URL }
 
     await bootstrapSecretsFromManager(env)
 

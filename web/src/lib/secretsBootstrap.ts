@@ -8,10 +8,17 @@
 //
 // Best-effort: токена нет или KARMAN недоступен → логируем и НЕ валим старт (поведение
 // тогда такое же, как было бы без восстановления — приложение упадёт уже на коннекте к БД).
-// SECRETS_TOKEN — единственный bootstrap-секрет; живёт ОТДЕЛЬНО от trener.env
+// SECRETS_TOKEN + SECRETS_MANAGER_URL — bootstrap-конфиг; живёт ОТДЕЛЬНО от trener.env
 // (/etc/trener/secrets-token.env на проде), иначе он терялся бы вместе с тем, что восстанавливаем.
-
-const DEFAULT_MANAGER_URL = 'https://831d0ce99bdf.vps.myjino.ru/api/secrets'
+// Адрес менеджера в коде НЕ зашит (D-038: публичный репозиторий — recon-поверхность,
+// хостнейм бокса в нём не лежит): нет SECRETS_MANAGER_URL → восстановление невозможно,
+// старт не блокируется (как и без токена).
+//
+// Ретраи (#171, спека vault-client свойство 1): отдельного цикла здесь нет намеренно —
+// это аварийный путь, и повторный поход даёт сам systemd: неудача → старт без секретов
+// → падение на коннекте к БД → Restart=on-failure через RestartSec → register() снова.
+// Комната — КОПИЯ, источник истины — env бокса, поэтому «один поход за жизнь процесса»
+// мины #171 не создаёт (ни один секрет не живёт только в комнате).
 
 // Висящий KARMAN не должен держать старт: предупредили и пошли дальше
 // (без сигнала fetch ждал бы системный таймаут сокета).
@@ -51,7 +58,7 @@ const ALLOWED = new Set<string>([
 
 export interface BootstrapResult {
   recovered: number
-  reason: 'local-env-intact' | 'no-token' | 'recovered' | 'fetch-failed'
+  reason: 'local-env-intact' | 'no-token' | 'no-manager-url' | 'recovered' | 'fetch-failed'
 }
 
 export async function bootstrapSecretsFromManager(
@@ -68,7 +75,13 @@ export async function bootstrapSecretsFromManager(
     return { recovered: 0, reason: 'no-token' }
   }
 
-  const url = env.SECRETS_MANAGER_URL ?? DEFAULT_MANAGER_URL
+  const url = env.SECRETS_MANAGER_URL
+  if (!url) {
+    console.warn(
+      `[secrets] локальные секреты потеряны (${missing.join(', ')}), но SECRETS_MANAGER_URL не задан — восстановить из KARMAN нельзя`,
+    )
+    return { recovered: 0, reason: 'no-manager-url' }
+  }
   try {
     const r = await fetch(url, {
       headers: { Authorization: `Bearer ${token}` },

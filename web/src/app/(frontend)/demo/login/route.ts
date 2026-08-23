@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
 
 export const POST = async (req: Request): Promise<Response> => {
   // База для redirect — NEXT_PUBLIC_SERVER_URL, а не req.url: за reverse-proxy
-  // req.url — внутренний origin (например localhost:3007), на прод-приёмке
+  // req.url — внутренний origin (например localhost:<порт>), на прод-приёмке
   // D-029 браузер уезжал именно туда. Паттерн — как в auth/vk/callback/route.ts.
   const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || new URL(req.url).origin
 

@@ -55,7 +55,7 @@ export const POST = async (req: Request): Promise<Response> => {
     }
 
     // Последовательно, а не Promise.all: сотня параллельных create на одном ядре
-    // Бокса 1 — ровно тот спайк, которого мы избегаем (аудит 30.07 §3).
+    // прод-хоста — ровно тот спайк, которого мы избегаем (аудит 30.07 §3).
     for (const occ of input.occurrences) {
       await payload.create({
         collection: 'training-sessions',

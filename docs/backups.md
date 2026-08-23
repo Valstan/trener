@@ -9,15 +9,15 @@
 — тот же механизм, что бэкапит MatricaRMZ; ноль новых аккаунтов/ключей S3, изоляция от Сабантуя).
 
 - **gpg-ключ** (выделенный, encrypt-only, rsa4096, без срока): fingerprint
-  `CA8C50622FAC950CE1FD67B20E93B5A95E0FF7F5`, uid `trener-backup (offsite DB backup) <zubazeirot@proton.me>`.
+  `CA8C50622FAC950CE1FD67B20E93B5A95E0FF7F5` (uid владельца — в менеджере паролей).
   Публичный — на боксе `/etc/trener/backup-pubkey.asc`. **Приватный ключ хранится в менеджере
   KARMAN** (`BACKUP_GPG_PRIVATE_KEY` + `BACKUP_GPG_PUBLIC_KEY` + `BACKUP_GPG_FINGERPRINT`; целостность
   сверена sha256 при заливке 2026-06-29) **и** рабочей копией в gpg-keyring `rmz4val`. **НЕ в
   Яндекс.Диске** (там сами шифр-дампы). Восстановить ключ:
   `GET /api/secrets?key=BACKUP_GPG_PRIVATE_KEY` → импорт `gpg --import` (см.
   [`secrets-manager.md`](secrets-manager.md)).
-  - ⚠️ **Осознанный компромисс владельца (2026-06-29):** KARMAN живёт на том же боксе, что и бэкапы,
-    и умеет расшифровать свои секреты → при компрометации бокса приватный ключ и локальные шифр-дампы
+  - ⚠️ **Осознанный компромисс владельца (2026-06-29):** у бокса есть доступ к KARMAN (токен в `/etc/trener/`),
+    а тот умеет расшифровать свои секреты → при компрометации бокса приватный ключ и локальные шифр-дампы
     оказываются вместе, т.е. бэкапы становятся расшифровываемыми. Принято сознательно: риск «владелец
     потеряет ключ → дампы мёртвы» для этого проекта реальнее, чем целевой взлом VPS ради дешифровки.
     Усиление (если посоображения изменятся): запаролить ключ сильной passphrase и хранить в KARMAN
@@ -25,12 +25,14 @@
 - **Бокс:** `trener-backup.timer` (enabled, 03:30 MSK) → `trener-backup.service` →
   `bin/trener-backup.sh`. Конфиг `/etc/trener/trener-backup.env`: `BACKUP_DATABASE_URL`
   (= app-роль `trener_app`), `BACKUP_RETENTION_DAYS=30`, `BACKUP_RCLONE_REMOTE=` **пуст** (PULL).
-  Шифр-дампы копятся в `/home/valstan/trener/backups/`.
+  Шифр-дампы копятся в `~/trener/backups/` (домашний каталог deploy-пользователя).
 - **rmz4val (стяжка):** Scheduled Task `trener-backup-pull` (ежедневно 04:30 MSK, S4U,
   StartWhenAvailable) → `deploy/backup/trener-backup-pull.ps1` (рабочая копия в
   `C:\Users\Valstan\bin\`) → `scp` шифр-дампов в **`D:\YandexDisk\Backups\trener\`** → клиент Диска
   уносит в облако. Лог — `_pull.log` рядом.
-- **Проверено end-to-end:** дамп `pg_dump 16.14 → gpg(public)` → на rmz4val `gpg(private) →
+  - ssh-алиас бокса скрипт берёт из переменной окружения `TRENER_BOX_SSH_ALIAS` — задаётся на
+    pull-машине (в Scheduled Task / профиле), значение в репо не лежит (D-038).
+- **Проверено end-to-end:** дамп `pg_dump → gpg(public)` → на rmz4val `gpg(private) →
   pg_restore --list` = валидный CUSTOM-архив, 293 TOC / 44 таблицы. Восстановимость подтверждена.
 - **Остаточная ручная сверка:** один раз глазами убедиться, что файл появился на disk.yandex.ru
   (клиент Диска должен быть запущен/онлайн — программно отсюда не верифицируется).
@@ -42,7 +44,7 @@
 ## Архитектура
 
 `trener-backup.timer` (03:30 MSK) → `trener-backup.service` (oneshot) →
-[`/home/valstan/trener/bin/trener-backup.sh`](../deploy/backup/trener-backup.sh):
+[`~/trener/bin/trener-backup.sh`](../deploy/backup/trener-backup.sh):
 
 ```
 pg_dump -Fc | gpg --encrypt (публичный ключ)  →  WORKDIR/trener-<ts>.dump.gpg
@@ -73,14 +75,15 @@ gpg --armor --export-secret-keys trener-backup-keyid > backup-secret.asc   # х�
 > ⚠️ Потеря приватного ключа = бэкапы нерасшифровываемы. Храни его офлайн, в нескольких местах.
 > Не клади приватный ключ на бокс — иначе шифрование теряет смысл при компрометации бокса.
 
-Публичный ключ → на бокс: `scp backup-pubkey.asc GONBA:/tmp/ && ssh GONBA "sudo mv /tmp/backup-pubkey.asc /etc/trener/backup-pubkey.asc"`.
+Публичный ключ → на бокс: `scp backup-pubkey.asc <box>:/tmp/ && ssh <box> "sudo mv /tmp/backup-pubkey.asc /etc/trener/backup-pubkey.asc"`
+(`<box>` — ssh-алиас прод-бокса из локального `~/.ssh/config`).
 
 ### 2. Конфиг на боксе
 
 ```bash
-ssh GONBA
-sudo cp /home/valstan/trener/releases/current/... # шаблон: deploy/trener-backup.env.example в репо
-sudo nano /etc/trener/trener-backup.env           # root:valstan, chmod 0640
+ssh <box>
+sudo cp ~/trener/releases/current/...             # шаблон: deploy/trener-backup.env.example в репо
+sudo nano /etc/trener/trener-backup.env           # root:<deploy-user>, chmod 0640
 ```
 Заполнить `BACKUP_DATABASE_URL` (app-роль годится; лучше выделенная read-only backup-роль),
 `BACKUP_GPG_RECIPIENT_FILE=/etc/trener/backup-pubkey.asc`, `BACKUP_RETENTION_DAYS`.
@@ -89,9 +92,9 @@ sudo nano /etc/trener/trener-backup.env           # root:valstan, chmod 0640
 
 - **PUSH:** на боксе `sudo apt-get install -y rclone`; `rclone config` → создать remote типа `s3`
   на RF-провайдера (endpoint/region/ключи); в env `BACKUP_RCLONE_REMOTE=<remote>:<bucket>/trener`.
-  rclone.conf владельца — `~/.config/rclone/rclone.conf` (для запуска из systemd под `valstan` ок).
+  rclone.conf владельца — `~/.config/rclone/rclone.conf` (для запуска из systemd под deploy-пользователем ок).
 - **PULL:** `BACKUP_RCLONE_REMOTE` оставить пустым; на дом-машине завести таск, тянущий
-  `rsync -az GONBA:/home/valstan/trener/backups/ <локально>/` (по расписанию).
+  `rsync -az <box>:trener/backups/ <локально>/` (по расписанию).
 
 ### 4. Включить таймер
 
@@ -103,10 +106,10 @@ systemctl list-timers trener-backup.timer --no-pager
 ## Проверка / ручной прогон
 
 ```bash
-ssh GONBA
+ssh <box>
 sudo systemctl start trener-backup.service
 journalctl -u trener-backup.service -n 20 --no-pager --output=cat   # "backup ok: trener-<ts>.dump.gpg ..."
-ls -lh /home/valstan/trener/backups/                                # локальный шифр-дамп
+ls -lh ~/trener/backups/                                            # локальный шифр-дамп
 # при PUSH: rclone ls <remote>:<bucket>/trener
 ```
 
@@ -115,7 +118,7 @@ ls -lh /home/valstan/trener/backups/                                # локал
 ```bash
 # 1. достать дамп (из remote или из WORKDIR бокса)
 rclone copy <remote>:<bucket>/trener/trener-<ts>.dump.gpg .      # PUSH
-#   или: scp GONBA:/home/valstan/trener/backups/trener-<ts>.dump.gpg .   # PULL
+#   или: scp <box>:trener/backups/trener-<ts>.dump.gpg .         # PULL
 
 # 2. расшифровать приватным ключом (он у тебя, не на боксе)
 gpg --decrypt trener-<ts>.dump.gpg > trener.dump
@@ -125,7 +128,7 @@ createdb trener_restore
 pg_restore --no-owner --no-privileges -d trener_restore trener.dump
 ```
 
-> pg_restore версии ≥ сервера-приёмника. Дамп снят pg_dump 16 (бокс PG16) — восстанавливать на PG16+.
+> pg_restore версии ≥ сервера-приёмника. Дамп снят pg_dump той же мажорной версии, что сервер — восстанавливать на PG той же мажорной версии или новее.
 
 ## Грабли
 

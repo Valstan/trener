@@ -19,7 +19,7 @@
 
 | Среда | Где токен | Гит |
 |---|---|---|
-| Прод (бокс) | `/etc/trener/secrets-token.env` (root:valstan 0640), подключается отдельным `EnvironmentFile=-` в `trener.service` | вне репо (#008) |
+| Прод (бокс) | `/etc/trener/secrets-token.env` (`root:<deploy-user> 0640`), подключается отдельным `EnvironmentFile=-` в `trener.service` | вне репо (#008) |
 | Локально (dev) | `web/.env` (gitignored) | вне репо |
 
 `/etc/trener/trener.env` (DATABASE_URL, PAYLOAD_SECRET, VAPID_PRIVATE_KEY, CRON_SECRET, SMTP_*) —
@@ -43,16 +43,16 @@
 
 ## Эндпоинт и API
 
-Эндпоинт: `https://831d0ce99bdf.vps.myjino.ru/api/secrets` (дефолт зашит в коде; переопределяется
-`SECRETS_MANAGER_URL`). Полный контракт — [`../../karman/docs/secrets-client-guide.md`](../../karman/docs/secrets-client-guide.md).
+Эндпоинт: `https://<karman-host>/api/secrets` (дефолта в коде нет; адрес — в
+`SECRETS_MANAGER_URL` рядом с токеном, на проде в `/etc/trener/secrets-token.env`). Полный контракт — [`../../karman/docs/secrets-client-guide.md`](../../karman/docs/secrets-client-guide.md).
 
 ```bash
 # Прочитать все (имена+значения видны только по валидному токену):
-curl -H "Authorization: Bearer $SECRETS_TOKEN" https://831d0ce99bdf.vps.myjino.ru/api/secrets
+curl -H "Authorization: Bearer $SECRETS_TOKEN" https://<karman-host>/api/secrets
 # Один ключ:
-curl -H "Authorization: Bearer $SECRETS_TOKEN" "https://831d0ce99bdf.vps.myjino.ru/api/secrets?key=PAYLOAD_SECRET"
+curl -H "Authorization: Bearer $SECRETS_TOKEN" "https://<karman-host>/api/secrets?key=PAYLOAD_SECRET"
 # Сохранить/обновить (upsert):
-curl -X POST https://831d0ce99bdf.vps.myjino.ru/api/secrets \
+curl -X POST https://<karman-host>/api/secrets \
   -H "Authorization: Bearer $SECRETS_TOKEN" -H "Content-Type: application/json" \
   -d '{"secrets":{"KEY":"value"}}'
 ```
@@ -87,7 +87,7 @@ node -e '
     let [,k,v]=m; if(k==="SECRETS_TOKEN") continue; v=v.trim();
     if(/^".*"$|^'"'"'.*'"'"'$/.test(v)) v=v.slice(1,-1); s[k]=v;
   }
-  fetch("https://831d0ce99bdf.vps.myjino.ru/api/secrets",{method:"POST",
+  fetch("https://<karman-host>/api/secrets",{method:"POST",
     headers:{Authorization:"Bearer "+process.env.SECRETS_TOKEN,"Content-Type":"application/json"},
     body:JSON.stringify({secrets:s})}).then(async r=>console.log(r.status, await r.text()));
 '
@@ -121,12 +121,12 @@ node -e '
 
 ```bash
 set -a; . /etc/trener/secrets-token.env; set +a
-curl -s -H "Authorization: Bearer $SECRETS_TOKEN" https://831d0ce99bdf.vps.myjino.ru/api/secrets \
+curl -s -H "Authorization: Bearer $SECRETS_TOKEN" https://<karman-host>/api/secrets \
   | node -e 'const j=JSON.parse(require("fs").readFileSync(0,"utf8"));
       process.stdout.write(Object.entries(j.secrets).map(([k,v])=>
         /\s/.test(v)?`${k}="${v}"`:`${k}=${v}`).join("\n")+"\n");' \
   | sudo tee /etc/trener/trener.env >/dev/null
-sudo chown root:valstan /etc/trener/trener.env && sudo chmod 0640 /etc/trener/trener.env
+sudo chown root:<deploy-user> /etc/trener/trener.env && sudo chmod 0640 /etc/trener/trener.env
 sudo systemctl restart trener.service
 ```
 
@@ -139,6 +139,6 @@ sudo systemctl restart trener.service
 ## Безопасность
 
 - Токен и значения секретов **никогда** не коммитятся (gitignore: `.env`, `.env.*`; токен-файл вне
-  репо). В коде — только дефолтный URL эндпоинта (не секрет).
+  репо). Адрес эндпоинта — в `SECRETS_MANAGER_URL` рядом с токеном, в коде дефолта нет.
 - Токен read-write скоупится только на проект trener — чужие секреты недоступны.
-- KARMAN живёт на том же боксе (Бокс 1), что и trener-прод; трафик по HTTPS.
+- Трафик к KARMAN — только HTTPS; адрес эндпоинта — в `SECRETS_MANAGER_URL` (где он стоит — по реестру Мозга, в репо не лежит: D-038).

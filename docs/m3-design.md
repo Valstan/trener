@@ -11,13 +11,13 @@
 > с пушем + granularity-правило; контекстная кнопка «вопрос тренеру»; деплой
 > (systemd+nginx+CI standalone — G20/G17), content/push-smoke (#011).»
 
-Три нитки, две из них — код (делаются с rmz4val), третья — инфра (нужен Бокс 1 + решения владельца):
+Три нитки, две из них — код (делаются с rmz4val), третья — инфра (нужен прод-хост + решения владельца):
 
 | Нитка | Что | Где делается |
 |---|---|---|
 | **A. Объявления** | Coach → группа: новость с опц. best-effort пушем | код (rmz4val) |
 | **B. «Вопрос тренеру»** | Контекстная кнопка: родитель → тренеру одно сообщение (суррогат чата) | код (rmz4val) |
-| **C. Деплой = первый прод** | Провижен Бокс 1, миграции, CI-standalone, nginx/TLS, deploy-smoke, 152-ФЗ go-live | инфра (Бокс 1 + владелец) |
+| **C. Деплой = первый прод** | Провижен прод-хоста, миграции, CI-standalone, nginx/TLS, deploy-smoke, 152-ФЗ go-live | инфра (прод-хост + владелец) |
 
 ---
 
@@ -95,7 +95,7 @@
 | **PR10** | **Объявления end-to-end:** коллекция `Announcements` + access + типы; UI тренера «дать объявление» (`/coach/announcements` или блок на `/coach/schedule`); лента на `/parent`; best-effort `normal`-пуш по `triggersPush` | granularity: пуш только по флагу | M |
 | **PR11** | **«Вопрос тренеру» end-to-end:** коллекция `Questions` + access + типы; контекстная кнопка на `/parent` (карточка сессии) → `POST /parent/question`; инбокс тренера `/coach/questions` + `POST /coach/question/[id]/status`; best-effort пуш тренеру | односторонне (полный чат — M4) | M |
 | **PR12** | **Prod-миграции (#017):** перевод dev `push:true` → коммиченные Payload-миграции; baseline текущей схемы + announcements/questions; **C4-хвосты M2** — partial-unique `(session,player)` на Rsvps + dedup `(session,parent,changedAt)` на фан-ауте | гейт прод-готовности | M |
-| **C. Деплой** | CI-standalone workflow + `trener.service` + nginx + TLS certbot + deploy-smoke (#011); 152-ФЗ go-live (`operator.ts` финал + РКН) | нужен Бокс 1 + владелец | L |
+| **C. Деплой** | CI-standalone workflow + `trener.service` + nginx + TLS certbot + deploy-smoke (#011); 152-ФЗ go-live (`operator.ts` финал + РКН) | нужен прод-хост + владелец | L |
 
 ## Ключевые решения (форки M3)
 
@@ -107,7 +107,7 @@
 - **F6 — «новое»-индикатор объявлений — клиентский** (localStorage last-seen) в MVP; серверный per-user read-state — позже (не нужен для ценности).
 
 ## Развилки (на решение владельца — нитка C, деплой)
-- **Бокс 1:** какой VPS/хостинг (РФ, 152-ФЗ ст.18 ч.5), домен, порт (предв. 3007 — свериться на боксе).
+- **Прод-сервер:** какой VPS/хостинг (РФ, 152-ФЗ ст.18 ч.5), домен, порт — по реестру Мозга.
 - **ПОПРАВКА 2026-07-31 — 152-ФЗ go-live:** оператором является школа, платформа — обработчик по поручению. Для каждого филиала заполнить карточку оператора, подписать договор поручения, школе подать уведомление РКН и проверить `/privacy?branch=<id>`; см. `branch-onboarding-privacy.md` и incident-playbook (§5.7).
 - **SMTP-relay для magic-link в проде** (Resend/Brevo/…) — `/etc/trener/trener.env` (#008).
 

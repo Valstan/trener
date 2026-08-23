@@ -31,7 +31,7 @@
 ## web/.env (gitignored, #008)
 
 - `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/trener_dev`, `PAYLOAD_SECRET`, `NEXT_PUBLIC_SERVER_URL=http://localhost:3000`.
-- Дописаны dev-ключи (2026-06-26): VAPID-пара (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`) + `CRON_SECRET=dev-cron-secret-rmz4val`. Шаблоны — `web/.env.example`. Реальная доставка push iOS/Android требует HTTPS (M3).
+- Дописаны dev-ключи (2026-06-26): VAPID-пара (`NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT`) + `CRON_SECRET=<dev-значение>`. Шаблоны — `web/.env.example`. Реальная доставка push iOS/Android требует HTTPS (M3).
 
 ## Запуск / верификация (сверено 2026-06-26)
 
@@ -39,16 +39,25 @@
 - `corepack pnpm -C web typecheck` — чисто. `corepack pnpm -C web test` — **67/67** зелёные.
 - Скрипты Payload (если нужны): `./node_modules/.bin/payload run ./script.ts` (нужен top-level await).
 
-## Offsite-бэкап: PULL-стяжка (LIVE 2026-06-28)
+## Offsite-бэкап: PULL-стяжка (LIVE 2026-06-28; восстановлена 2026-08-23)
 
 - Эта машина — **pull-сторона** offsite-бэкапа прод-БД (см. [`docs/backups.md`](../backups.md)).
-- Scheduled Task **`trener-backup-pull`** (ежедневно 04:30 MSK, S4U, StartWhenAvailable) запускает
+- Scheduled Task **`trener-backup-pull`** (ежедневно 04:30 MSK, StartWhenAvailable) запускает
   `C:\Users\Valstan\bin\trener-backup-pull.ps1` (канонично — `deploy/backup/trener-backup-pull.ps1`):
   `scp` шифр-дампов с бокса → `D:\YandexDisk\Backups\trener\` → клиент Диска уносит в облако.
+- ⚠️ **23.08.2026 задача и `C:\Users\Valstan\bin\` обнаружены отсутствующими** (последний pull — 15.08,
+  8 дней тишины, причина не установлена: журнал TaskScheduler/Operational выключен). Пересоздано
+  той же сессией; прогон — `pull ok`. Молчаливая смерть = класс #104: проверять свежесть `_pull.log`
+  на каждом `/start` с этой машины (одна строка `tail -1`).
+- Задача сейчас с **`LogonType Interactive`** (S4U из неэлевированной агентской сессии → Access denied):
+  работает при залогиненном пользователе (в т.ч. за блокировкой экрана). Апгрейд до S4U — из
+  админ-консоли: `Set-ScheduledTask -TaskName trener-backup-pull -Principal (New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType S4U)`.
+- ssh-алиас бокса скрипт берёт из `TRENER_BOX_SSH_ALIAS` (D-038): задан user-level **и** продублирован
+  в action самой задачи (S4U/Interactive не обязаны грузить профиль пользователя).
 - **Клиент Яндекс.Диска должен быть запущен** (процесс `YandexDisk2`), иначе файл лежит локально и
   не уходит offsite до следующего логина/старта клиента.
 - **Приватный gpg-ключ восстановления** живёт в keyring этой машины (`~/.gnupg`, fingerprint
-  `CA8C5062…0FF7F5`, без passphrase) — для `gpg --decrypt`. Источник истины ключа — менеджер паролей
+  `CA8C5062…0FF7F5`) — для `gpg --decrypt`. Источник истины ключа — менеджер паролей
   владельца; **в `D:\YandexDisk` ключ не класть** (там лежат сами шифр-дампы).
 - Ручной прогон/диагностика: `Start-ScheduledTask -TaskName trener-backup-pull`; лог —
   `D:\YandexDisk\Backups\trener\_pull.log`.
@@ -58,8 +67,8 @@
 - **`Start-Service postgresql-x64-17` иногда падает с `StartServiceFailed` с первого раза**
   (фантомный listen-сокет на :5432 от уже мёртвого PID — `Get-NetTCPConnection` показывает Listen,
   но `Get-Process`/коннект говорят, что процесса нет). Лечение — **просто повторить** `Start-Service`:
-  со второго раза поднимается (сокет освобождается). Elevation ни при чём (сессия и так admin).
-  Сверено 2026-06-27.
+  со второго раза поднимается (сокет освобождается). Сверено 2026-06-27. **Агентская сессия НЕ admin**
+  (проверено 23.08: `IsInRole(Administrator)` = False) — см. обход через `pg_ctl` ниже.
 - **knip падает `RangeError: Array buffer allocation failed`** (oxc-parser не получает
   память). Сначала казалось — только при параллельном dev-сервере (2026-07-26), но
   2026-08-01 падал и без него, трижды подряд, `--max-old-space-size=4096` не помог
@@ -70,10 +79,10 @@
   `run watch` → `pr merge`) гонять фоновой командой с `until`-ретраем, а не одним вызовом:
   один таймаут в середине иначе рвёт всю цепочку. Родня фильтрации из пункта ниже.
 - **HTTPS-API бокса (:443) с rmz4val иногда таймаутится** (`HTTP 000` / `UND_ERR_CONNECT_TIMEOUT`),
-  хотя SSH (:22) к тому же боксу работает. Похоже на myjino-edge фильтрацию IP (родня G8). Наблюдалось
-  2026-06-29 при попытке POST в KARMAN-API напрямую с rmz4val. **Обход:** делать запрос с самого бокса
-  (по SSH) к loopback KARMAN `http://127.0.0.1:3002` — секрет можно передать через stdin SSH, чтобы он
-  не лёг на диск бокса. Раннее в ту же сессию :443 с rmz4val отвечал — т.е. фильтр перемежающийся.
+  хотя SSH (:22) к тому же боксу работает. Похоже на edge-фильтрацию IP у хостера (родня G8). Наблюдалось
+  2026-06-29 при попытке POST в KARMAN-API напрямую с rmz4val. **Обход:** делать запрос по SSH с самого
+  бокса (адрес KARMAN для этого случая — по реестру Мозга) — секрет можно передать через stdin SSH,
+  чтобы он не лёг на диск бокса. Раннее в ту же сессию :443 с rmz4val отвечал — т.е. фильтр перемежающийся.
 
 ## Postgres из агентской (неинтерактивной) сессии
 

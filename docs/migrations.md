@@ -52,7 +52,8 @@ push-сборки построчно (кроме per-session токена pg_dum
 
 ```bash
 # с rmz4val (локальный SSH к боксу работает) — одной строкой через psql на боксе:
-ssh GONBA "sudo -u postgres psql -d trener -c \
+# (<box> — ssh-алиас прод-бокса из локального ~/.ssh/config)
+ssh <box> "sudo -u postgres psql -d trener -c \
   \"INSERT INTO payload_migrations (name, batch) SELECT '20260627_055816_baseline', 1 \
     WHERE NOT EXISTS (SELECT 1 FROM payload_migrations WHERE name='20260627_055816_baseline');\""
 ```
@@ -70,7 +71,7 @@ ssh GONBA "sudo -u postgres psql -d trener -c \
 > baseline засевался прямым INSERT, поэтому раньше не всплывало). Лечение — один раз снести сентинел:
 >
 > ```bash
-> ssh GONBA "sudo -u postgres psql -d trener -c \"DELETE FROM payload_migrations WHERE name='dev' AND batch=-1;\""
+> ssh <box> "sudo -u postgres psql -d trener -c \"DELETE FROM payload_migrations WHERE name='dev' AND batch=-1;\""
 > ```
 >
 > Прод на формальных миграциях — dev-режима там нет, строка лишняя. После удаления `payload migrate`
@@ -113,7 +114,7 @@ diff <(grep -vE '^\s*(--|\\restrict|\\unrestrict|$)' /tmp/dev.sql) \
   один раз (см. блок ⚠️ в «Разовый засев прода»). НЕ путать с drizzle-push-промптом (тот гасится
   `NODE_ENV=production`).
 - **Локальный фолбэк (если CI/раннер недоступен):** с rmz4val открыть туннель
-  `ssh -fNL 15432:127.0.0.1:5432 GONBA`, затем
+  `ssh -fNL 15432:127.0.0.1:5432 <box>`, затем
   `DATABASE_URL=<прод-url с :15432> NODE_ENV=production corepack pnpm -C web migrate`,
   и **закрыть туннель по PID** (`netstat -ano | grep 15432` → `taskkill //F //PID`), иначе
   утёкший форвард добивает `CONNECTION LIMIT` роли (G103).
