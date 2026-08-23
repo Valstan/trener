@@ -14,6 +14,14 @@ import { relId } from '../lib/relId'
 export const fanOutPaymentMessage: CollectionAfterChangeHook = async ({ doc, operation, req }) => {
   if (operation !== 'create') return doc
 
+  // Демо-режим (D-029/#166): реплика демо-гостя не уведомляет НИКОГО живого. Получатели
+  // здесь — не члены группы (которых sendPushToUser отсеял бы по target.demo), а
+  // ГЛОБАЛЬНО `roles:['owner']` без фильтра филиала/демо → в наборе живой владелец, и
+  // sendPushToUser его не режет (проверяет только адресата, а живой владелец не demo).
+  // Поэтому глушим у источника: демо-сообщение (demoGuest:true, ставит demoGuestLimit)
+  // не порождает фан-аут вовсе. Симметрично глушителям push/email изоляции демо (#141).
+  if ((doc as { demoGuest?: boolean }).demoGuest) return doc
+
   const { payload } = req
   const threadId = relId((doc as { thread?: unknown }).thread)
   if (threadId == null) return doc
