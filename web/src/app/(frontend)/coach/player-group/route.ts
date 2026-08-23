@@ -3,7 +3,7 @@ import { headers as nextHeaders } from 'next/headers'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { adminBranchId, coachGroupIds, isCoach, isOwner } from '@/access/roles'
+import { adminBranchId, coachGroupIds, isCoach, isFullOwner } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 export const PATCH = async (req: Request): Promise<Response> => {
@@ -15,7 +15,9 @@ export const PATCH = async (req: Request): Promise<Response> => {
   const groupId = Number(body?.groupId)
   if (!Number.isInteger(playerId) || !Number.isInteger(groupId)) return NextResponse.json({ ok: false }, { status: 400 })
 
-  let allowed = isOwner(user)
+  // isFullOwner, не isOwner: демо-владелец скоупится демо-филиалом (D-029/#166), иначе
+  // мог бы переместить демо-ребёнка в живой филиал (демо→живое протекание).
+  let allowed = isFullOwner(user)
   const branch = adminBranchId(user)
   if (!allowed && branch != null) {
     const group = await payload.findByID({ collection: 'groups', id: groupId, depth: 0, overrideAccess: true })
@@ -31,7 +33,7 @@ export const PATCH = async (req: Request): Promise<Response> => {
     ])
     const playerBranch = relId(player.branch)
     const targetBranch = relId(targetGroup.branch)
-    if (playerBranch != null && targetBranch !== playerBranch && !isOwner(user)) return NextResponse.json({ ok: false }, { status: 403 })
+    if (playerBranch != null && targetBranch !== playerBranch && !isFullOwner(user)) return NextResponse.json({ ok: false }, { status: 403 })
     await payload.update({ collection: 'players', id: playerId, data: { group: groupId, branch: targetBranch ?? undefined }, overrideAccess: true })
     return NextResponse.json({ ok: true })
   } catch {

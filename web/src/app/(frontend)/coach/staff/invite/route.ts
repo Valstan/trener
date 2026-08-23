@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { adminBranchId, isOwner } from '@/access/roles'
+import { adminBranchId, isDemo, isFullOwner } from '@/access/roles'
 import { applicantUpgrade } from '@/lib/auth/applicantUpgrade'
 import { createLoginToken } from '@/lib/auth/magicLink'
 import { sendStaffInviteEmail } from '@/lib/email/magicLinkEmail'
@@ -31,7 +31,16 @@ export const POST = async (req: Request): Promise<Response> => {
     const { user } = await payload.auth({ headers: req.headers })
     if (!user) return NextResponse.json({ ok: false }, { status: 401 })
 
-    const owner = isOwner(user)
+    // Демо не приглашает персонал: создаёт реальный аккаунт и шлёт login-письмо на
+    // произвольный адрес из публичной витрины (D-029/#166, 23.08). `owner` ниже —
+    // isFullOwner, иначе демо-владелец брал бы attacker-controlled branchId.
+    if (isDemo(user)) {
+      return NextResponse.json(
+        { ok: false, reason: 'demo', error: 'В демо приглашения не отправляются' },
+        { status: 400 },
+      )
+    }
+    const owner = isFullOwner(user)
     const myBranch = adminBranchId(user)
     if (!owner && myBranch == null) return NextResponse.json({ ok: false }, { status: 403 })
 

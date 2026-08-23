@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { adminBranchId, hasRole, isOwner } from '@/access/roles'
+import { adminBranchId, hasRole, isDemo, isFullOwner } from '@/access/roles'
 import { activeDocument, requisitesComplete } from '@/lib/legal'
 import { operatorFromBranch } from '@/lib/operator'
 import { clientMeta } from '@/lib/requestMeta'
@@ -19,13 +19,23 @@ export const POST = async (req: Request): Promise<Response> => {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user || !hasRole(user, 'owner', 'admin')) return NextResponse.json({ ok: false }, { status: 403 })
+    // Демо не порождает юридических фактов (D-029/#166): подпись открыла бы приглашения
+    // и импорт с письмами на произвольные адреса из публичной витрины.
+    if (isDemo(user)) {
+      return NextResponse.json(
+        { error: 'В демо договор не подписывается — юридический контур показан без подписи' },
+        { status: 400 },
+      )
+    }
 
     const body = (await req.json().catch(() => null)) as { branchId?: unknown } | null
     const branchId = Number(body?.branchId)
     if (!Number.isInteger(branchId) || branchId <= 0) return NextResponse.json({ ok: false }, { status: 400 })
 
+    // Любой филиал — только ЖИВОЙ владелец; admin — свой. `isOwner` пропускал демо-владельца
+    // (roles:['owner']) к подписи за чужой живой филиал — поддельная журнальная запись.
     const myBranch = adminBranchId(user)
-    if (!isOwner(user) && String(myBranch) !== String(branchId)) {
+    if (!isFullOwner(user) && String(myBranch) !== String(branchId)) {
       return NextResponse.json({ ok: false }, { status: 403 })
     }
 

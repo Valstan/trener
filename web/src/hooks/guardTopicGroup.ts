@@ -1,6 +1,6 @@
 import type { CollectionBeforeValidateHook } from 'payload'
 
-import { adminBranchId, branchGroupIds, coachGroupIds, isOwner } from '../access/roles'
+import { adminBranchId, branchGroupIds, coachGroupIds, isFullOwner } from '../access/roles'
 import { branchIdsForGroups } from '../access/chatScope'
 
 // Гейт «тема заводится только в СВОЮ цель» (M9, скоупы M9.5).
@@ -22,7 +22,9 @@ import { branchIdsForGroups } from '../access/chatScope'
 export const guardTopicGroup: CollectionBeforeValidateHook = async ({ data, req, originalDoc }) => {
   if (!data) return data
   const user = req?.user
-  if (!user || isOwner(user)) return data
+  // isFullOwner, не isOwner: демо-владелец (roles:['owner']) должен скоупиться демо-филиалом
+  // через ветку adminBranchId ниже, иначе заводил бы темы в живых группах (D-029/#166).
+  if (!user || isFullOwner(user)) return data
 
   const scope = data.scope ?? originalDoc?.scope ?? 'group'
   if (scope === 'school') return data

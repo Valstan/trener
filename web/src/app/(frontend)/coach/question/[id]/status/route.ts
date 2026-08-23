@@ -2,7 +2,8 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { coachGroupIds, isOwner, isCoach } from '@/access/roles'
+import { isCoach, isOwner } from '@/access/roles'
+import { staffCanManageGroup } from '@/lib/groupScope'
 import { relId } from '@/lib/relId'
 
 // POST { status: 'read'|'answered' } → тренер двигает статус вопроса (M3-PR11).
@@ -34,10 +35,11 @@ export const POST = async (req: Request, ctx: { params: Promise<{ id: string }> 
       .catch(() => null)
     if (!question) return NextResponse.json({ ok: false }, { status: 404 })
 
-    // Владение: группа вопроса — среди групп тренера (admin — любой).
-    if (!isOwner(user)) {
-      const groupIds = await coachGroupIds({ payload } as never, user.id)
-      if (!groupIds.includes(relId(question.group) ?? -1)) return NextResponse.json({ ok: false }, { status: 403 })
+    // Лестница lib/groupScope: живой владелец — любая; демо-владелец/admin — свой филиал;
+    // тренер — свои. `if (!isOwner)` пропускал демо-владельца к живым вопросам (D-029/#166).
+    const qGroupId = relId(question.group)
+    if (qGroupId == null || !(await staffCanManageGroup(payload, user, qGroupId))) {
+      return NextResponse.json({ ok: false }, { status: 403 })
     }
 
     const now = new Date().toISOString()

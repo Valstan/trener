@@ -2,7 +2,7 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
-import { isOwner } from '@/access/roles'
+import { isFullOwner } from '@/access/roles'
 import { adultApproveData, childTransition, type ChildRegStatus } from '@/lib/registrationFlow'
 
 // POST — решения владельца по заявкам (инбокс /coach/requests):
@@ -20,7 +20,8 @@ export const POST = async (req: Request): Promise<Response> => {
   try {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
-    if (!user || !isOwner(user)) return NextResponse.json({ ok: false }, { status: 403 })
+    // Только ЖИВОЙ владелец: одобрение/удаление живых заявок — не демо-операция (D-029/#166).
+    if (!user || !isFullOwner(user)) return NextResponse.json({ ok: false }, { status: 403 })
 
     const body = (await req.json().catch(() => null)) as Record<string, unknown> | null
     const id = Number(body?.id)

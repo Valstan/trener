@@ -4,7 +4,8 @@ import { NextResponse } from 'next/server'
 
 import { apiErrorResponse } from '@/lib/apiErrorResponse'
 
-import { coachGroupIds, isOwner, isCoach } from '@/access/roles'
+import { isCoach, isOwner } from '@/access/roles'
+import { staffCanManageGroup } from '@/lib/groupScope'
 import { relId } from '@/lib/relId'
 
 // POST { body } → ответ тренера в нитке чата M4. #015: тренер отвечает ТОЛЬКО на
@@ -41,9 +42,10 @@ export const POST = async (req: Request, ctx: { params: Promise<{ id: string }> 
     if (groupId == null || parentId == null) return NextResponse.json({ ok: false }, { status: 404 })
 
     // Владение: группа вопроса — среди групп тренера (admin — любой).
-    if (!isOwner(user)) {
-      const groupIds = await coachGroupIds({ payload } as never, user.id)
-      if (!groupIds.includes(groupId)) return NextResponse.json({ ok: false }, { status: 403 })
+    // Лестница lib/groupScope: живой владелец — любая; демо-владелец/admin — свой филиал;
+    // тренер — свои. `if (!isOwner)` пропускал демо-владельца к живым вопросам (D-029/#166).
+    if (!(await staffCanManageGroup(payload, user, groupId))) {
+      return NextResponse.json({ ok: false }, { status: 403 })
     }
 
     await payload.create({

@@ -6,7 +6,7 @@ import { apiErrorResponse } from '@/lib/apiErrorResponse'
 import { parseTopicCreate } from '@/lib/chatInput'
 import { canCreateTopic } from '@/lib/chatTopicScope'
 import { allowedChatTargets } from '@/access/chatScope'
-import { isOwner } from '@/access/roles'
+import { isFullOwner } from '@/access/roles'
 
 // POST { groupId, title } → новая тема в комнате группы (M9).
 //
@@ -36,7 +36,7 @@ export const POST = async (req: Request): Promise<Response> => {
       // Матрица роль×scope — чистая canCreateTopic (см. её комментарий про дыру
       // `allowed.school ||`). Гейт «своя группа у тренера» ещё жёстче и срабатывает
       // в guardTopicGroup — для этого в create передаём user (без него хук слеп).
-      const permitted = canCreateTopic({ owner: isOwner(user), ...allowed }, input)
+      const permitted = canCreateTopic({ owner: isFullOwner(user), ...allowed }, input)
       if (!permitted) return NextResponse.json({ ok: false }, { status: 403 })
       const topic = await payload.create({
         collection: 'chat-topics',
