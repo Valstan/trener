@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { adminBranchId, isOwner, isPending } from '@/access/roles'
+import { adminBranchId, isFullOwner, isPending } from '@/access/roles'
 import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { relId } from '@/lib/relId'
 
@@ -36,7 +36,9 @@ const StaffPage = async () => {
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
 
-  const owner = isOwner(user)
+  // isFullOwner, не isOwner (D-029/#166): демо-владелец имеет roles:['owner'], и на
+  // isOwner он получал branchFilter=null → список персонала ВСЕЙ ЖИВОЙ сети с email.
+  const owner = isFullOwner(user)
   const myBranch = adminBranchId(user)
   // Тренеру здесь делать нечего: он не заводит сотрудников.
   if (!owner && myBranch == null) redirect('/home')

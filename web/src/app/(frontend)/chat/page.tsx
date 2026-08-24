@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { adminBranchId, isChild, isCoach, isOwner, isParent, isPending } from '@/access/roles'
+import { adminBranchId, isChild, isCoach, isFullOwner, isOwner, isParent, isPending } from '@/access/roles'
 import { allowedChatTargets } from '@/access/chatScope'
 import { relId } from '@/lib/relId'
 
@@ -102,12 +102,14 @@ const ChatPage = async () => {
           limit: 200,
           depth: 0,
           pagination: false,
-          where: isOwner(user) ? {} : { id: { in: targets.groups } },
+          // isFullOwner, не isOwner (D-029/#166): allowedChatTargets скоупит демо-владельца
+          // правильно, но этот обход по isOwner возвращал ему группы ВСЕЙ ЖИВОЙ сети.
+          where: isFullOwner(user) ? {} : { id: { in: targets.groups } },
           overrideAccess: true,
         })
       ).docs.map((g) => ({ id: g.id, name: g.name }))
     : []
-  const ownBranches = targets.branches.length || isOwner(user) ? (await payload.find({ collection: 'branches', where: isOwner(user) ? {} : { id: { in: targets.branches } }, sort: 'name', limit: 200, pagination: false, depth: 0, overrideAccess: true })).docs.map((branch) => ({ id: branch.id, name: branch.name })) : []
+  const ownBranches = targets.branches.length || isFullOwner(user) ? (await payload.find({ collection: 'branches', where: isFullOwner(user) ? {} : { id: { in: targets.branches } }, sort: 'name', limit: 200, pagination: false, depth: 0, overrideAccess: true })).docs.map((branch) => ({ id: branch.id, name: branch.name })) : []
 
   const newsCount = topics.docs.filter((t) => hasNews(t)).length
 
