@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { hasRole, isOwner } from '@/access/roles'
+import { hasRole, isFullOwner } from '@/access/roles'
 import { loadOwnerBranch } from '@/lib/ownerBranch'
 import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
@@ -39,7 +39,10 @@ const CoachAnnouncementsPage = async () => {
   const groupOptions = groups.docs.map((g) => ({ id: g.id, name: g.name }))
 
   // M5 PR-C: владельцу — список филиалов для охвата branch/network.
-  const branchOptions = isOwner(user)
+  // isFullOwner, не isOwner (D-029/#166): на isOwner демо-владелец получал в
+  // селекторе охвата имена всех ЖИВЫХ филиалов сети (отправку ему всё равно
+  // отбивает coach/announcement/route.ts, но перечислять сеть витрина не должна).
+  const branchOptions = isFullOwner(user)
     ? (
         await payload.find({
           collection: 'branches',

@@ -6,7 +6,7 @@ import { getPayload } from 'payload'
 import type { Where } from 'payload'
 import React from 'react'
 
-import { adminBranchId, hasRole, isOwner, isPending } from '@/access/roles'
+import { adminBranchId, hasRole, isFullOwner, isPending } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 import { AppShell, staffTabs } from '../../components/AppShell'
@@ -29,7 +29,9 @@ const ImportPage = async () => {
   if (isPending(user)) redirect('/pending')
   if (!hasRole(user, 'owner', 'admin', 'coach')) redirect('/home')
 
-  const owner = isOwner(user)
+  // isFullOwner, не isOwner (D-029/#166): демо-владельцу селект филиалов сети не
+  // показываем — иначе витрина перечисляет живые филиалы и группы.
+  const owner = isFullOwner(user)
   const myBranch = adminBranchId(user)
 
   // Владельцу — селект филиала (имена групп могут повторяться между филиалами).

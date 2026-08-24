@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation'
 import { getPayload } from 'payload'
 import React from 'react'
 
-import { isOwner } from '@/access/roles'
+import { adminBranchId, isFullOwner, isOwner } from '@/access/roles'
 import { relId } from '@/lib/relId'
 
 import { AppShell, staffTabs } from '../../components/AppShell'
@@ -25,6 +25,19 @@ const RequestsPage = async () => {
   if (!user) redirect('/login')
   if (!isOwner(user)) redirect('/home')
 
+  // Экран читает три коллекции с overrideAccess (инбокс обязан видеть ждущих
+  // решения независимо от access-правил), поэтому скоуп держится ЗДЕСЬ.
+  // isOwner тут пропускал демо-владельца (roles:['owner'], D-029/#166) ко ВСЕЙ
+  // живой сети: email ждущих взрослых, ФИО детей из саморег-заявок и список всех
+  // филиалов. Писать он и раньше не мог (decide/route.ts гейтится isFullOwner) —
+  // дыра была на чтении. Демо-владелец скоупится своим демо-филиалом, как
+  // branch-admin (adminBranchId уже умеет это для demo owner/admin).
+  const fullOwner = isFullOwner(user)
+  const scopedBranch = fullOwner ? null : adminBranchId(user)
+  // Fail-closed: не полный владелец и филиала нет — показывать нечего.
+  if (!fullOwner && scopedBranch == null) redirect('/home')
+  const branchScope = scopedBranch != null ? [{ branch: { equals: scopedBranch } }] : []
+
   const [adults, children, branches] = await Promise.all([
     payload.find({
       collection: 'users',
@@ -33,6 +46,7 @@ const RequestsPage = async () => {
           { status: { equals: 'pending' } },
           { roles: { in: ['applicant'] } },
           { requestedRole: { in: Object.values(REQUEST_ROLE) } },
+          ...branchScope,
         ],
       },
       sort: 'createdAt',
@@ -43,14 +57,22 @@ const RequestsPage = async () => {
     }),
     payload.find({
       collection: 'child-registrations',
-      where: { status: { in: ['owner_review', 'parent_review'] } },
+      where: { and: [{ status: { in: ['owner_review', 'parent_review'] } }, ...branchScope] },
       sort: 'createdAt',
       limit: 200,
       depth: 1,
       pagination: false,
       overrideAccess: true,
     }),
-    payload.find({ collection: 'branches', sort: 'name', limit: 200, depth: 0, pagination: false, overrideAccess: true }),
+    payload.find({
+      collection: 'branches',
+      where: scopedBranch != null ? { id: { equals: scopedBranch } } : {},
+      sort: 'name',
+      limit: 200,
+      depth: 0,
+      pagination: false,
+      overrideAccess: true,
+    }),
   ])
 
   const branchOptions = branches.docs.map((b) => ({ id: b.id, name: b.name }))
