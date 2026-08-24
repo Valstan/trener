@@ -13,6 +13,7 @@
     "typecheck": "cross-env NODE_OPTIONS=--no-deprecation tsc --noEmit",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "seed": "cross-env NODE_OPTIONS=--no-deprecation payload run ./src/scripts/seed-dev.ts",
+    "seed:legal": "cross-env NODE_OPTIONS=--no-deprecation payload run ./src/scripts/seed-legal-docs.ts",
     "privacy:export": "cross-env NODE_OPTIONS=--no-deprecation payload run ./src/scripts/export-data-subject.ts",
     "generate:types": "cross-env NODE_OPTIONS=--no-deprecation payload generate:types",
     "generate:importmap": "cross-env NODE_OPTIONS=--no-deprecation payload generate:importmap",
