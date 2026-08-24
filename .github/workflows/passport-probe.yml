@@ -1,0 +1,159 @@
+name: Passport probe (vault session)
+
+# Пилот «паспорта» экосистемы (ADR-0012, волна 2 у КАРМАНа; письма Мозга 15.08).
+# Проект предъявляет подписанное OIDC-удостоверение своего CI и получает
+# короткоживущий токен СВОЕЙ комнаты вместо общего VAULT_PROVISION_KEY.
+#
+# ЗАЧЕМ ОТДЕЛЬНЫЙ WORKFLOW, а не шаг в ci.yml: сегодня в CI нет ни одного похода в
+# комнату (vault-клиент — аварийный путь рантайма на боксе, web/src/lib/secretsBootstrap.ts).
+# Пилот доказывает контракт, а не встраивает его в критический путь: ручной запуск,
+# ничего не блокирует, красный прогон не останавливает деплой (мина «красный main тихо
+# останавливает прод» сюда не тащится).
+#
+# ЗАПУСК ТОЛЬКО С main: сервер пинит субъект регэкспом
+# `^repo:<owner>/<repo>:ref:refs/heads/(main|master)$` — ветки, PR и форки личность НЕ
+# минтят (спека karman/docs/passport-server.md, «Что именно проверяется»). Прогон с ветки
+# вернёт 401 — это ожидаемое поведение, а не поломка. Плюс сам `workflow_dispatch`
+# доступен только для файла, уже лежащего в ветке по умолчанию.
+#
+# Адрес комнаты — в GitHub secret VAULT_BASE_URL (D-038: хост в отслеживаемых файлах не лежит).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write # без этого GitHub удостоверение не выдаст
+  contents: read
+
+concurrency:
+  group: passport-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest # спека требует runner_environment=github-hosted (self-hosted отвергается)
+    timeout-minutes: 5
+    steps:
+      - name: Сессия в vault по паспорту
+        env:
+          VAULT_BASE_URL: ${{ secrets.VAULT_BASE_URL }}
+        run: |
+          set -euo pipefail
+
+          # Тело чужого ответа В ЛОГ НЕ ПЕЧАТАЕМ (D-038): лог публичного репо вечен, а
+          # не-контрактный ответ отдаёт не vault, а прокси/шлюз — его страницы штатно
+          # содержат голый хостнейм и версию ПО, и маска GitHub их не ловит (она знает
+          # только точное значение секрета, со схемой). Плюс stdout раннера парсится на
+          # `::`-директивы, т.е. сырое тело — ещё и вектор инъекции workflow-команд.
+          # Достаём ровно контрактное поле .error, режем длину и обезвреживаем `::`.
+          errmsg() { # $1 — тело ответа
+            printf '%s' "$1" | jq -re '.error' 2>/dev/null | head -c 200 | tr -d '\r\n' | sed 's/::/;;/g' || true
+          }
+
+          if [ -z "${VAULT_BASE_URL}" ]; then
+            echo "::error::Secret VAULT_BASE_URL не задан (базовый URL vault КАРМАНа)."
+            exit 1
+          fi
+          # id-token: write не доехал → переменных нет, и `set -u` убил бы шаг голым
+          # «unbound variable» вместо внятной причины.
+          if [ -z "${ACTIONS_ID_TOKEN_REQUEST_URL:-}" ] || [ -z "${ACTIONS_ID_TOKEN_REQUEST_TOKEN:-}" ]; then
+            echo "::error::OIDC-эндпоинт недоступен job'у — проверь permissions: id-token: write."
+            exit 1
+          fi
+
+          # 1. Удостоверение своего CI. audience фиксирован сервером — karman-vault.
+          # RC-паттерн вместо голого присваивания: под `set -e` подстановка валит шаг
+          # МОЛЧА, и ниже не отрабатывает ни одна диагностика (curl -s глушит и свой текст).
+          RC=0
+          ASSERTION="$(curl -sf --connect-timeout 5 --max-time 20 \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=karman-vault" | jq -r .value)" || RC=$?
+          if [ "$RC" != 0 ]; then
+            echo "::error::Удостоверение не получено (curl/jq rc=$RC; 22=HTTP-ошибка, 28=таймаут, 6=DNS)."
+            exit 1
+          fi
+          echo "::add-mask::$ASSERTION"
+          if [ -z "$ASSERTION" ] || [ "$ASSERTION" = "null" ]; then
+            echo "::error::OIDC-эндпоинт ответил без поля value."
+            exit 1
+          fi
+          echo "удостоверение получено"
+
+          # 2. Обмен удостоверения на токен своей комнаты. Код отделяем от тела: различать
+          # 401 (подпись/срок/ветка/повтор jti), 403 (личности нет в реестре) и 503 (JWKS)
+          # важнее, чем «не 201» — по коду сразу видно, чья это зона ответственности.
+          RC=0
+          RESP="$(curl -s -X POST "${VAULT_BASE_URL%/}/api/secrets/session" \
+            -H "Authorization: Bearer $ASSERTION" \
+            --connect-timeout 5 --max-time 20 -w '\n%{http_code}')" || RC=$?
+          if [ "$RC" != 0 ]; then
+            echo "::error::vault недосягаем с раннера (curl rc=$RC; 6=DNS, 7=connect, 28=таймаут) — зона сети/бокса, не контракта."
+            exit 1
+          fi
+          CODE="$(printf '%s' "$RESP" | tail -n1)"
+          BODY="$(printf '%s' "$RESP" | sed '$d')"
+
+          if [ "$CODE" != "201" ]; then
+            MSG="$(errmsg "$BODY")"
+            echo "::error::POST /api/secrets/session -> ${CODE}${MSG:+: $MSG}"
+            case "$CODE" in
+              401) echo "401 = подпись/срок/ветка/повтор jti. Запуск НЕ с main? Ветки и PR личность не минтят." ;;
+              403) echo "403 = удостоверение валидно, но личности нет в реестре КАРМАНа — вопрос к владельцу vault." ;;
+              429) echo "429 = лимит по доказанному claim'у, повторить позже." ;;
+              503) echo "503 = JWKS issuer'а недоступен и снимка нет — временная проблема на стороне vault." ;;
+              *)   echo "${CODE} вне словаря контракта (401/403/429/503) — вероятно отвечал прокси, а не приложение." ;;
+            esac
+            exit 1
+          fi
+
+          TOKEN="$(printf '%s' "$BODY" | jq -r '.token // empty')"
+          if [ -z "$TOKEN" ]; then
+            echo "::error::201 без поля token — ответ не по контракту."
+            exit 1
+          fi
+          echo "::add-mask::$TOKEN"
+          # Самоотзыв — на trap, а не последней строкой: под `set -e` любой сбой ниже
+          # оборвал бы шаг раньше, и живая сессия висела бы до конца TTL. INT/TERM —
+          # чтобы отмена прогона тоже гасила. Токен намеренно НЕ уходит в $GITHUB_ENV
+          # (рецепт спеки так делает, но это отдало бы его всем шагам job'а).
+          trap 'curl -s -o /dev/null -X DELETE "${VAULT_BASE_URL%/}/api/secrets/session" -H "Authorization: Bearer $TOKEN" --max-time 20 || true' EXIT INT TERM
+
+          # 3. Доказательство БЕЗ секретов: только неопасные поля контракта.
+          printf '%s' "$BODY" | jq '{slug, canWrite, expiresAt, tokenPrefix, jwksStale}'
+
+          # 4. Интроспекция — ПРОВЕРКА, а не печать: сервер должен подтвердить, что увидел
+          # именно паспортную личность. `identity: null` = статический токен владельца, то
+          # есть пилот НЕ доказан; без этого ассерта зелёный прогон не значил бы ничего.
+          RC=0
+          SELF="$(curl -s "${VAULT_BASE_URL%/}/api/secrets/self" -H "Authorization: Bearer $TOKEN" \
+            --connect-timeout 5 --max-time 20 -w '\n%{http_code}')" || RC=$?
+          if [ "$RC" != 0 ]; then
+            echo "::error::GET /api/secrets/self недосягаем (curl rc=$RC)."
+            exit 1
+          fi
+          SCODE="$(printf '%s' "$SELF" | tail -n1)"
+          SBODY="$(printf '%s' "$SELF" | sed '$d')"
+          if [ "$SCODE" != "200" ]; then
+            SMSG="$(errmsg "$SBODY")"
+            echo "::error::GET /api/secrets/self -> ${SCODE}${SMSG:+: $SMSG}"
+            exit 1
+          fi
+          # projectId не печатаем: это порядковый номер комнаты в ОБЩЕМ vault, т.е. нижняя
+          # граница числа соседних комнат (D-038, «состав соседей»).
+          printf '%s' "$SBODY" | jq '{slug, canWrite, identity, expiresAt}'
+          IDENTITY="$(printf '%s' "$SBODY" | jq -r '.identity // empty')"
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::identity = null — это статический токен комнаты, а не паспортная сессия. Пилот НЕ подтверждён."
+            exit 1
+          fi
+          echo "паспортная личность подтверждена сервером"
+
+          # 5. Самоотзыв выполняет trap; здесь проверяем, что окно действительно закрыто.
+          RC=0
+          REVOKE="$(curl -s -o /dev/null -w '%{http_code}' -X DELETE "${VAULT_BASE_URL%/}/api/secrets/session" -H "Authorization: Bearer $TOKEN" --connect-timeout 5 --max-time 20)" || RC=$?
+          trap - EXIT INT TERM
+          if [ "$RC" != 0 ] || [ "$REVOKE" != "200" ]; then
+            echo "::error::Самоотзыв сессии не подтверждён (curl rc=$RC, HTTP ${REVOKE:-?}) — токен живёт до конца TTL."
+            exit 1
+          fi
+          echo "сессия самоотозвана (HTTP 200)"
