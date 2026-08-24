@@ -242,10 +242,23 @@ jobs:
         run: |
           set -e
           sleep 6
+          # Первый, самый дешёвый сигнал — рантайм поднялся. По loopback, т.е. БЕЗ nginx и
+          # TLS: если следующий шаг (публичный смоук) покраснеет, а этот зелёный — значит
+          # приложение живо, и чинить надо прокси/сертификат, а не выкат.
           # Порт сервиса — из env бокса (#008), не из репо (D-038).
           STATUS=$(ssh TRENERBOX 'P=$(grep -m1 "^PORT=" /etc/trener/trener.env | cut -d= -f2); curl -s -o /dev/null -w "%{http_code}" --max-time 15 "http://127.0.0.1:${P:?PORT не задан в trener.env}/health"')
           echo "local /health: ${STATUS}"
           [ "${STATUS}" = "200" ] || { echo "::error::local /health = ${STATUS}, ожидался 200"; exit 1; }
+
+      - name: Smoke — содержимое публичных страниц
+        if: ${{ !(github.event_name == 'workflow_dispatch' && inputs.build_only) }}
+        working-directory: .
+        run: |
+          # Код ответа ничего не говорит о том, что видит человек: 09.08 деплой отчитался
+          # зелёным (включая smoke /health), пока счётчик на лендинге был мёртв. Здесь
+          # проверяются видимый маркер каждой страницы и реальная отдача CSS-бандла.
+          # Идёт по ПУБЛИЧНОМУ адресу, т.е. через nginx и TLS — так же, как покупатель.
+          bash scripts/smoke.sh "${NEXT_PUBLIC_SERVER_URL}"
 
       - name: On failure — дамп журналов
         if: failure()
