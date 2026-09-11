@@ -31,9 +31,9 @@ gh pr list --state open
 
 Если `git status` непустой помимо handoff/доков:
 1. **Гейты** (если трогался код): `corepack pnpm -C web typecheck && corepack pnpm -C web lint` (+ `corepack pnpm -C web build`, если правка существенная).
-2. **NUL-чек** (грабля харнесса): `git add -A && git diff --cached --stat` — любой исходник как `Bin` → вычистить NUL и пересохранить UTF-8 (см. `/obriv` шаг 3).
-3. Ветка `feat/ fix/ chore/ docs/ refactor/` → коммит → `git push -u origin <ветка>` → `gh pr create` → **показать diff** → дождаться **OK** → `gh pr merge --squash --delete-branch`.
-   - На вехе M1–M2 CI/деплоя ещё нет — мерж в `main` ничего не деплоит. Когда появится `deploy-prod.yml` (M3) — добавить сюда варнинг про авто-деплой и #017-поток миграций.
+2. **NUL-чек** (грабля харнесса): `git add -A && git diff --cached --stat` — любой исходник как `Bin` → `node scripts/fix-nul.js --fix <файлы>` (вычищает NUL, пересохраняет UTF-8), затем снова `git add`.
+3. Ветка `feat/ fix/ chore/ docs/ refactor/` → коммит (`git commit -F <scratchpad>/msg.txt`, D-046) → `git push -u origin <ветка>` → `gh pr create --body-file <scratchpad>/body.md` → **показать diff** → дождаться **OK** → `gh pr merge --squash --delete-branch`.
+   - ⚠️ Мерж в `main` **авто-деплоит на прод** (`deploy-prod.yml`). Миграции — **до** мержа через `apply-migration.yml --ref <ветка>`; PR с миграцией без применённой миграции не мержить.
 
 ## Шаг 4. Шеринг находки в brain (условный, pool #009)
 
@@ -49,8 +49,7 @@ gh pr list --state open
 ✅ сделан (в каком PR) / ➡️ переходит в новый handoff / ⏸️ откладывается
 (причина + триггер → `PENDING_FOLLOWUPS.md`). **Пункт, не получивший ярлыка,
 стирать нельзя.** Перезапись документа-одинокого-носителя без наследования —
-это удаление (инцидент #96: три пункта «M-ноля» выпали молча; правило принято
-Мозгом в его /close_session шагом 2.5).
+это удаление.
 
 ## Шаг 5. Записать `docs/SESSION_HANDOFF.md`
 
