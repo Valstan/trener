@@ -1,0 +1,82 @@
+name: Dependency audit
+
+# Аудит зависимостей по расписанию (мандат Мозга 14.09.2026, пункт 3; pool #312).
+#
+# Зачем отдельным workflow, а не шагом в CI: уязвимость появляется не когда мы трогаем
+# код, а когда её опубликовали. 12.09 портал вМалмыже прогнал такой аудит впервые и нашёл
+# на своём проде четыре critical; у нас в тот момент лежали те же четыре, и узнали мы о
+# них письмом, а не сами.
+#
+# ⚠️ НЕ required check — сознательно. Красный здесь означает «вышла новая CVE», а не
+# «этот PR плохой»: блокировать мерж чужой публикацией нельзя, иначе гейт начнут обходить.
+# Это сигнал, а не дверь. Защита ветки — зона Мозга (постулат 34), и required-контексты
+# здесь не трогаем.
+
+on:
+  schedule:
+    # Понедельник и четверг, 06:00 UTC = 09:00 MSK — к началу рабочего дня владельца.
+    - cron: '0 6 * * 1,4'
+  workflow_dispatch:
+  # Смена lockfile — единственный момент, когда МЫ меняем набор зависимостей.
+  push:
+    branches: ['**']
+    paths:
+      - 'web/pnpm-lock.yaml'
+      - 'web/package.json'
+      - '.github/workflows/dependency-audit.yml'
+  pull_request:
+    paths:
+      - 'web/pnpm-lock.yaml'
+      - 'web/package.json'
+      - '.github/workflows/dependency-audit.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      # pnpm/action-setup ставит pnpm напрямую (без corepack) → обходит G53
+      # и corepack-в-subdir; версия пинится под packageManager из web/package.json.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.15.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      # --prod: судим по тому, что реально едет на прод. Уязвимость в сборочном
+      # инструменте — тоже проблема, но другого класса и другой срочности; смешивать их
+      # в один сигнал значит утопить критичное в шуме.
+      #
+      # Зависимости для аудита не ставим: `pnpm audit` читает lockfile и ходит в реестр
+      # советов сам. Установка здесь — несколько минут ради ничего.
+      - name: Audit (prod, high и выше)
+        run: pnpm audit --prod --audit-level=high
+
+      # Второй шаг ради видимого контекста в логе: сколько всего и какой тяжести. Не
+      # падает никогда (`|| true`) — это справка, а провал уже дал шаг выше.
+      #
+      # ⚠️ `|| true` тут безопасен ровно потому, что рядом есть настоящий гейт. Без него
+      # это была бы пустая зелёная галочка (класс граблей с `jq` на rmz4val: `|| true`
+      # глотает и `command not found`).
+      - name: Полная картина (справочно, не гейт)
+        if: always()
+        run: pnpm audit --prod || true
