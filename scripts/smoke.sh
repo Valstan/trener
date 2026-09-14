@@ -94,6 +94,55 @@ check_page() {
   fi
 }
 
+# check_security_headers — заголовки безопасности на месте, и стек мы не называем сами.
+# Список-источник — web/src/lib/securityHeaders.ts (там же доводы по каждому и юнит-тест);
+# здесь проверяется не список, а ФАКТ ВЫДАЧИ по публичному адресу: тест не заметит, если
+# заголовки потеряются между конфигом и ответом (снятый `headers()`, прокси, режущий их,
+# правка next.config.ts мимо модуля).
+#
+# Имена регистронезависимо: HTTP/2 отдаёт их в нижнем регистре, HTTP/1.1 — как написано.
+check_security_headers() {
+  local head_file rc=0 missing=0 name
+  head_file="$(mktemp)"
+  curl "${CURL_OPTS[@]}" -o /dev/null -D "$head_file" "${BASE}/" 2>/dev/null || rc=$?
+  if [ "$rc" != 0 ]; then
+    fail "заголовки — не удалось снять (curl rc=${rc})"
+    rm -f "$head_file"
+    return
+  fi
+
+  for name in Content-Security-Policy Strict-Transport-Security X-Content-Type-Options \
+              Referrer-Policy X-Frame-Options; do
+    if grep -qiE "^${name}:" "$head_file"; then
+      ok "заголовок ${name} на месте"
+    else
+      fail "заголовок ${name} НЕ отдаётся"
+      missing=$((missing + 1))
+    fi
+  done
+
+  # Три директивы CSP по отдельности: заголовок может присутствовать и при этом быть
+  # выпотрошен до одной директивы — «CSP есть» тогда успокаивает зря.
+  local csp
+  csp="$(grep -iE '^Content-Security-Policy:' "$head_file" | head -1)"
+  for name in "frame-ancestors 'self'" "form-action 'self'" "base-uri 'self'"; do
+    if printf '%s' "$csp" | grep -qF -- "$name"; then
+      ok "CSP: ${name}"
+    else
+      fail "CSP: директивы «${name}» нет"
+    fi
+  done
+
+  # poweredByHeader: false — не подсказываем сканеру, какие CVE пробовать.
+  if grep -qiE '^X-Powered-By:' "$head_file"; then
+    fail "X-Powered-By отдаётся — стек называем сами (ожидался poweredByHeader: false)"
+  else
+    ok "X-Powered-By не отдаётся"
+  fi
+
+  rm -f "$head_file"
+}
+
 echo "smoke: ${BASE}"
 
 # 1. Рантайм поднялся — самая дешёвая проверка, поэтому первой.
@@ -112,6 +161,11 @@ fi
 check_page "/"      "Футбольная школа"
 check_page "/login" "Вход"
 check_page "/demo"  "Демо-доступ"
+
+# 3. Заголовки безопасности. До 14.09.2026 их не было НИ ОДНОГО, и заметили это не мы,
+# а Мозг снаружи. Ровно тот класс, ради которого написан этот скрипт: пропажа заголовка
+# не роняет сборку, не краснит тест и не видна на экране — её видно только вот так.
+check_security_headers
 
 if [ "$fails" -gt 0 ]; then
   echo "smoke: ПРОВАЛ — ${fails} проверк(и) не прошли"
