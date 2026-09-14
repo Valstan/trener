@@ -36,7 +36,7 @@
     "payload": "3.89.0",
     "react": "19.2.1",
     "react-dom": "19.2.1",
-    "sharp": "0.34.2",
+    "sharp": "0.35.4",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
@@ -63,6 +63,13 @@
       "sharp",
       "esbuild",
       "unrs-resolver"
-    ]
+    ],
+    "overrides": {
+      "js-yaml": "^4.3.2",
+      "immutable": "^4.3.9",
+      "fast-uri": "^3.1.6",
+      "postcss": "^8.5.18",
+      "nanoid": "^3.3.18"
+    }
   }
 }
