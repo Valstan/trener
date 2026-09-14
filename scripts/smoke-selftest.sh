@@ -33,6 +33,7 @@ verify-missing:1
 verify-301:1
 no-canonical:1
 canonical-shared:1
+canonical-root-slash:0
 "
 
 for case in $CASES; do
@@ -66,4 +67,11 @@ if [ "$fails" -gt 0 ]; then
   echo "selftest: ПРОВАЛ — ${fails} режим(ов) разошлись с ожиданием"
   exit 1
 fi
-echo "selftest: смоук зелен на исправном и краснеет на каждом из $(( $(echo "$CASES" | grep -c :) - 1 )) сломанных режимов"
+# Считаем по фактическим ожиданиям, а не «все режимы минус один»: режимов, где смоук
+# обязан быть ЗЕЛЁНЫМ, уже два (good и canonical-root-slash), и прежняя арифметика
+# печатала бы неверное число — гейт, врущий в итоговой строке, подрывает доверие к себе.
+green="$(printf '%s
+' "$CASES" | grep -c ':0$')"
+red="$(printf '%s
+' "$CASES" | grep -c ':1$')"
+echo "selftest: смоук зелен на ${green} исправных режим(ах) и краснеет на ${red} сломанных"

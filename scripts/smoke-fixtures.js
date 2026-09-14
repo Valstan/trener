@@ -35,11 +35,19 @@ const PAGES = {
   '/privacy': 'Политика',
 }
 
+// Канонический адрес в том виде, в каком его отдаёт НАСТОЯЩИЙ Next: у главной — без
+// завершающего слэша. Первая версия фикстур отдавала `/` со слэшем, то есть моделировала
+// допущение автора, а не поведение фреймворка, — и благословила проверку, которая
+// роняла деплой на исправном проде. Фикстура, которая врёт удобнее правды, хуже её
+// отсутствия: она выдаёт доверие, ничем не обеспеченное.
+const canonicalHref = (path) =>
+  path === '/' ? `http://127.0.0.1:${PORT}` : `http://127.0.0.1:${PORT}${path}`
+
 const page = (path, marker, { cssLink = true, canonical = true } = {}) =>
   [
     '<!doctype html><html lang="ru"><head><meta charset="utf-8">',
     cssLink ? `<link rel="stylesheet" href="${CSS_HREF}">` : '',
-    canonical ? `<link rel="canonical" href="http://127.0.0.1:${PORT}${path}">` : '',
+    canonical ? `<link rel="canonical" href="${canonicalHref(path)}">` : '',
     `</head><body><h1>${marker}</h1></body></html>`,
   ].join('')
 
@@ -94,10 +102,12 @@ const server = http.createServer((req, res) => {
     const marker = MODE === 'no-marker' && path === '/' ? 'Ошибка' : PAGES[path]
     let html = page(path, marker, opts)
     if (MODE === 'canonical-shared') {
-      html = html.replace(
-        `href="http://127.0.0.1:${PORT}${path}"`,
-        `href="http://127.0.0.1:${PORT}/"`,
-      )
+      html = html.replace(`href="${canonicalHref(path)}"`, `href="http://127.0.0.1:${PORT}"`)
+    }
+    // Корень СО слэшем — форма записи, а не поломка: смоук обязан принять и её,
+    // иначе он краснеет на исправном сайте (ровно это и случилось на проде 14.09).
+    if (MODE === 'canonical-root-slash' && path === '/') {
+      html = html.replace(`href="${canonicalHref(path)}"`, `href="http://127.0.0.1:${PORT}/"`)
     }
     return send(res, 200, html, 'text/html; charset=utf-8', sec)
   }
