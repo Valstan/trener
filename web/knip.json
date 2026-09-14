@@ -7,8 +7,6 @@
     "public/sw.js"
   ],
   "ignoreDependencies": [
-    "eslint",
-    "eslint-config-next",
     "prettier"
   ]
 }
