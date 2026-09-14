@@ -1,12 +1,7 @@
-import path from 'path'
-import { fileURLToPath } from 'url'
-
 import { withPayload } from '@payloadcms/next/withPayload'
 import type { NextConfig } from 'next'
 
 import { securityHeaders } from './src/lib/securityHeaders'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 const NEXT_PUBLIC_SERVER_URL =
   process.env.NEXT_PUBLIC_SERVER_URL || process.env.__NEXT_PRIVATE_ORIGIN || 'http://localhost:3000'
@@ -21,7 +16,14 @@ const nextConfig: NextConfig = {
   // ТОЛЬКО по флагу STANDALONE_BUILD=1 (его ставит deploy-prod.yml). Локальный
   // `next build` — обычный, node_modules не портит.
   output: process.env.STANDALONE_BUILD === '1' ? 'standalone' : undefined,
-  outputFileTracingRoot: __dirname,
+  // ⚠️ `process.cwd()`, а НЕ `path.dirname(fileURLToPath(import.meta.url))`.
+  // Под Next 16 любое обращение к `import.meta` в next.config.ts роняет загрузку конфига
+  // целиком: «Failed to load next.config.ts / ReferenceError: exports is not defined in ES
+  // module scope» — конфиг транспилируется в CJS, а `import.meta` заставляет грузить
+  // результат как ESM. Текст ошибки на `import.meta` ничем не намекает: причина сужается
+  // только выбрасыванием строк по одной.
+  // Значение то же: и `next build`, и deploy-prod.yml запускаются с cwd = web/.
+  outputFileTracingRoot: process.cwd(),
   // Не называем свой стек сами: до 14.09.2026 прод отдавал `X-Powered-By: Next.js,
   // Payload`, то есть подсказывал сканеру, какие CVE пробовать. Ровно тот класс, по
   // которому прилетел мандат 14.09.
