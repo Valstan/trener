@@ -6,6 +6,8 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import { homePathForUser } from '@/lib/auth/home'
+import { SITE_DESCRIPTION, SITE_URL } from '@/lib/site'
+import { organizationJsonLd } from '@/lib/structuredData'
 
 import { AuthorCredit } from './components/AuthorCredit'
 import { Metrika, MetrikaInformer } from './components/Metrika'
@@ -83,6 +85,14 @@ const HomePage = async () => {
   <main className="page" style={{ display: 'flex', flexDirection: 'column' }}>
     {/* Счётчик Метрики — ТОЛЬКО на публичной странице (D-017), не в layout. */}
     <Metrika />
+    {/* JSON-LD (D-088). Здесь же, на лендинге, а не в layout: разметка описывает
+        организацию, и дублировать её на каждом экране за логином незачем. */}
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: JSON.stringify(organizationJsonLd(SITE_URL, SITE_DESCRIPTION)),
+      }}
+    />
     <section
       style={{
         textAlign: 'center',
@@ -100,7 +110,10 @@ const HomePage = async () => {
       >
         ⚽
       </div>
-      <h1 style={{ fontSize: '2rem', margin: '0 0 0.5rem' }}>Футбольная школа</h1>
+      {/* Имя и город в H1 (D-088): страница ниже уже говорит «Этот сайт — школа в
+          Малмыже», а главный заголовок этого не повторял — ни для выдачи, ни для
+          человека, попавшего сюда по ссылке. */}
+      <h1 style={{ fontSize: '2rem', margin: '0 0 0.5rem' }}>Интер — футбольная школа в Малмыже</h1>
       <p style={{ color: 'var(--muted)', margin: '0 auto 1.75rem', maxWidth: 360 }}>
         Расписание, изменения и подтверждения — для родителей и тренеров в одном месте.
       </p>

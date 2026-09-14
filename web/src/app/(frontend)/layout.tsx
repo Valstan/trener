@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import React from 'react'
 
+import { SITE_DESCRIPTION, SITE_URL } from '@/lib/site'
+
 import './globals.css'
 import { AppearanceControls } from './components/ThemeToggle'
 import { InstallPrompt } from './components/InstallPrompt'
@@ -9,20 +11,29 @@ import { ServiceWorkerRegister } from './components/ServiceWorkerRegister'
 // Метаданные: страницу собираются продвигать и мерить (D-017), поэтому кроме
 // title/description задаём шаблон заголовка и OpenGraph — ссылка, отправленная
 // директору школы в мессенджер, должна разворачиваться в осмысленную карточку.
-const SITE_URL = process.env.NEXT_PUBLIC_SERVER_URL || 'https://интер.вмалмыже.рф'
-const SITE_DESCRIPTION =
-  'Расписание тренировок, уведомления об изменениях с подтверждением от родителей и учёт оплат абонементов — для детской спортивной школы.'
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: { default: 'Футбольная школа', template: '%s — Футбольная школа' },
+  // Имя и город в заголовке (D-088, срез Мозга 12.09): «Футбольная школа» не
+  // отличает нас ни от одной другой школы в стране — ни для человека в выдаче, ни
+  // для нейросети, которую спрашивают «куда записать ребёнка в Малмыже».
+  title: {
+    default: 'Интер — футбольная школа в Малмыже',
+    template: '%s — Интер, футбольная школа в Малмыже',
+  },
   description: SITE_DESCRIPTION,
+  // Канонический адрес. './' — НЕ опечатка и не «корень сайта»: Next резолвит
+  // относительный canonical от metadataBase И текущего пути, поэтому каждая страница
+  // получает СВОЙ канонический адрес. Абсолютная строка здесь означала бы G312 —
+  // canonical в корневом layout наследуется каждой страницей, и весь сайт объявил бы
+  // себя копией главной. Проверено тестом рядом (canonical.test.ts) и сборкой.
+  alternates: { canonical: './' },
   openGraph: {
     type: 'website',
     locale: 'ru_RU',
     url: SITE_URL,
-    siteName: 'Футбольная школа',
-    title: 'Футбольная школа — координатор тренировок',
+    siteName: 'Интер — футбольная школа в Малмыже',
+    title: 'Интер — футбольная школа в Малмыже',
     description: SITE_DESCRIPTION,
   },
   // PWA (PR3): manifest Next впрыскивает сам из app/manifest.ts. apple-touch —
