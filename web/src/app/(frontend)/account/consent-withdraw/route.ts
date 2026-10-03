@@ -16,6 +16,8 @@ import { clientMeta } from '@/lib/requestMeta'
 //     на версию/хэш, под которыми подписывались, — отзыв НЕ удаляет историю);
 //   • операционная запись consents удаляется → consentGate снова заведёт родителя
 //     на экран согласия (без согласия работа с данными ребёнка невозможна);
+//   • push-подписки родителя удаляются: доставка после отзыва недопустима (#057 (f)),
+//     а endpoint — тоже ПДн, которые после отзыва хранить незачем;
 //   • пуш владельцам — школа должна узнать об отзыве сразу.
 export const dynamic = 'force-dynamic'
 
@@ -87,6 +89,21 @@ export const POST = async (req: Request): Promise<Response> => {
       overrideAccess: true,
     })
 
+    // Defense-in-depth к фильтру в sendPushToUser: удаляем и push-подписки отозвавшего.
+    // Endpoint подписки — тоже персональные данные, и после отзыва хранить их незачем;
+    // вдобавок это снимает доставку даже тому пути, который фильтр по согласию обойдёт
+    // (будущий sender, ручной вызов, ручная запись Devices). Клиент подпишется заново
+    // сам, когда родитель вернётся и нажмёт кнопку (подписка по жесту — требование
+    // браузеров), так что восстановление после повторного согласия — одно касание.
+    const droppedDevices = await payload
+      .delete({
+        collection: 'devices',
+        where: { user: { equals: user.id } },
+        overrideAccess: true,
+      })
+      .then((res) => (Array.isArray(res.docs) ? res.docs.length : 0))
+      .catch(() => 0)
+
     // Школа должна узнать об отзыве сразу (best-effort).
     try {
       const owners = await payload.find({ collection: 'users', where: { roles: { in: ['owner'] } }, depth: 0, limit: 20, pagination: false, overrideAccess: true })
@@ -96,7 +113,10 @@ export const POST = async (req: Request): Promise<Response> => {
       payload.logger.warn({ err }, '[consent-withdraw] пуш владельцам не отправлен')
     }
 
-    payload.logger.info({ userId: user.id }, '[consent-withdraw] согласие отозвано (журнал + удаление consents)')
+    payload.logger.info(
+      { userId: user.id, droppedDevices },
+      '[consent-withdraw] согласие отозвано (журнал + удаление consents и push-подписок)',
+    )
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[account/consent-withdraw]', err)

@@ -1,5 +1,8 @@
 import type { Payload } from 'payload'
 
+import { isParent } from '@/access/roles'
+
+import { countActiveConsents, pushAllowedByConsent } from './consent'
 import type { PushMessage } from './message'
 
 export type PushOutcome = 'ok' | 'failed' | 'skipped'
@@ -42,6 +45,21 @@ export const sendPushToUser = async (
     .findByID({ collection: 'users', id: userId, depth: 0, overrideAccess: true })
     .catch(() => null)
   if (!target || target.demo) return 'skipped'
+
+  // 152-ФЗ: после отзыва согласия обработка ПДн ребёнка прекращается (аудит #057 (f)).
+  // Раньше здесь стоял только демо-фильтр, и родитель после отзыва продолжал получать
+  // пуши о тренировках ребёнка. Считаем согласия ОДИН раз на адресата — четыре
+  // вызывающих пути дёргали это параллельно, лишние выборки в БД не нужны.
+  const consentsCount = isParent(target)
+    ? await countActiveConsents(payload, target.id)
+    : Number.POSITIVE_INFINITY
+  if (!pushAllowedByConsent({ parent: isParent(target), consentsCount })) {
+    payload.logger.info(
+      { userId: target.id },
+      '[push] адресат-родитель без активного согласия — доставка пропущена',
+    )
+    return 'skipped'
+  }
 
   const devices = await payload.find({
     collection: 'devices',
