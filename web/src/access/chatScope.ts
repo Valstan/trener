@@ -17,6 +17,12 @@ export const chatScopeForUser = async (req: PayloadRequest): Promise<true | Wher
     return groups.length ? { and: [{ scope: { equals: 'group' } }, { group: { in: groups } }, { room: { equals: 'children' } }] } : false
   }
   const adminBranch = adminBranchId(user)
+  // Аудит #057 (вектор b): applicant/pending не имеет НИ ОДНОЙ содержательной роли, но
+  // доходил до `clauses = [{scope:'school'}]` и получал read+write общешкольного чата
+  // (POST /chat/message требует только user). Все read-гейты проекта терминалят на
+  // «роль не подошла → false»; здесь такого терминала не было. Теперь он есть:
+  // заявитель без подтверждённой роли в чат не входит вовсе.
+  if (!adminBranch && !isCoach(user) && !isParent(user)) return false
   const groups = adminBranch != null ? [] : isCoach(user) ? await coachGroupIds(req, user.id) : isParent(user) ? await parentGroupIds(req, user.id) : []
   const branches = adminBranch != null ? [adminBranch] : await branchIdsForGroups(req, groups)
   // D-029: демо-аноним не читает живой чат «Вся школа» — это общий канал живых

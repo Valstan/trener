@@ -40,9 +40,35 @@ Environment=SHUTDOWN_DRAIN_MS=5000
 ExecStart=/usr/bin/node server.js
 Restart=on-failure
 RestartSec=3
+# Аудит #057 (вектор f): без StartLimit* пять падений за интервал уводили юнит в
+# failed, и он больше не поднимался — молча, без алертинга (журнал живёт ~7 суток).
+# Теперь после 5 рестартов за 10 минут systemd считает это заминанием и останавливает
+# попытки; поднимает юнит следующий деплой/ручной start, то есть осознанно.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+# Изоляция процесса (аудит #057, вектор f): RCE в Node = шелл от пользователя деплоя,
+# у которого sudo без пароля и который обслуживает ещё несколько проектов на боксе.
+# Sandbox не ломает приложение: нужен доступ только к рабочему каталогу релиза, /tmp
+# (Next/Node пишут временные файлы) и сети. Всё, что не перечислено, недоступно.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+# WorkingDirectory — сам симлинк releases/current, поэтому каталог релиза и каталог
+# релизов должны остаться доступными на запись (деплой кладёт новый релиз рядом).
+ReadWritePaths=__DEPLOY_HOME__/trener
 # Запас над окном дренажа: systemd не должен добивать процесс раньше, чем тот
 # успеет доответить (по умолчанию 90 c, фиксируем явно).
 TimeoutStopSec=20
+# Файлы, которые сервис создаёт (кеши sharp, логи), не должны быть доступны
+# соседним пользователям бокса.
+UMask=0077
 # Noisy-neighbor гард (server-consolidation §6 шаг4): бокс общий, память тесная.
 # OOM локализуется в cgroup проекта, а не валит соседей.
 MemoryHigh=450M

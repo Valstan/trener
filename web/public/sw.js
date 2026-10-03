@@ -20,7 +20,47 @@ const OFFLINE_URL = '/offline'
 const PRECACHE = [OFFLINE_URL, '/manifest.webmanifest']
 
 // Пути с токенами/детскими ПДн — отдаём из сети, но в Cache Storage не сохраняем.
-const NO_STORE_PREFIXES = ['/auth', '/login', '/join', '/onboarding']
+//
+// Аудит #057 (векторы c, d): список покрывал только /auth /login /join /onboarding,
+// а ВСЕ авторизованные страницы (/parent, /account, /home, /child, /chat, /coach,
+// /pending, /payment-chat, /match) кэшировались как HTML. Итог: полное содержимое с
+// именами детей, расписанием, оплатами и перепиской лежало в Cache Storage устройства
+// БЕЗ какой-либо привязки к пользователю, переживало выход из аккаунта и читалось
+// офлайн тем, кто получит устройство (аудит #166/152-ФЗ).
+//
+// Публичные страницы (/, /privacy, /login, /join, /onboarding, /offline, /health)
+// остаются в кэше — там детских данных нет, офлайн-вид нужен.
+const NO_STORE_PREFIXES = [
+  '/auth',
+  '/login',
+  '/join',
+  '/onboarding',
+  '/home',
+  '/pending',
+  '/parent',
+  '/child',
+  '/account',
+  '/chat',
+  '/coach',
+  '/payment-chat',
+  '/match',
+  '/demo',
+]
+
+// Очистка кэша по команде страницы: выход из аккаунта обязан стирать ПДн с устройства
+// (см. выше — кэш не привязан к пользователю). LogoutButton шлёт это сообщение
+// перед выходом; если SW не активен (первый визит, старый браузер) — не беда.
+const PURGE_CACHE = 'TRENER_PURGE_CACHE'
+
+self.addEventListener('message', (event) => {
+  if (event.data !== PURGE_CACHE) return
+  event.waitUntil(
+    (async () => {
+      const keys = await caches.keys()
+      await Promise.all(keys.map((k) => caches.delete(k)))
+    })(),
+  )
+})
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

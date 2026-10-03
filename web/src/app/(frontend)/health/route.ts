@@ -5,4 +5,7 @@ import { NextResponse } from 'next/server'
 // Прод-smoke (deploy-prod.yml) дёргает /health по loopback на сервере после рестарта (порт — из env бокса).
 export const dynamic = 'force-dynamic'
 
-export const GET = (): Response => NextResponse.json({ ok: true, service: 'trener' })
+// Имя сервиса убрано (аудит #057, вектор a): публичный fingerprint для сканеров при том,
+// что сам проект выставил poweredByHeader:false и проверяет отсутствие X-Powered-By
+// смоуком. Смоуку нужен только факт 200 — тело ровно `{"ok":true}`.
+export const GET = (): Response => NextResponse.json({ ok: true })

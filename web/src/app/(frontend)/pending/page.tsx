@@ -7,6 +7,7 @@ import { getPayload } from 'payload'
 import React from 'react'
 
 import { hasRole, isPending } from '@/access/roles'
+import { homePathForUser } from '@/lib/auth/home'
 import { SALES_CONTACTS } from '@/lib/salesContacts'
 
 import { SectionCards, sectionsForRoles } from '../components/SectionCards'
@@ -26,7 +27,11 @@ const PendingPage = async () => {
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
   const freshUser = await payload.findByID({ collection: 'users', id: user.id, depth: 0, overrideAccess: true })
-  if (!isPending(freshUser) && !hasRole(freshUser, 'applicant')) redirect('/auth/refresh-session')
+  // Раньше уводили на /auth/refresh-session — мутирующий GET. Он переведён на POST
+  // (аудит #057, вектор c: GET достижим top-level навигацией с чужого сайта и без
+  // лимита раздувал user.sessions[]), поэтому редиретим сразу по назначению —
+  // refresh там был только чтобы перечитать роль, а freshUser уже свежий.
+  if (!isPending(freshUser) && !hasRole(freshUser, 'applicant')) redirect(homePathForUser(freshUser))
   if (!freshUser.requestedRole) redirect('/onboarding/role')
 
   // Отклонённая детская заявка: сказать прямо и дать дорогу назад (иначе вечный

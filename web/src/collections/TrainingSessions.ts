@@ -85,11 +85,15 @@ export const TrainingSessions: CollectionConfig = {
       access: { create: () => false, update: () => false },
     },
     {
+      // Аудит #057 (вектор b): `PATCH /api/training-sessions/:id {"group": <чужая>}`
+      // проходил update-гейт (он смотрит на ТЕКУЩУЮ группу) и переносил тренировку
+      // в чужую ветвь, а fanOut затем слал пуш родителям чужой группы.
       name: 'group',
       type: 'relationship',
       label: 'Группа',
       relationTo: 'groups',
       required: true,
+      access: { create: adminOrStaffField, update: adminOrStaffField },
     },
     {
       name: 'startDate',

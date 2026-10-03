@@ -2,6 +2,8 @@ import config from '@payload-config'
 import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
+import { isDemo } from '@/access/roles'
+
 // POST { password } → задать/сменить пароль текущего пользователя. Требует живой сессии
 // (личность доказана cookie) — текущий пароль не спрашиваем: сам факт валидной сессии
 // достаточен для установки. Пароль хеширует Payload (локальная стратегия, bcrypt).
@@ -17,6 +19,10 @@ export const POST = async (req: Request): Promise<Response> => {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user) return NextResponse.json({ ok: false }, { status: 401 })
+    // Аудит #057 (вектор b): инвариант «демо-аккаунтам update users закрыт целиком»
+    // держался только на коллекции, а overrideAccess:true здесь его обходил — демо-пароль
+    // можно было заменить, а войти потом с /auth/password-login из любой точки.
+    if (isDemo(user)) return NextResponse.json({ ok: false }, { status: 403 })
 
     let password = ''
     try {

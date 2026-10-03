@@ -112,7 +112,25 @@ export default buildConfig({
       })
     : undefined,
   cors: [process.env.NEXT_PUBLIC_SERVER_URL || ''].filter(Boolean),
-  secret: process.env.PAYLOAD_SECRET || '',
+  // Fail-fast вместо тихого дефолта (аудит #057, вектор a): Payload НЕ валидирует
+  // secret и выводит его как sha256(config.secret).slice(0,32). При пустом значении
+  // это ПУБЛИЧНО ВЫЧИСЛИМАЯ константа (`sha256('')`), а подпись session-cookie —
+  // единственный носитель прав. Пустой/потерянный PAYLOAD_SECRET = forge любой роли.
+  // Раньше было `process.env.PAYLOAD_SECRET || ''` — конфиг собирался и подписывал
+  // токены предсказуемым ключом. Теперь падаем на старте.
+  secret: (() => {
+    const s = process.env.PAYLOAD_SECRET
+    if (!s) {
+      throw new Error(
+        'PAYLOAD_SECRET не задан — приложение не стартует (пустой secret = публично вычислимая подпись JWT).',
+      )
+    }
+    return s
+  })(),
+  // Телеметрия Payload выключена (аудит #057, вектор a): по умолчанию она включена и
+  // шлёт POST на telemetry.payloadcms.com (версии, плагины, feature-матрица, хэш
+  // домена) — неоговорённый выход наружу для проекта с 152-ФЗ-контуром.
+  telemetry: false,
   sharp,
   // Админка на русском (тренеры/админ — русскоязычные). Локализация контента
   // (мультиязычные поля) не нужна — проект одноязычный, в отличие от Sabantuy.

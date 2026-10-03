@@ -6,6 +6,7 @@ import { buildRsvpReminderMessage } from '@/lib/push/message'
 import { sendPushToUser } from '@/lib/push/send'
 import { relId } from '@/lib/relId'
 import { REMINDER_WINDOW_MS, rsvpKey, selectReminderParents, sessionNeedsReminder, type PlayerSlot } from '@/lib/rsvp'
+import { timingSafeEqualStr } from '@/lib/timingSafeEqualStr'
 
 // Cron: напоминание RSVP-нереспондентам по ближайшим тренировкам (окно 48ч).
 // H3: ТОЛЬКО RSVP-нереспонденты — НЕ ack-эскалация (она вне M2, её закрывает
@@ -14,16 +15,22 @@ import { REMINDER_WINDOW_MS, rsvpKey, selectReminderParents, sessionNeedsReminde
 // Дедуп: одна отметка rsvpReminderSentAt на сессию — иначе окно 48 ч при ежедневном
 // таймере накрывает одну тренировку двумя прогонами и родитель получает дубль.
 //
-// Секрет-гард (#008/#011): CRON_SECRET в env; вызов с ?secret= или заголовком
-// x-cron-secret. Нет CRON_SECRET → эндпоинт ОТКЛЮЧЁН (403), чтобы его нельзя было
-// дёрнуть открыто. На проде дёргается systemd-таймером/cron'ом с секретом.
+// Секрет-гард (#008/#011): CRON_SECRET в env; вызов ТОЛЬКО заголовком x-cron-secret.
+// Ветка `?secret=` удалена (аудит #057, вектор f): секрет в query-строке попадает в
+// access-лог прокси, историю браузера и Referer; systemd-юниты шлют заголовком с самого
+// начала, а ручной вызов по docs/cron.md переведён на curl с заголовком.
+// Нет CRON_SECRET → эндпоинт ОТКЛЮЧЁН (403), чтобы его нельзя было дёрнуть открыто.
 export const dynamic = 'force-dynamic'
 
 const handle = async (req: Request): Promise<Response> => {
   const secret = process.env.CRON_SECRET
   if (!secret) return NextResponse.json({ ok: false, reason: 'disabled' }, { status: 403 })
-  const provided = new URL(req.url).searchParams.get('secret') ?? req.headers.get('x-cron-secret')
-  if (provided !== secret) return NextResponse.json({ ok: false }, { status: 401 })
+  const provided = req.headers.get('x-cron-secret')
+  // Сравнение постоянного времени: 256-битный секрет удалённым перебором не берётся,
+  // но постоянное время — бесплатное улучшение (аудит #057, вектор a).
+  if (!provided || !timingSafeEqualStr(provided, secret)) {
+    return NextResponse.json({ ok: false }, { status: 401 })
+  }
 
   try {
     const payload = await getPayload({ config })

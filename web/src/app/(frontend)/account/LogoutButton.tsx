@@ -21,6 +21,20 @@ export const LogoutButton = () => {
     try {
       const res = await fetch('/api/users/logout', { method: 'POST' })
       if (res.ok) {
+        // Выход стирает ПДн с устройства: кэш service worker'а не привязан к
+        // пользователю, поэтому офлайн-вид «прошлой» сессии пережил бы разлогин
+        // (аудит #057, вектор c). Пробуем всех активных SW и ждём их ответа.
+        try {
+          const reg = await navigator.serviceWorker?.ready
+          if (reg?.active) {
+            reg.active.postMessage('TRENER_PURGE_CACHE')
+            // Даём SW стереть кэш до жёсткого перехода: postMessage доставлен
+            // асинхронно, а location.assign ниже срывает навигацию.
+            await new Promise((resolve) => setTimeout(resolve, 150))
+          }
+        } catch {
+          // SW не активен или доступа нет — не мешает выходу.
+        }
         window.location.assign('/')
         return
       }

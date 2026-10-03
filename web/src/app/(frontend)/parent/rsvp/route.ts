@@ -44,6 +44,18 @@ export const POST = async (req: Request): Promise<Response> => {
       .catch(() => null)
     if (!player || relId(player.parent) !== user.id) return NextResponse.json({ ok: false }, { status: 403 })
 
+    // Аудит #057 (векторы b, c): тренировка должна быть ИЗ ГРУППЫ ребёнка. Раньше
+    // sessionId не сверялся ни с существованием, ни с группой — родитель писал
+    // «not_going» за своего ребёнка на любую тренировку сети, и запись падала в
+    // coverage тренера чужого филиала (ср. /parent/question, где та же сверка есть).
+    const session = await payload
+      .findByID({ collection: 'training-sessions', id: sessionId, depth: 0, overrideAccess: true })
+      .catch(() => null)
+    if (!session) return NextResponse.json({ ok: false }, { status: 404 })
+    if (relId(session.group) !== relId(player.group)) {
+      return NextResponse.json({ ok: false }, { status: 400 })
+    }
+
     const existing = await payload.find({
       collection: 'rsvps',
       where: { and: [{ session: { equals: sessionId } }, { player: { equals: playerId } }] },

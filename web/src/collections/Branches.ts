@@ -1,7 +1,20 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, FieldAccess } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
-import { isDemo, isFullOwner, ownerField } from '../access/roles'
+import { adminBranchId, isDemo, isFullOwner, ownerField } from '../access/roles'
+
+// Реквизиты оплаты филиала на чтение: своему админу филиала и живому владельцу.
+// Всё остальное (родитель, тренер, другой филиал) — нет. Экраны платежей и реквизитов
+// читают филиал через server-mediated путь с overrideAccess, поэтому на них гейт не
+// влияет; он закрывает REST-канал, где read отдавал реквизиты ВСЕХ живых филиалов
+// (аудит #057, вектор b).
+const branchRequisitesField: FieldAccess = ({ req: { user }, id }) => {
+  if (!user) return false
+  if (isFullOwner(user)) return true
+  const branch = adminBranchId(user)
+  if (branch == null || id == null) return false
+  return Number(branch) === Number(id)
+}
 
 // Филиал сети (M5, docs/m5-design.md §1) — верхняя граница видимости: участник
 // живёт в одном филиале, контент наследует филиал через groups.branch.
@@ -97,6 +110,13 @@ export const Branches: CollectionConfig = {
       type: 'textarea',
       label: 'Реквизиты оплаты',
       maxLength: 2000,
+      // Аудит #057 (вектор b): read коллекции отдаёт любому вошедшему ВСЕ живые
+      // филиалы (нужно для переключателя — хватает id/name), а вместе с ними и
+      // реквизиты оплаты чужих филиалов. Экраны родителя/тренера читают филиал
+      // server-mediated (overrideAccess) — им гейт не мешает, он режет REST-канал.
+      // Реквизиты ОПЕРАТОРА (ИНН, адрес, ответственный) остаются публичными: 152-ФЗ
+      // требует их обнародования, их же показывает публичная страница /privacy.
+      access: { read: branchRequisitesField },
       admin: {
         description:
           'Реквизиты и инструкция для родителей: куда и как платить, сколько стоит абонемент. Показываются родителю на экране «Оплата».',
