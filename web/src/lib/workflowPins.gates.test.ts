@@ -12,8 +12,10 @@ import { describe, expect, it } from 'vitest'
 // незапиненное, не заметив». Файл без actions (passport-probe.yml — только run-шаги)
 // пропускается, но не молча: проверяется, что uses действительно нет.
 const dir = fileURLToPath(new URL('../../../.github/workflows/', import.meta.url))
+const repoRoot = fileURLToPath(new URL('../../../', import.meta.url))
 const files = readdirSync(dir).filter((f) => f.endsWith('.yml'))
 const read = (file: string): string => readFileSync(`${dir}/${file}`, 'utf8')
+const readRepo = (file: string): string => readFileSync(`${repoRoot}${file}`, 'utf8')
 
 const SHA40 = /^[0-9a-f]{40}$/
 const USES_LINE = /uses:\s*([\w.-]+\/[\w.-]+)@([^\s#]+)(.*)$/gm
@@ -156,6 +158,24 @@ describe('actions запинены на полный commit SHA', () => {
         ).toBe(false)
       }
     }
+  })
+
+  it.each(['deploy-prod.yml', 'apply-migration.yml'])(
+    '%s: раскатка объявлена в окружении production',
+    (file) => {
+      // Окружение даёт историю развёртываний (кто и что выкатил) и возможность позже
+      // включить ручное подтверждение и environment-секреты, не правя код.
+      expect(read(file), `${file}: нет environment: production`).toMatch(/environment:\s*production/)
+    },
+  )
+
+  it('CODEOWNERS на месте и покрывает то, что исполняется в CI', () => {
+    const code = readRepo('CODEOWNERS')
+    expect(code).toMatch(/^\.github\/\s+@/m)
+    expect(code).toMatch(/^\/deploy\/\s+@/m)
+    expect(code).toMatch(/^\/web\/src\/migrations\/\s+@/m)
+    // Правило на сам код тоже должно быть: иначе «всё остальное» останется без владельца.
+    expect(code).toMatch(/^\*\s+@/m)
   })
 
   it('ci.yml: схемный гейт actionlint на месте (версия + sha256)', () => {
