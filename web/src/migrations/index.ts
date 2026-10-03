@@ -23,6 +23,7 @@ import * as migration_20260809_171123_payments_hardening from './20260809_171123
 import * as migration_20260818_185925_demo_mode_flags from './20260818_185925_demo_mode_flags';
 import * as migration_20260818_193347_demo_guest_flags from './20260818_193347_demo_guest_flags';
 import * as migration_20260818_200000_demo_guest_chat_topics from './20260818_200000_demo_guest_chat_topics';
+import * as migration_20261003_091549_reset_password_requested_at from './20261003_091549_reset_password_requested_at';
 
 export const migrations = [
   {
@@ -143,11 +144,16 @@ export const migrations = [
   {
     up: migration_20260818_193347_demo_guest_flags.up,
     down: migration_20260818_193347_demo_guest_flags.down,
-    name: '20260818_193347_demo_guest_flags'
+    name: '20260818_193347_demo_guest_flags',
   },
   {
     up: migration_20260818_200000_demo_guest_chat_topics.up,
     down: migration_20260818_200000_demo_guest_chat_topics.down,
-    name: '20260818_200000_demo_guest_chat_topics'
+    name: '20260818_200000_demo_guest_chat_topics',
+  },
+  {
+    up: migration_20261003_091549_reset_password_requested_at.up,
+    down: migration_20261003_091549_reset_password_requested_at.down,
+    name: '20261003_091549_reset_password_requested_at'
   },
 ];

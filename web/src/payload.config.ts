@@ -1,5 +1,5 @@
 import { postgresAdapter } from '@payloadcms/db-postgres'
-import { nodemailerAdapter } from '@payloadcms/email-nodemailer'
+import { nodemailerAdapter, type NodemailerAdapterArgs } from '@payloadcms/email-nodemailer'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
 import { ru } from '@payloadcms/translations/languages/ru'
 import sharp from 'sharp'
@@ -105,7 +105,10 @@ export default buildConfig({
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
           },
-        },
+          // nodemailer 10 убрал `auth` из SMTPConnectionOptions (перенесён в
+          // SMTPTransportOptions), а адаптер Payload типизирует transportOptions
+          // старым типом. В рантайме createTransport принимает auth — каст.
+        } as NodemailerAdapterArgs['transportOptions'],
       })
     : undefined,
   cors: [process.env.NEXT_PUBLIC_SERVER_URL || ''].filter(Boolean),
