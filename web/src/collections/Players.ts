@@ -1,4 +1,5 @@
 import type { Access, CollectionConfig, Where } from 'payload'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 import { adminOrCoachOwnGroup, createInOwnGroup } from '../access/byGroup'
 import { cleanupPlayerRelations } from '../hooks/cleanupPlayerRelations'
@@ -59,6 +60,11 @@ export const Players: CollectionConfig = {
       '152-ФЗ: минимизация. Только имя + группа + контакт родителя. Без дат рождения, фото, здоровья, адресов, СНИЛС.',
   },
   hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    // адресной строкой и API-вызовом.
     beforeChange: [demoGuestLimit],
     beforeDelete: [cleanupPlayerRelations],
   },

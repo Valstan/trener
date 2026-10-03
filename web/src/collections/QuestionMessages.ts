@@ -1,4 +1,5 @@
 import type { Access, CollectionConfig, Where } from 'payload'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 import { adminOnly } from '../access/adminOnly'
 import { adminBranchId, branchGroupIds, coachGroupIds, isFullOwner, isCoach, isParent } from '../access/roles'
@@ -58,6 +59,11 @@ export const QuestionMessages: CollectionConfig = {
     description: 'Переписка внутри вопроса: сам вопрос — в разделе «Вопросы», здесь — ответы и реплики.',
   },
   hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    // адресной строкой и API-вызовом.
     afterChange: [fanOutQuestionReply],
     beforeChange: [demoGuestLimit],
   },

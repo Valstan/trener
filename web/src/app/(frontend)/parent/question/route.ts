@@ -6,6 +6,7 @@ import { apiErrorResponse } from '@/lib/apiErrorResponse'
 
 import { isParent } from '@/access/roles'
 import { relId } from '@/lib/relId'
+import { consentRequiredResponse } from '@/lib/consentGate'
 
 // POST { groupId, body, sessionId? } → вопрос родителя тренеру (M3-PR11, суррогат чата).
 // #015: родитель спрашивает ТОЛЬКО по группе, где есть его ребёнок (проверяем владение).
@@ -18,6 +19,9 @@ export const POST = async (req: Request): Promise<Response> => {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user || !isParent(user)) return NextResponse.json({ ok: false }, { status: 401 })
+    // 152-ФЗ: родитель без согласия не подтверждает и не спрашивает (аудит #057 (c)).
+    const consentGate = await consentRequiredResponse(payload, user)
+    if (consentGate) return consentGate
 
     let groupId: unknown
     let body: unknown

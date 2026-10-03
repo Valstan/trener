@@ -9,6 +9,7 @@ import React from 'react'
 import { adminBranchId, isChild, isCoach, isFullOwner, isOwner, isParent, isPending } from '@/access/roles'
 import { allowedChatTargets } from '@/access/chatScope'
 import { relId } from '@/lib/relId'
+import { requireConsentPage } from '@/lib/consentGate'
 
 import { AppShell, CHILD_TABS, COACH_TABS, PARENT_TABS, type Tab } from '../components/AppShell'
 import { TopicComposer } from './TopicComposer'
@@ -34,6 +35,9 @@ const ChatPage = async () => {
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
+  // 152-ФЗ: родитель без записанного согласия не видит данные ребёнка
+  // (аудит #057 (c); раньше гейт стоял только на /parent).
+  await requireConsentPage(payload, user)
 
   const parentOnly = isParent(user) && !isCoach(user) && !isOwner(user)
   const tabs: Tab[] = isChild(user) ? CHILD_TABS : parentOnly ? PARENT_TABS : COACH_TABS

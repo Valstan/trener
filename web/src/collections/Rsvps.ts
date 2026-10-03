@@ -2,6 +2,7 @@ import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
 import { adminBranchId, branchSessionIds, coachSessionIds, isFullOwner, isCoach, isParent } from '../access/roles'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 // RSVP родителя: «придёт ли ребёнок на тренировку» (going / not_going).
 //
@@ -46,6 +47,12 @@ const readRsvps: Access = async ({ req }) => {
 
 export const Rsvps: CollectionConfig = {
   slug: 'rsvps',
+  hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+  },
   labels: {
     singular: 'Ответ об участии',
     plural: 'Ответы об участии',

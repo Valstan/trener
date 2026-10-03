@@ -2,6 +2,7 @@ import type { Access, CollectionConfig, Where } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
 import { adminBranchId, branchSessionIds, coachSessionIds, isFullOwner, isCoach, isParent } from '../access/roles'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 // Уведомление родителю об изменении/отмене тренировки.
 //
@@ -54,6 +55,12 @@ const readNotifications: Access = async ({ req }) => {
 
 export const Notifications: CollectionConfig = {
   slug: 'notifications',
+  hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+  },
   labels: {
     singular: 'Уведомление',
     plural: 'Уведомления',

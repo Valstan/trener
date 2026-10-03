@@ -6,6 +6,7 @@ import React from 'react'
 
 import { isParent, isPending } from '@/access/roles'
 import { relId } from '@/lib/relId'
+import { requireConsentPage } from '@/lib/consentGate'
 
 import { AppShell, PARENT_TABS } from '../../../components/AppShell'
 import { ReplyForm } from '../../../components/ReplyForm'
@@ -21,6 +22,9 @@ const ParentThreadPage = async ({ params }: { params: Promise<{ id: string }> })
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/')
+  // 152-ФЗ: родитель без записанного согласия не видит данные ребёнка
+  // (аудит #057 (c); раньше гейт стоял только на /parent).
+  await requireConsentPage(payload, user)
 
   const { id } = await params
   const questionId = Number(id)

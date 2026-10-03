@@ -5,6 +5,7 @@ import { adminBranchId, adminOrStaffField, branchGroupIds, childGroupIds, coachG
 import { cleanupMatchRelations } from '../hooks/cleanupMatchRelations'
 import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutMatchChange } from '../hooks/fanOutMatchChange'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 // Матчи (дорожная карта §4, после M3): расписание будущих игр (видение §3.1 —
 // «когда, во сколько, где») и результаты сыгранных. Информационный канал поверх ядра
@@ -84,7 +85,15 @@ export const Matches: CollectionConfig = {
   },
   // Пуш родителям группы: назначен матч / перенесён / появился счёт (push-only,
   // без ack-очереди — ров остаётся у изменений расписания).
-  hooks: { afterChange: [fanOutMatchChange], beforeChange: [demoGuestLimit], beforeDelete: [cleanupMatchRelations] },
+  hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    afterChange: [fanOutMatchChange],
+    beforeChange: [demoGuestLimit],
+    beforeDelete: [cleanupMatchRelations],
+  },
   admin: {
     defaultColumns: ['matchDate', 'group', 'opponent', 'homeAway'],
     useAsTitle: 'opponent',

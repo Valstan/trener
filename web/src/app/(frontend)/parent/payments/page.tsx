@@ -10,6 +10,7 @@ import { feeForGroup, formatFee } from '@/lib/fee'
 import { sumAmounts } from '@/lib/paymentTotals'
 import { relId } from '@/lib/relId'
 import { STATUS_VIEW, subscriptionStatus } from '@/lib/subscriptionStatus'
+import { requireConsentPage } from '@/lib/consentGate'
 
 import { AppShell, PARENT_TABS } from '../../components/AppShell'
 import { CopyDetails } from './CopyDetails'
@@ -31,6 +32,9 @@ const ParentPaymentsPage = async () => {
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/')
+  // 152-ФЗ: родитель без записанного согласия не видит данные ребёнка
+  // (аудит #057 (c); раньше гейт стоял только на /parent).
+  await requireConsentPage(payload, user)
 
   // Свои дети (scoped read).
   const players = await payload.find({

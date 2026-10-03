@@ -1,4 +1,5 @@
 import type { Access, CollectionConfig, Where } from 'payload'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 import { adminOrCoachOwnGroup, createInOwnGroup } from '../access/byGroup'
 import {
@@ -102,6 +103,11 @@ export const Announcements: CollectionConfig = {
     description: 'Новости тренера группе / владельца сети. Не ack-очередь. Пуш — только по флагу.',
   },
   hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    // адресной строкой и API-вызовом.
     afterChange: [fanOutAnnouncement],
     beforeChange: [demoGuestLimit],
     beforeValidate: [

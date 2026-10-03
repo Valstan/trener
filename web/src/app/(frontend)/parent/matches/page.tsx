@@ -6,6 +6,7 @@ import React from 'react'
 
 import { isParent, isPending } from '@/access/roles'
 import { resolveMatchViews, splitMatchViews } from '@/lib/matches'
+import { requireConsentPage } from '@/lib/consentGate'
 
 import { AppShell, PARENT_TABS } from '../../components/AppShell'
 import { MatchCard } from '../../components/MatchCard'
@@ -22,6 +23,9 @@ const ParentMatchesPage = async () => {
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/')
+  // 152-ФЗ: родитель без записанного согласия не видит данные ребёнка
+  // (аудит #057 (c); раньше гейт стоял только на /parent).
+  await requireConsentPage(payload, user)
 
   const matches = await payload.find({
     collection: 'matches',

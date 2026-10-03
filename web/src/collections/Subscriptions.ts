@@ -1,4 +1,5 @@
 import type { Access, CollectionConfig, Where } from 'payload'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 import {
   adminBranchId,
@@ -109,6 +110,11 @@ export const Subscriptions: CollectionConfig = {
     hidden: ({ user }) => isCoach(user as unknown as { roles?: string[] | null }),
   },
   hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    // адресной строкой и API-вызовом.
     // Штамп «кто записал» + денорм филиала + G211-гейт границы админа;
     // лимит демо-посетителя — до штампа, чтобы не тратить find'ы на отказ.
     beforeChange: [demoGuestLimit, stampSubscription],

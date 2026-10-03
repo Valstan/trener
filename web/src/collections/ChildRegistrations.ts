@@ -2,6 +2,7 @@ import type { Access, CollectionConfig } from 'payload'
 
 import { isFullOwner, isParent } from '../access/roles'
 import { fanOutRegistration } from '../hooks/fanOutRegistration'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 const read: Access = ({ req }) => {
   if (isFullOwner(req.user)) return true
@@ -14,8 +15,14 @@ export const ChildRegistrations: CollectionConfig = {
   labels: { singular: 'Заявка ребёнка', plural: 'Заявки детей' },
   access: { create: () => false, read, update: () => false, delete: ({ req }) => isFullOwner(req.user) },
   admin: { useAsTitle: 'childName', defaultColumns: ['childName', 'parentName', 'status', 'createdAt'] },
-  // Пуш на каждом стыке цепочки ребёнок→родитель→группа (см. fanOutRegistration).
-  hooks: { afterChange: [fanOutRegistration] },
+  hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    // Пуш на каждом стыке цепочки ребёнок→родитель→группа (см. fanOutRegistration).
+    afterChange: [fanOutRegistration],
+  },
   fields: [
     { name: 'account', type: 'relationship', relationTo: 'users', required: true, unique: true, index: true },
     { name: 'childName', type: 'text', required: true, maxLength: 120 },

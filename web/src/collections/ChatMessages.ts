@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 import { readChatScope } from '../access/chatScope'
 import { isFullOwner } from '../access/roles'
@@ -28,6 +29,11 @@ export const ChatMessages: CollectionConfig = {
     delete: ({ req }) => isFullOwner(req.user),
   },
   hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    // адресной строкой и API-вызовом.
     afterChange: [fanOutChatMessage],
     beforeChange: [demoGuestLimit],
   },

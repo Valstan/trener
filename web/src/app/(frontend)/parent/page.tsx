@@ -6,7 +6,7 @@ import React from 'react'
 
 import type { Player, Rsvp, TrainingSession } from '@/payload-types'
 import { isParent, isPending } from '@/access/roles'
-import { parentNeedsConsent } from '@/lib/consentGate'
+import { requireConsentPage } from '@/lib/consentGate'
 import { describeChange } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 import { rsvpKey } from '@/lib/rsvp'
@@ -30,9 +30,8 @@ const ParentPage = async () => {
   if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/')
 
-  // 152-ФЗ: родитель с детьми и филиалом, но без записанного согласия — сначала
-  // экран согласия (invite-путь до фикса 09.08 согласие молча пропускал).
-  if (await parentNeedsConsent(payload, user)) redirect('/onboarding/consent')
+  // 152-ФЗ: родитель без записанного согласия — на экран согласия.
+  await requireConsentPage(payload, user)
 
   // Есть ли вообще привязанные дети — для честного пустого состояния ниже
   // (раньше родителю без детей показывали «Изменений нет — всё подтверждено»).

@@ -4,6 +4,7 @@ import { isFullOwner } from '../access/roles'
 import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutMatchComment } from '../hooks/fanOutMatchComment'
 import { readMatchParticipants } from './Matches'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 export const MatchComments: CollectionConfig = {
   slug: 'match-comments',
@@ -20,7 +21,14 @@ export const MatchComments: CollectionConfig = {
     description: 'Комментарии участников группы. Редактирование запрещено; владелец может удалить сообщение при модерации.',
   },
   // Пуш участникам группы (раньше комментарии создавались молча).
-  hooks: { afterChange: [fanOutMatchComment], beforeChange: [demoGuestLimit] },
+  hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    afterChange: [fanOutMatchComment],
+    beforeChange: [demoGuestLimit],
+  },
   fields: [
     // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
     // demoGuestLimit (field-access режет только клиентский ввод).
