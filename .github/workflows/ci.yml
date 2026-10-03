@@ -55,9 +55,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        persist-credentials: false
-        # Токен не нужен джобу (ничего не пушим) и не должен лежать в .git/config, где
-        # его достанет любой код из pnpm install/build. Аудит #057 (вектор e).
+        with:
+          # Токен не нужен джобу (ничего не пушим) и не должен лежать в .git/config,
+          # где его достанет любой код из pnpm install/build. Аудит #057 (вектор e).
+          # Именно внутри with:, не соседом с uses: — соседняя позиция делает весь
+          # файл невалидным ПО СХЕМЕ GitHub: воркфлоу исчезает, dispatch не работает,
+          # а на каждый пуш прилетает красный прогон 0с. Ловится шагом ниже.
+          persist-credentials: false
 
       # D-038: публичный репозиторий — recon-поверхность. Generic-грепы по отслеживаемым
       # файлам (тех-хостнейм VPS, «Бокс N», публичный IPv4, /home/<user>/, ssh-алиас,
@@ -66,6 +70,31 @@ jobs:
       - name: Recon-lint (D-038)
         working-directory: .
         run: bash scripts/recon-lint.sh
+
+      # Схема workflow по СПЕЦИФИКАЦИИ GitHub. YAML-парсеры сюда не смотрят: файл может
+      # быть синтаксически валидным и при этом невалидным по схеме — тогда GitHub не
+      # просто ругает шаг, а ОТВЕРГАЕТ ВЕСЬ ФАЙЛ: воркфлоу исчезает из списка,
+      # dispatch не работает, на каждый пуш прилетает красный прогон 0с. Именно так
+      # молча сломался apply-migration.yml (регресс волны 1 #189: persist-credentials
+      # стоял соседом с `uses:`), и накат миграций на прод перестал работать.
+      #
+      # Версия и sha256 зафиксированы: бинарь actionlint — исполняемый код в джобе,
+      # поэтому качать его можно только с обязательной сверкой (шаг падает на mismatch).
+      - name: Workflow-schema-lint (actionlint)
+        working-directory: .
+        env:
+          ACTIONLINT_VERSION: 1.7.12
+          ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+        run: |
+          set -e
+          ASSET="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          BASE="https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}"
+          curl -fsSL "$BASE/$ASSET" -o /tmp/actionlint.tar.gz
+          echo "${ACTIONLINT_SHA256}  /tmp/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf /tmp/actionlint.tar.gz -C /tmp actionlint
+          # -ignore только репозиторные проверки: код и комментарии на русском,
+          # shellcheck/pyflakes в образе нет. Проверка схемы и выражений остаётся.
+          /tmp/actionlint -no-color -ignore 'pyflakes*' -ignore 'shellcheck*' .github/workflows/*.yml
 
       # pnpm/action-setup ставит pnpm напрямую (без corepack) → обходит G53
       # («download pnpm? Y/n» виснет на headless) и corepack-в-subdir (packageManager

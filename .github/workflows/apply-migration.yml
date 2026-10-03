@@ -58,9 +58,14 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
-        # ref = ветка, выбранная при dispatch (для apply-before-merge — ветка фичи).
-        # Токен джобой не используется и не должен лежать в .git/config — аудит #057 (e).
-        persist-credentials: false
+        with:
+          # ref = ветка, выбранная при dispatch (для apply-before-merge — ветка фичи).
+          # persist-credentials ИМЕННО внутри with: — как сосед с `uses:` это не
+          # «неизвестный ключ», а невалидный по СХЕМЕ шаг: GitHub отвергает ВЕСЬ файл,
+          # воркфлоу перестаёт существовать, а dispatch падает (регресс PR #189, пойман
+          # гейтом схемы actionlint — см. шаг Workflow-schema-lint в ci.yml).
+          # Токен джобой не используется и не должен лежать в .git/config — аудит #057 (e).
+          persist-credentials: false
 
       - name: Setup SSH
         working-directory: .
