@@ -160,15 +160,18 @@ jobs:
           fi
           # ssh-keyscan отдаёт по ключу на алгоритм (ed25519/ecdsa/rsa) — сверяем,
           # что ХОТЯ БЫ ОДИН отпечаток совпал с ожидаемым списком (порядок не важен).
+          # tr -d '\r' — секрет мог быть заведён из Windows-консоли, и тогда каждый
+          # токен, кроме последнего, нёс \r и не совпадал (такой фейл случился 03.10).
           ACTUAL="$(ssh-keygen -lf /tmp/hostkeys.new | awk '{print $2}')"
+          EXPECTED="$(printf '%s' "${PROD_SSH_HOST_FINGERPRINT}" | tr -d '\r')"
           MATCH=0
-          for FP in ${PROD_SSH_HOST_FINGERPRINT}; do
+          for FP in ${EXPECTED}; do
             if printf '%s\n' "${ACTUAL}" | grep -qxF "${FP}"; then MATCH=1; fi
           done
           if [ "${MATCH}" != "1" ]; then
             echo "::error::Ни один отпечаток хоста не совпал с ожидаемым — возможен MITM. Соединение не устанавливаем."
-            echo "ожидались: ${PROD_SSH_HOST_FINGERPRINT}"
-            echo "получено:  ${ACTUAL}"
+            echo "ожидалось (кол-во): $(printf '%s\n' ${EXPECTED} | wc -l)"
+            echo "получено:"; printf '%s\n' "${ACTUAL}"
             exit 1
           fi
           cat /tmp/hostkeys.new >> ~/.ssh/known_hosts
