@@ -21,7 +21,10 @@ export const LegalDocuments: CollectionConfig = {
   slug: 'legal-documents',
   labels: { singular: 'Юридический документ', plural: 'Юридические документы' },
   access: {
-    read: () => true,
+    // Анониму видны ТОЛЬКО опубликованные версии (аудит #057, вектор a): `() => true`
+    // отдавал ещё и рабочие черновики текстов вместе с contentHash, по которому
+    // считаются подписи. Владелец видит всё.
+    read: ({ req }) => (isFullOwner(req.user) ? true : { publishedAt: { exists: true } }),
     create: ({ req }) => isFullOwner(req.user),
     update: ({ req }) => isFullOwner(req.user),
     // Удаление запрещено всем: на версию могут ссылаться подписи.

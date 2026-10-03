@@ -5,8 +5,14 @@ import { NextResponse } from 'next/server'
 import { createLoginToken } from '@/lib/auth/magicLink'
 import { generateRawToken } from '@/lib/auth/tokens'
 import { sendLoginEmail } from '@/lib/email/magicLinkEmail'
+import { rateLimit } from '@/lib/rateLimit'
 
 export const POST = async (req: Request): Promise<Response> => {
+  // Аудит #057 (вектор a): саморегистрация без лимита = письма на произвольные адреса
+  // + неограниченный рост users/login-tokens. Гейт ДО создания записи и до письма.
+  if (!rateLimit(req, { name: 'auth:register', limit: 3, windowMs: 60 * 60_000 })) {
+    return NextResponse.json({ ok: true }, { status: 429 })
+  }
   const body = await req.json().catch(() => null) as { email?: unknown } | null
   const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : ''
   const generic = NextResponse.json({ ok: true })

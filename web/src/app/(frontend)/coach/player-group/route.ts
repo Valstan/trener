@@ -33,8 +33,15 @@ export const PATCH = async (req: Request): Promise<Response> => {
     ])
     const playerBranch = relId(player.branch)
     const targetBranch = relId(targetGroup.branch)
-    if (playerBranch != null && targetBranch !== playerBranch && !isFullOwner(user)) return NextResponse.json({ ok: false }, { status: 403 })
-    await payload.update({ collection: 'players', id: playerId, data: { group: groupId, branch: targetBranch ?? undefined }, overrideAccess: true })
+    // Аудит #057 (вектор b): при player.branch === null (поле nullable; createInOwnGroup
+    // его не требует) проверка короткого замыкалась и кросс-филиальный перенос проходил.
+    // Ветка без филиала у ребёнка не означает «переноси куда угодно» — сверяем всегда.
+    if (!isFullOwner(user) && targetBranch !== playerBranch) {
+      return NextResponse.json({ ok: false }, { status: 403 })
+    }
+    // user обязателен: без него хуки (demoGuestLimit, трекинг) видят req.user === null —
+    // тот же класс, что уже отмечен в /chat/topic и /parent/question.
+    await payload.update({ collection: 'players', id: playerId, data: { group: groupId, branch: targetBranch ?? undefined }, overrideAccess: true, user })
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ ok: false }, { status: 404 })

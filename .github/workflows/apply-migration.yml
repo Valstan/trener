@@ -37,6 +37,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # Раннеру не нужны права записи в репозиторий (аудит #057, вектор e): миграция
+    # только исполняется. Плюс checkout ниже без persist-credentials, чтобы токен не
+    # валялся в .git/config во время работы кода ветки.
+    permissions:
+      contents: read
+
     env:
       # payload.config требует непустой secret для init; миграции его не используют
       # криптографически. Реальный секрет — на боксе в /etc/trener/trener.env.
@@ -53,6 +59,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         # ref = ветка, выбранная при dispatch (для apply-before-merge — ветка фичи).
+        persist-credentials: false
 
       - name: Setup SSH
         working-directory: .
@@ -60,6 +67,7 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
           PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
+          PROD_SSH_HOST_FINGERPRINT: ${{ secrets.PROD_SSH_HOST_FINGERPRINT }}
         run: |
           set -e
           if [ -z "${SSH_PRIVATE_KEY}" ]; then
@@ -114,6 +122,10 @@ jobs:
             echo "::error::Не прочитал DATABASE_URL с бокса."
             exit 1
           fi
+          # Значение прочитано с бокса В RUNTIME — GitHub маскирует только секреты репо,
+          # поэтому регистрируем его явно (аудит #057, вектор e): иначе любая ошибка
+          # подключения (drizzle/pg печатают строку подключения) уедет в ПУБЛИЧНЫЙ лог.
+          echo "::add-mask::$PROD_DB"
           # Открываем форвард localhost:$TUNNEL_PORT(раннер) → 127.0.0.1:5432(бокс).
           # ExitOnForwardFailure=yes → ssh не уйдёт в фон, если порт занять не удалось.
           ssh -o ExitOnForwardFailure=yes -fNL "${TUNNEL_PORT}:127.0.0.1:5432" TRENERBOX

@@ -3,7 +3,7 @@ import type { Access, CollectionConfig, Where } from 'payload'
 import { adminOrCoachOwnGroup, createInOwnGroup } from '../access/byGroup'
 import { cleanupPlayerRelations } from '../hooks/cleanupPlayerRelations'
 import { demoGuestLimit } from '../hooks/demoGuestLimit'
-import { adminBranchId, branchGroupIds, coachGroupIds, isChild, isCoach, isFullOwner, isParent, ownerField } from '../access/roles'
+import { adminBranchId, adminOrStaffField, branchGroupIds, coachGroupIds, isChild, isCoach, isFullOwner, isParent, ownerField } from '../access/roles'
 
 // Ребёнок (игрок).
 //
@@ -87,18 +87,35 @@ export const Players: CollectionConfig = {
       admin: { description: 'Только для возрастной группы; не показывается участникам чатов.' },
     },
     {
+      // Аудит #057 (вектор b): collection-access на update смотрит только на ТЕКУЩУЮ
+      // группу документа, поэтому `PATCH /api/players/:id {"parent": …}` от тренера
+      // переписывал законного представителя, а `{"group": …}` увозил ребёнка в чужую
+      // ветвь. Привязки меняет сервер (/coach/player-group, /account/child-*), из REST
+      // клиента — нельзя: admin.readOnly в UI не гейт, нужен access.
       name: 'group',
       type: 'relationship',
       label: 'Группа',
       relationTo: 'groups',
       required: false,
+      access: { create: adminOrStaffField, update: adminOrStaffField },
     },
-    { name: 'branch', type: 'relationship', label: 'Филиал', relationTo: 'branches', index: true, admin: { description: 'Нужен для ребёнка, которому тренер ещё не назначил группу.' } },
     {
+      name: 'branch',
+      type: 'relationship',
+      label: 'Филиал',
+      relationTo: 'branches',
+      index: true,
+      access: { create: adminOrStaffField, update: adminOrStaffField },
+      admin: { description: 'Нужен для ребёнка, которому тренер ещё не назначил группу.' },
+    },
+    {
+      // Лицо законного представителя — запись, которой система доверяет (уведомления,
+      // RSVP, вопросы). Меняет только сервер (приглашение/аккаунт ребёнка).
       name: 'parent',
       type: 'relationship',
       label: 'Родитель (контакт)',
       relationTo: 'users',
+      access: { create: ownerField, update: ownerField },
       filterOptions: () => ({ roles: { in: ['parent'] } }),
       admin: {
         description:

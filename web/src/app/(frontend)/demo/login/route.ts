@@ -6,6 +6,7 @@ import { buildAuthCookie } from '@/lib/auth/session'
 import { homePathForUser } from '@/lib/auth/home'
 import { parseDemoRole } from '@/lib/demo/demoLogin'
 import { DEMO_EMAILS } from '@/lib/demo/constants'
+import { rateLimit } from '@/lib/rateLimit'
 
 // Вход в витрину D-029: без регистрации и пароля. Механика сессии — та же, что
 // magic-link (buildAuthCookie): демо-юзер найден по фиксированному email → кука.
@@ -19,9 +20,26 @@ export const POST = async (req: Request): Promise<Response> => {
   // D-029 браузер уезжал именно туда. Паттерн — как в auth/vk/callback/route.ts.
   const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || new URL(req.url).origin
 
+  // Аудит #057 (вектор a): без лимита — бесплатная фабрика демо-сессий для любого,
+  // кто долбит форму (выгода скромная, но вектор DoS на общий бокс — нет).
+  if (!rateLimit(req, { name: 'demo:login', limit: 20, windowMs: 60_000 })) {
+    return NextResponse.redirect(new URL('/demo', serverUrl))
+  }
+
   const formData = await req.formData()
   const role = parseDemoRole(formData.get('role'))
   if (!role) return NextResponse.redirect(new URL('/demo', serverUrl))
+
+  // SameSite=Lax у session-cookie не спасает POST с чужого сайта (Lax блокирует
+  // cookie на кросс-сайтовом POST — но здесь cookie ещё не нужна: вход САМ СЕБЯ
+  // навязывает). Без этой проверки злой сайт авто-сабмитом формы выдавал бы
+  // посетителю демо-сессию и затирал его живую сессию cookie (login CSRF).
+  // Аудит #057 (вектор a). Origin обязателен именно здесь: /demo — витрина, а не
+  // вход в систему, поэтому никакого «credentialed fetch с чужого origin» быть не может.
+  const origin = req.headers.get('origin')
+  if (origin && origin !== serverUrl) {
+    return NextResponse.redirect(new URL('/demo', serverUrl))
+  }
 
   const payload = await getPayload({ config })
   // Гейт demo: { equals: true } в where — обязателен: даже если живой юзер

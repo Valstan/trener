@@ -1,7 +1,7 @@
-import type { Access, CollectionConfig, Where } from 'payload'
+import type { Access, CollectionConfig, PayloadRequest, Where } from 'payload'
 
-import { adminOrCoachOwnGroup } from '../access/byGroup'
-import { adminBranchId, branchGroupIds, childGroupIds, coachGroupIds, isChild, isFullOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
+import { adminOrCoachOwnGroup, createInOwnGroup } from '../access/byGroup'
+import { adminBranchId, adminOrStaffField, branchGroupIds, childGroupIds, coachGroupIds, isChild, isFullOwner, isCoach, isParent, parentGroupIds } from '../access/roles'
 import { cleanupMatchRelations } from '../hooks/cleanupMatchRelations'
 import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutMatchChange } from '../hooks/fanOutMatchChange'
@@ -74,7 +74,10 @@ export const Matches: CollectionConfig = {
     plural: 'Матчи',
   },
   access: {
-    create: adminOrCoachOwnGroup,
+    // Г211: Where на create не фильтрует, поэтому здесь createInOwnGroup (как у
+    // Players/TrainingSessions после #015), а не adminOrCoachOwnGroup — иначе тренер
+    // создавал матч в группе чужого филиала (аудит #057, вектор b).
+    create: createInOwnGroup,
     read: readMatches,
     update: adminOrCoachOwnGroup,
     delete: adminOrCoachOwnGroup,
@@ -98,12 +101,15 @@ export const Matches: CollectionConfig = {
       access: { create: () => false, update: () => false },
     },
     {
+      // Аудит #057 (вектор b): группа матча задаётся сервером (/coach/match) — из
+      // REST клиент её не перевесить (иначе матч уезжает в чужую ветвь).
       name: 'group',
       type: 'relationship',
       label: 'Группа',
       relationTo: 'groups',
       required: true,
       index: true,
+      access: { create: adminOrStaffField, update: adminOrStaffField },
     },
     {
       name: 'matchDate',
@@ -177,9 +183,41 @@ export const Matches: CollectionConfig = {
           label: 'Игрок',
           relationTo: 'players',
           required: true,
-          // Выбор ограничен детьми ЭТОЙ группы (по полю group матча).
+          // Выбор ограничен детьми ЭТОЙ группы (по полю group матча). filterOptions —
+          // это только фильтр UI админки, не гейт: PATCH /api/matches/:id принимал
+          // scorers с id ребёнка чужого филиала, и имя того ребёнка попадало родителям
+          // другой ветки (аудит #057, векторы b, f). Роут /coach/match/result такую
+          // проверку делает; через REST её обходили. Теперь сверка и в beforeValidate.
           filterOptions: ({ data }) =>
             data?.group ? { group: { equals: data.group } } : true,
+          validate: async (
+            value: unknown,
+            {
+              siblingData,
+              req,
+            }: {
+              siblingData: Partial<{ group?: unknown }>
+              req: PayloadRequest
+            },
+          ) => {
+            if (value == null) return true
+            const groupId = typeof siblingData?.group === 'object' && siblingData?.group
+              ? (siblingData.group as { id?: number | string }).id
+              : (siblingData?.group as number | string | null | undefined)
+            if (groupId == null) return 'Сначала укажите группу матча.'
+            const playerId = typeof value === 'object' && value ? (value as { id?: number }).id : (value as number)
+            const player = await req.payload.findByID({
+              collection: 'players',
+              id: Number(playerId),
+              depth: 0,
+              overrideAccess: true,
+            })
+            const playerGroup = typeof player.group === 'object' && player.group ? player.group.id : player.group
+            if (Number(playerGroup) !== Number(groupId)) {
+              return 'Гол может забить только ребёнок из группы этого матча.'
+            }
+            return true
+          },
         },
         {
           name: 'goals',

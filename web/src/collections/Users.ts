@@ -5,6 +5,8 @@ import { adminOrSelf } from '../access/adminOrSelf'
 import { hasRole, isDemo, ownerField, rolesField } from '../access/roles'
 import { cleanupUserRelations } from '../hooks/cleanupUserRelations'
 import { ensureFirstUserAdmin } from '../hooks/ensureFirstUserAdmin'
+import { blockFirstRegister } from './firstRegisterGuard'
+
 
 export const Users: CollectionConfig = {
   slug: 'users',
@@ -33,7 +35,24 @@ export const Users: CollectionConfig = {
     defaultColumns: ['name', 'email', 'requestedRole', 'roles', 'status', 'branch'],
     useAsTitle: 'name',
   },
-  auth: true,
+  // secure:true — НЕ дефолт Payload (`secure:false` в authDefaults). Сайт публичный и
+  // только HTTPS; без флага session-cookie уезжает открытым текстом на любой
+  // http://-запрос (HSTS не помогает до первого успешного HTTPS-кеша, preload не включён).
+  // Аудит #057 (вектор d), подтверждено независимо вектором c.
+  //
+  // maxAge/expires — явные: дефолт Payload = сессионная cookie (без срока, живёт до
+  // закрытия браузера). Здесь фиксированное время жизни сессии = tokenExpiration (2 ч).
+  auth: {
+    cookies: { secure: true, sameSite: 'Lax' },
+  },
+  // Аудит #057 (вектор a): `POST /api/users/first-register` у Payload НЕ гейтится
+  // полем roles — registerFirstUser делает `payload.create({overrideAccess:true})`,
+  // а ensureFirstUserAdmin повышает первого юзера до owner. Свой endpoint с тем же
+  // путём перекрывает встроенный (Payload отдаёт custom раньше штатного).
+  // Единственный законный путь создания первого админа — seed-скрипты
+  // (`pnpm seed`, `seed:legal`), а не анонимный HTTP-вызов.
+  endpoints: [blockFirstRegister],
+
   // Пара (authProvider, externalId) уникальна: одна внешняя личность — один аккаунт.
   // NULL-пары (обычные email-пользователи) под уникальность не попадают.
   indexes: [{ fields: ['authProvider', 'externalId'], unique: true }],
@@ -97,15 +116,26 @@ export const Users: CollectionConfig = {
         { label: 'Тренер', value: 'coach' },
         { label: 'Ребёнок', value: 'child' },
       ],
+      // Аудит #057 (вектор b): у поля не было НИ create, НИ update access, поэтому
+      // `PATCH /api/users/<свой id> {"requestedRole":"coach"}` проходил мимо экрана
+      // выбора роли (он отказывает, когда роль уже задана) и сразу ставил заявку в
+      // инбокс владельца с подменённой ролью — а роль по заявке берётся именно отсюда.
+      // admin.readOnly защищает только UI. Теперь роль выбирает сервер (/onboarding/role/select).
+      access: { create: () => false, update: () => false },
       admin: { readOnly: true, description: 'Самостоятельный выбор до одобрения заявки.' },
     },
     {
+      // Логин — половина учётных данных ребёнка (вход по нему в /auth/password-login).
+      // Аудит #057 (вектор b): у поля были гейты только на запись, а `adminOrSelf.read`
+      // отдаёт филиальному админу всех пользователей ЕГО филиала — вместе с логинами
+      // детей и SSO-sub'ами всех, кого он не администрирует. На чтение оставляем
+      // только полный owner.
       name: 'login',
       type: 'text',
       label: 'Логин ребёнка',
       unique: true,
       index: true,
-      access: { create: ownerField, update: ownerField },
+      access: { create: ownerField, update: ownerField, read: ownerField },
       admin: { description: 'Только для детского входа; взрослые входят по email/VK.' },
     },
     // ── Связь с внешней личностью центра авторизации «Радар» (SSO через VK) ──
@@ -132,6 +162,9 @@ export const Users: CollectionConfig = {
       access: {
         create: ownerField,
         update: ownerField,
+        // sub внешней личности — идентификатор, по которому вход ищет аккаунт
+        // (radarLink). Админу филиала он не нужен (аудит #057, вектор b).
+        read: ownerField,
       },
       admin: {
         description: 'Стабильный идентификатор личности у провайдера (sub Радара).',

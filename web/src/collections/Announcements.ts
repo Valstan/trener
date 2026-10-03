@@ -1,6 +1,6 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
-import { adminOrCoachOwnGroup } from '../access/byGroup'
+import { adminOrCoachOwnGroup, createInOwnGroup } from '../access/byGroup'
 import {
   adminBranchId,
   branchGroupIds,
@@ -57,6 +57,19 @@ const readAnnouncements: Access = async ({ req }) => {
   return false
 }
 
+// Create: скоуп применяется к ЗАПРОШЕННОЙ группе (req.data), потому что на create нет
+// документа и Where-фильтр трактуется как «можно» (Г211). Тот же принцип, что
+// createInOwnGroup у Players/TrainingSessions/Matches (#015, аудит #057).
+const createAnnouncement: Access = async (args) => {
+  const { req, data } = args
+  if (!req.user) return false
+  if (isFullOwner(req.user)) return true
+  // Сетевое и филиальное объявление по-прежнему только у полного владельца.
+  const scope = (data as { scope?: string } | undefined)?.scope
+  if (scope && scope !== 'group') return false
+  return createInOwnGroup({ ...args, data }) as boolean | Promise<boolean>
+}
+
 // Write: owner — всё; тренер/админ — только групповые своих групп (по полю group).
 const writeAnnouncements: Access = async (args) => {
   const { req } = args
@@ -74,7 +87,11 @@ export const Announcements: CollectionConfig = {
     plural: 'Объявления',
   },
   access: {
-    create: writeAnnouncements,
+    // Г211 на create: writeAnnouncements возвращает Where, который на create читается
+    // как «можно» — тренер создавал объявление в ГРУППЕ ЧУЖОГО филиала (аудит #057,
+    // вектор b). Скоуп по запрошенной группе — createAnnouncement (adminOrCoachOwnGroup
+    // внутри writeAnnouncements остаётся для update/delete по текущему документу).
+    create: createAnnouncement,
     read: readAnnouncements,
     update: writeAnnouncements,
     delete: writeAnnouncements,

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 
 import { createInviteAcceptToken, peekInviteToken } from '@/lib/auth/invite'
 import { sendInviteAcceptEmail } from '@/lib/email/magicLinkEmail'
+import { rateLimit } from '@/lib/rateLimit'
 
 // POST { token (join), email } → если join-токен валиден, шлём родителю письмо со
 // ссылкой подтверждения. Ответ всегда нейтрально-одинаков (как у request-login):
@@ -12,6 +13,11 @@ import { sendInviteAcceptEmail } from '@/lib/email/magicLinkEmail'
 export const dynamic = 'force-dynamic'
 
 export const POST = async (req: Request): Promise<Response> => {
+  // Аудит #057 (вектор a): по утёкшей join-ссылке можно было слать письма
+  // подтверждения на произвольные адреса от домена школы (анти-фишинг/abuse).
+  if (!rateLimit(req, { name: 'auth:accept-invite', limit: 5, windowMs: 60 * 60_000 })) {
+    return NextResponse.json({ ok: true }, { status: 429 })
+  }
   let token = ''
   let email = ''
   try {

@@ -33,7 +33,27 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # ⚠️ ТРИ условия на workflow_run, а не одно (аудит #057, вектор (e) — critical).
+    # Репозиторий ПУБЛИЧНЫЙ, у workflow_run есть доступ к секретам этого репо, а фильтр
+    # `branches: [main]` в trigger'е сверяет ИМЯ ветки. Форк может назвать свою ветку
+    # `main`, его CI пройдёт (свой код собирается «зелено»), и тогда deploy чекаутил
+    # `head_sha` ЧУЖОГО коммита и деплоил его на прод с живым SSH-ключом в окружении
+    # (классический pwn request). Теперь пропускаем только СВОЙ push в main:
+    #   conclusion == success — зелёный CI;
+    #   event == 'push' — не pull_request из форка;
+    #   head_repository.full_name == github.repository — не форк;
+    #   head_branch == 'main' — та самая ветка.
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      || (
+        github.event.workflow_run.conclusion == 'success'
+        && github.event.workflow_run.event == 'push'
+        && github.event.workflow_run.head_repository.full_name == github.repository
+        && github.event.workflow_run.head_branch == 'main'
+      )
+
+    permissions:
+      contents: read
 
     services:
       postgres:
@@ -68,7 +88,11 @@ jobs:
         uses: actions/checkout@v5
         with:
           fetch-depth: 2 # для migration-guard: git diff HEAD~1 HEAD
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # Именно main, а не произвольный head_sha: даже при зелёном условии job
+          # собирать и выкатывать можно только содержимое main (аудит #057, вектор e).
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'refs/heads/main' }}
+          # Ключ не нужен для сборки — иначе лежит в ~/.ssh весь install/build ниже.
+          persist-credentials: false
 
       - name: Migration-guard — упасть, если в коммите новые Payload-миграции
         working-directory: . # иначе git pathspec резолвится от web/ (default) → web/web/* → guard молчит
@@ -103,6 +127,7 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
           PROD_SSH_USER: ${{ secrets.PROD_SSH_USER }}
+          PROD_SSH_HOST_FINGERPRINT: ${{ secrets.PROD_SSH_HOST_FINGERPRINT }}
         run: |
           set -e
           if [ -z "${SSH_PRIVATE_KEY}" ]; then
@@ -118,7 +143,36 @@ jobs:
             echo "::error::Secrets PROD_SSH_HOST / PROD_SSH_USER не заданы."
             exit 1
           fi
-          ssh-keyscan -H "${PROD_SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
+          # Отпечаток хоста сверяется с ОЖИДАЕМЫМ (secret PROD_SSH_HOST_FINGERPRINT),
+          # а не принимается на веру того, кто ответил на порт 22 в этот момент (TOFU).
+          # Пин брать с бокса: ssh-keyscan -p 22 <host> | ssh-keygen -lf - ; в secret
+          # кладём строку «SHA256:…». Если секрет не задан — деплой падает (fail closed):
+          # ключ в окружении шага, принимать «кого поймали» нельзя.
+          if [ -z "${PROD_SSH_HOST_FINGERPRINT}" ]; then
+            echo "::error::Secret PROD_SSH_HOST_FINGERPRINT не задан — сверять identity бокса нечем."
+            echo "Получить на боксе: ssh-keygen -lf <(ssh-keyscan -p 22 \"\${PROD_SSH_HOST}\" 2>/dev/null)"
+            exit 1
+          fi
+          ssh-keyscan -H "${PROD_SSH_HOST}" > /tmp/hostkeys.new 2>/dev/null
+          if [ ! -s /tmp/hostkeys.new ]; then
+            echo "::error::ssh-keyscan не вернул ключей хоста — соединение не устанавливаем."
+            exit 1
+          fi
+          # ssh-keyscan отдаёт по ключу на алгоритм (ed25519/ecdsa/rsa) — сверяем,
+          # что ХОТЯ БЫ ОДИН отпечаток совпал с ожидаемым списком (порядок не важен).
+          ACTUAL="$(ssh-keygen -lf /tmp/hostkeys.new | awk '{print $2}')"
+          MATCH=0
+          for FP in ${PROD_SSH_HOST_FINGERPRINT}; do
+            if printf '%s\n' "${ACTUAL}" | grep -qxF "${FP}"; then MATCH=1; fi
+          done
+          if [ "${MATCH}" != "1" ]; then
+            echo "::error::Ни один отпечаток хоста не совпал с ожидаемым — возможен MITM. Соединение не устанавливаем."
+            echo "ожидались: ${PROD_SSH_HOST_FINGERPRINT}"
+            echo "получено:  ${ACTUAL}"
+            exit 1
+          fi
+          cat /tmp/hostkeys.new >> ~/.ssh/known_hosts
+          rm -f /tmp/hostkeys.new
           cat > ~/.ssh/config <<EOF
           Host TRENERBOX
             HostName ${PROD_SSH_HOST}
@@ -170,7 +224,12 @@ jobs:
           # NEXT_PUBLIC_* уже запечены — секреты в артефакт не кладём.
           rm -f .next/standalone/.env
           tar czf ../trener-app.tgz -C .next/standalone .
-          echo "bundle: $(du -h ../trener-app.tgz | cut -f1)"
+          # Контрольная сумма артефакта (аудит #057, вектор e): имя каталога релиза —
+          # декоративное, байты ничем не связаны с коммитом. Считаем sha256 здесь и
+          # сверяем на боксе ДО распаковки.
+          cd ..
+          sha256sum trener-app.tgz | tee trener-app.tgz.sha256
+          echo "bundle: $(du -h trener-app.tgz | cut -f1)"
 
       - name: Stop here if build_only
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_only }}
@@ -181,9 +240,10 @@ jobs:
         working-directory: .
         run: |
           set -e
-          SHA="${{ github.event.workflow_run.head_sha || github.sha }}"
+          # Имя релиза = коммит main, который мы и собрали (жёстко main, см. checkout).
+          SHA="$(git rev-parse HEAD)"
           # tgz собирается в корень репо (tar ../trener-app.tgz из web/); шаг с working-directory '.'
-          scp -q trener-app.tgz TRENERBOX:/tmp/trener-app.tgz
+          scp -q trener-app.tgz trener-app.tgz.sha256 TRENERBOX:/tmp/
           scp -q deploy/systemd/trener.service TRENERBOX:/tmp/trener.service
           scp -q deploy/systemd/trener-rsvp-reminders.service TRENERBOX:/tmp/trener-rsvp-reminders.service
           scp -q deploy/systemd/trener-rsvp-reminders.timer TRENERBOX:/tmp/trener-rsvp-reminders.timer
@@ -197,9 +257,17 @@ jobs:
           SHA="$1"
           BASE="$HOME/trener"
           REL="$BASE/releases/$SHA"
+          # Откат: запоминаем текущий symlink ДО переключения (аудит #057, векторы e, f).
+          # Прежде шаг переключал symlink и рестартил сервис ДО зелёного smoke, а при
+          # красном smoke только дампил логи — битый релиз оставался обслуживать прод.
+          PREV="$(readlink -f "$BASE/releases/current" 2>/dev/null || true)"
+          echo "$PREV" > /tmp/trener-prev-release
+          # Сверка целостности ДО распаковки: расхождение — fail closed, релиз не трогаем.
+          cd /tmp
+          sha256sum -c trener-app.tgz.sha256
           rm -rf "$REL"; mkdir -p "$REL"
           tar xzf /tmp/trener-app.tgz -C "$REL"
-          rm -f /tmp/trener-app.tgz
+          rm -f /tmp/trener-app.tgz /tmp/trener-app.tgz.sha256
           ln -sfn "$REL" "$BASE/releases/current"
           # Backup-скрипт → стабильный bin/ (вне releases/, переживает смену релиза).
           mkdir -p "$BASE/bin"
@@ -261,9 +329,26 @@ jobs:
           # Идёт по ПУБЛИЧНОМУ адресу, т.е. через nginx и TLS — так же, как покупатель.
           bash scripts/smoke.sh "${NEXT_PUBLIC_SERVER_URL}"
 
-      - name: On failure — дамп журналов
+      # Журнал прода НЕ выводим в лог Actions: репозиторий публичный, логи раннера
+      # читает кто угодно без аутентификации и навсегда, а в журнале лежат ПДн детей
+      # (имена, контакты родителей, тексты) — audit #057, вектор (d). Раньше шаг печатал
+      # последние 80 строк + `systemctl status -l` (он тоже печатает журнал).
+      # Что печатаем: только состояние юнита (без журнала). Журнал снимается руками по
+      # ssh — правило профиля машины: журнал хранится ~7 суток, снимать сразу.
+      - name: On failure — откат релиза, если он не прошёл smoke
         if: failure()
         working-directory: .
         run: |
-          ssh TRENERBOX "sudo journalctl -u trener -n 80 --no-pager" 2>&1 || true
-          ssh TRENERBOX "sudo systemctl status trener --no-pager -l" 2>&1 || true
+          # Прежде здесь был только дамп журналов (и он убран: репозиторий публичный,
+          # а в журнале ПДн детей). Теперь главное — вернуть прод на заведомо рабочий
+          # релиз: smoke красный означает, что новый код уже обслуживает сайт.
+          PREV="$(ssh TRENERBOX 'cat /tmp/trener-prev-release 2>/dev/null' 2>/dev/null || true)"
+          if [ -n "${PREV}" ]; then
+            ssh TRENERBOX "test -d '${PREV}' && ln -sfn '${PREV}' \"\$HOME/trener/releases/current\" && sudo systemctl restart trener"
+            echo "::notice::Откат на предыдущий релиз: ${PREV}"
+            ssh TRENERBOX "rm -f /tmp/trener-prev-release" 2>/dev/null || true
+          else
+            echo "::warning::Предыдущий релиз неизвестен — откат не выполнялся, разбирайся руками."
+          fi
+          ssh TRENERBOX "systemctl show -p ActiveState -p SubState -p NRestarts -p ExecMainStatus trener" 2>&1 || true
+          echo "::notice::Журнал прод-юнита намеренно НЕ выводится в публичный лог (ПДн детей). Смотреть: ssh <бокс> 'sudo -n journalctl -u trener --since \"10 minutes ago\" -o short-iso --no-pager'"

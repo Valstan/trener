@@ -30,11 +30,13 @@ export const POST = async (req: Request): Promise<Response> => {
       res.cookies.set(BRANCH_CTX_COOKIE, String(branchId), {
         httpOnly: true,
         sameSite: 'lax',
+        // Как и session-cookie: сайт только HTTPS (аудит #057, вектор d).
+        secure: true,
         path: '/',
         maxAge: 60 * 60 * 24 * 365,
       })
     } else {
-      res.cookies.set(BRANCH_CTX_COOKIE, '', { path: '/', maxAge: 0 })
+      res.cookies.set(BRANCH_CTX_COOKIE, '', { path: '/', maxAge: 0, secure: true })
     }
     return res
   } catch (err) {

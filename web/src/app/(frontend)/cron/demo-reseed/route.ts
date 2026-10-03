@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { seedDemo } from '@/lib/demo/seedDemo'
+import { timingSafeEqualStr } from '@/lib/timingSafeEqualStr'
 
 // Cron: ночной reseed демо-филиала (D-029). Сносит и пересоздаёт содержимое
 // ОДНОГО демо-филиала (isDemo: true) — детали идемпотентности/предохранителей
@@ -17,8 +18,12 @@ export const dynamic = 'force-dynamic'
 const handle = async (req: Request): Promise<Response> => {
   const secret = process.env.CRON_SECRET
   if (!secret) return NextResponse.json({ ok: false, reason: 'disabled' }, { status: 403 })
-  const provided = new URL(req.url).searchParams.get('secret') ?? req.headers.get('x-cron-secret')
-  if (provided !== secret) return NextResponse.json({ ok: false }, { status: 401 })
+  // Только заголовок, без `?secret=` (аудит #057, вектор f) + сравнение постоянного
+  // времени. Секрет в query попадает в access-лог прокси и в историю.
+  const provided = req.headers.get('x-cron-secret')
+  if (!provided || !timingSafeEqualStr(provided, secret)) {
+    return NextResponse.json({ ok: false }, { status: 401 })
+  }
 
   try {
     const payload = await getPayload({ config })
