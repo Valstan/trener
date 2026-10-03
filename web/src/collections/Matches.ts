@@ -6,6 +6,8 @@ import { cleanupMatchRelations } from '../hooks/cleanupMatchRelations'
 import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutMatchChange } from '../hooks/fanOutMatchChange'
 import { denyParentWithoutConsent } from '@/lib/consentGate'
+import { validateScorersGroup } from '@/lib/matches'
+import { relId } from '@/lib/relId'
 
 // Матчи (дорожная карта §4, после M3): расписание будущих игр (видение §3.1 —
 // «когда, во сколько, где») и результаты сыгранных. Информационный канал поверх ядра
@@ -179,11 +181,39 @@ export const Matches: CollectionConfig = {
       admin: {
         description: 'Только имя ребёнка — из справочника «Дети». Видно родителям группы. Заполняется у сыгранного матча.',
       },
-      validate: (value: unknown, { siblingData }: { siblingData: Partial<{ scoreOur?: number | null; scoreOpponent?: number | null }> }) => {
+      validate: async (
+        value: unknown,
+        {
+          siblingData,
+          req,
+        }: {
+          siblingData: Partial<{ group?: unknown; scoreOur?: number | null; scoreOpponent?: number | null }>
+          req: PayloadRequest
+        },
+      ) => {
         if (Array.isArray(value) && value.length > 0 && (siblingData?.scoreOur == null || siblingData?.scoreOpponent == null)) {
           return 'Авторы голов — только у сыгранного матча: сначала введите счёт.'
         }
-        return true
+        // Правило «гол — только ребёнок из группы матча» живёт ЗДЕСЬ, на уровне массива:
+        // у вложенного поля `player` в payload 3.90.1 siblingData не содержит полей
+        // матча, и проверка отвергала любую запись гола (03.10, отловлено падением
+        // ночного демо-сида). Логика вынесена в validateScorersGroup и покрыта тестом.
+        if (!Array.isArray(value) || value.length === 0) return true
+        const playerIds = value
+          .map((row) => relId((row as { player?: unknown })?.player))
+          .filter((id): id is number => id != null)
+        const groupsByPlayer = new Map<number, number | null>()
+        if (playerIds.length) {
+          const found = await req.payload.find({
+            collection: 'players',
+            where: { id: { in: playerIds } },
+            depth: 0,
+            pagination: false,
+            overrideAccess: true,
+          })
+          for (const p of found.docs) groupsByPlayer.set(p.id, relId(p.group))
+        }
+        return validateScorersGroup(value, siblingData?.group, groupsByPlayer)
       },
       fields: [
         {
@@ -196,37 +226,12 @@ export const Matches: CollectionConfig = {
           // это только фильтр UI админки, не гейт: PATCH /api/matches/:id принимал
           // scorers с id ребёнка чужого филиала, и имя того ребёнка попадало родителям
           // другой ветки (аудит #057, векторы b, f). Роут /coach/match/result такую
-          // проверку делает; через REST её обходили. Теперь сверка и в beforeValidate.
+          // проверку делает; через REST её обходили. Гейт по группе живёт на уровне
+          // массива `scorers` (validateScorersGroup): у вложенного поля в payload
+          // 3.90.1 siblingData не содержит полей матча, и проверка здесь отвергала
+          // любую запись гола.
           filterOptions: ({ data }) =>
             data?.group ? { group: { equals: data.group } } : true,
-          validate: async (
-            value: unknown,
-            {
-              siblingData,
-              req,
-            }: {
-              siblingData: Partial<{ group?: unknown }>
-              req: PayloadRequest
-            },
-          ) => {
-            if (value == null) return true
-            const groupId = typeof siblingData?.group === 'object' && siblingData?.group
-              ? (siblingData.group as { id?: number | string }).id
-              : (siblingData?.group as number | string | null | undefined)
-            if (groupId == null) return 'Сначала укажите группу матча.'
-            const playerId = typeof value === 'object' && value ? (value as { id?: number }).id : (value as number)
-            const player = await req.payload.findByID({
-              collection: 'players',
-              id: Number(playerId),
-              depth: 0,
-              overrideAccess: true,
-            })
-            const playerGroup = typeof player.group === 'object' && player.group ? player.group.id : player.group
-            if (Number(playerGroup) !== Number(groupId)) {
-              return 'Гол может забить только ребёнок из группы этого матча.'
-            }
-            return true
-          },
         },
         {
           name: 'goals',
