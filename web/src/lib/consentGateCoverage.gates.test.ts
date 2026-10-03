@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 import { describe, expect, it } from 'vitest'
@@ -13,13 +13,11 @@ import { describe, expect, it } from 'vitest'
 const frontend = fileURLToPath(new URL('../app/(frontend)/', import.meta.url))
 
 const walk = (dir: string): string[] =>
-  require('node:fs')
-    .readdirSync(dir, { withFileTypes: true })
-    .flatMap((e: { name: string; isDirectory(): boolean }) => {
-      const full = `${dir}/${e.name}`
-      if (e.isDirectory()) return walk(full)
-      return /\/(page|route)\.tsx?$/.test(full) ? [full] : []
-    })
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = `${dir}/${entry.name}`
+    if (entry.isDirectory()) return walk(full)
+    return /\/(page|route)\.tsx?$/.test(full) ? [full] : []
+  })
 
 const surface = [...walk(`${frontend}/parent`), ...walk(`${frontend}/chat`)]
 const rel = (p: string): string => p.replaceAll('\\', '/').split('/(frontend)/')[1] ?? p
