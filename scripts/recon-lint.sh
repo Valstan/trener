@@ -23,7 +23,10 @@ cd "$(git rev-parse --show-toplevel)"
 
 # Кириллические классы в регэкспах ([Бб]окс…) требуют UTF-8-локали; на раннере по умолчанию
 # она есть, но фиксируем явно, если доступна.
-if locale -a 2>/dev/null | grep -qiE '^C\.utf-?8$'; then export LC_ALL=C.UTF-8; fi
+locs="$(locale -a 2>/dev/null)"
+case "$locs" in
+  *C.utf8*|*C.UTF-8*) export LC_ALL=C.UTF-8 ;;
+esac
 
 FILES=$(git ls-files -z | tr '\0' '\n' \
   | grep -v -E '^(mailbox/to-brain/|scripts/recon-lint\.sh$)' \

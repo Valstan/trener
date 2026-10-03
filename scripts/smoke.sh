@@ -16,7 +16,12 @@
 set -uo pipefail
 
 # Маркеры кириллические → нужна UTF-8-локаль (та же грабля, что в recon-lint).
-if locale -a 2>/dev/null | grep -qiE '^C\.utf-?8$'; then export LC_ALL=C.UTF-8; fi
+# G322: под pipefail `cmd | grep -q` лжёт (grep выходит на первом совпадении, левая часть
+# получает EPIPE → 141 → условие «ложно»). Лечение — без пайпа через case.
+locs="$(locale -a 2>/dev/null)"
+case "$locs" in
+  *C.utf8*|*C.UTF-8*) export LC_ALL=C.UTF-8 ;;
+esac
 
 BASE="${1:-}"
 if [ -z "$BASE" ]; then
@@ -126,11 +131,10 @@ check_security_headers() {
   local csp
   csp="$(grep -iE '^Content-Security-Policy:' "$head_file" | head -1)"
   for name in "frame-ancestors 'self'" "form-action 'self'" "base-uri 'self'"; do
-    if printf '%s' "$csp" | grep -qF -- "$name"; then
-      ok "CSP: ${name}"
-    else
-      fail "CSP: директивы «${name}» нет"
-    fi
+    case "$csp" in
+      *"$name"*) ok "CSP: ${name}" ;;
+      *) fail "CSP: директивы «${name}» нет" ;;
+    esac
   done
 
   # poweredByHeader: false — не подсказываем сканеру, какие CVE пробовать.
