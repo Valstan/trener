@@ -79,6 +79,38 @@ export const resolveMatchViews = async (
   }))
 }
 
+// Правило «гол может забить только ребёнок из группы этого матча» (#057, векторы b, f).
+//
+// ПОЧЕМУ здесь, а не в validate вложенного поля `scorers[].player`: правилу нужен
+// `group` МАТЧА, а `siblingData` у поля внутри массива в payload 3.90.1 не содержит
+// полей родительского объекта. Проверено на живом сиде (03.10): валидатор на вложенном
+// поле получал group = null и отвергал ЛЮБУЮ запись гола — «Сначала укажите группу
+// матча», то есть тренер не мог записать результат. У validate уровня массива
+// `siblingData` —Sibling поля матча, и там проверка работает.
+//
+// Возвращает true либо текст ошибки — сигнатура как у `validate` в конфиге поля.
+export const validateScorersGroup = (
+  scorers: unknown,
+  matchGroup: unknown,
+  playerGroupById: ReadonlyMap<number, number | null>,
+): true | string => {
+  if (!Array.isArray(scorers) || scorers.length === 0) return true
+  const groupId =
+    matchGroup != null && typeof matchGroup === 'object'
+      ? ((matchGroup as { id?: number | string }).id ?? null)
+      : ((matchGroup as number | string | null | undefined) ?? null)
+  if (groupId == null) return 'Сначала укажите группу матча.'
+  for (const row of scorers as { player?: unknown }[]) {
+    const playerId = relId(row?.player)
+    if (playerId == null) continue
+    const playerGroup = playerGroupById.get(playerId) ?? null
+    if (Number(playerGroup) !== Number(groupId)) {
+      return 'Гол может забить только ребёнок из группы этого матча.'
+    }
+  }
+  return true
+}
+
 // Сыгран = счёт заполнен целиком. Вычисляется из данных, не из флага.
 const isPlayed = (m: Pick<MatchView, 'scoreOur' | 'scoreOpponent'>): boolean =>
   m.scoreOur != null && m.scoreOpponent != null
