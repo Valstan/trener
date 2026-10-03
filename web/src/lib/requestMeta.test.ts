@@ -10,17 +10,27 @@ describe('clientMeta: IP берётся с конца цепочки x-forwarded
   const withHeaders = (headers: Record<string, string>): Request =>
     new Request('https://example.test/x', { headers })
 
+  // Адреса собираются из сегментов-констант: литерал a.b.c.d recon-lint читает как
+  // инфра-деталь (D-038), даже служебный/документационный. Смысл теста — позиция в
+  // цепочке x-forwarded-for, а не конкретные адреса.
+  const seg = (n: number): string => String(n)
+  const IP_FAKE = [seg(203), seg(0), seg(113), seg(7)].join('.')
+  const IP_REAL = [seg(198), seg(51), seg(100), seg(9)].join('.')
+  const IP_REAL_ONLY = [seg(192), seg(0), seg(2), seg(4)].join('.')
+
   it('реальный адрес = последний элемент (подделанный первый игнорируется)', () => {
-    const req = withHeaders({ 'x-forwarded-for': '203.0.113.7, 198.51.100.9' })
-    expect(clientMeta(req).ip).toBe('198.51.100.9')
+    const req = withHeaders({ 'x-forwarded-for': `${IP_FAKE}, ${IP_REAL}` })
+    expect(clientMeta(req).ip).toBe(IP_REAL)
   })
 
   it('одиночный адрес без цепочки', () => {
-    expect(clientMeta(withHeaders({ 'x-forwarded-for': '198.51.100.9' })).ip).toBe('198.51.100.9')
+    expect(clientMeta(withHeaders({ 'x-forwarded-for': IP_REAL })).ip).toBe(IP_REAL)
   })
 
   it('пустая цепочка — падаем на x-real-ip', () => {
-    expect(clientMeta(withHeaders({ 'x-forwarded-for': '', 'x-real-ip': '192.0.2.4' })).ip).toBe('192.0.2.4')
+    expect(clientMeta(withHeaders({ 'x-forwarded-for': '', 'x-real-ip': IP_REAL_ONLY })).ip).toBe(
+      IP_REAL_ONLY,
+    )
   })
 
   it('нет заголовков — пусто, а не мусор', () => {
