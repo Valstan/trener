@@ -85,7 +85,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 2 # для migration-guard: git diff HEAD~1 HEAD
           # Именно main, а не произвольный head_sha: даже при зелёном условии job
@@ -188,12 +188,12 @@ jobs:
           chmod 600 ~/.ssh/config
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 10.15.0
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 20
           cache: pnpm
