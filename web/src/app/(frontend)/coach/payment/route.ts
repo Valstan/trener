@@ -5,7 +5,7 @@ import { apiErrorResponse } from '@/lib/apiErrorResponse'
 import type { PayloadRequest } from 'payload'
 import { getPayload } from 'payload'
 
-import { adminBranchId, branchGroupIds, isOwner } from '@/access/roles'
+import { adminBranchId, branchGroupIds, isFullOwner } from '@/access/roles'
 import { amountValid, paidRangeValid } from '@/lib/paymentInput'
 
 // POST { playerId, paidUntil, paidFrom?, amount?, note? } → запись абонемента (M8).
@@ -22,7 +22,11 @@ export const POST = async (req: Request): Promise<Response> => {
     if (!user) return NextResponse.json({ ok: false }, { status: 401 })
 
     const branch = adminBranchId(user)
-    if (!isOwner(user) && branch == null) return NextResponse.json({ ok: false }, { status: 401 })
+    // isFullOwner, не isOwner (#015): демо-owner формально roles:['owner'] — с
+    // isOwner он проходил бы мимо скоупа админа и мог бы записать оплату ребёнку
+    // ЖИВОГО филиала (раньше прикрывал только хук stampSubscription — защита
+    // второго порядка). Демо-owner попадает в ветку админа своего демо-филиала.
+    if (!isFullOwner(user) && branch == null) return NextResponse.json({ ok: false }, { status: 401 })
 
     let parsed: {
       playerId?: unknown
@@ -52,7 +56,7 @@ export const POST = async (req: Request): Promise<Response> => {
     }
 
     // Скоуп админа филиала: ребёнок в группе филиала ИЛИ безгрупповой ребёнок филиала.
-    if (!isOwner(user) && branch != null) {
+    if (!isFullOwner(user) && branch != null) {
       const groupIds = await branchGroupIds({ payload } as unknown as PayloadRequest, branch)
       const owned = await payload.find({
         collection: 'players',

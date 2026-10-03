@@ -1,10 +1,9 @@
 import type { Access, CollectionConfig } from 'payload'
 
-import { adminOrCoachOwnGroup } from '../access/byGroup'
+import { adminOrCoachOwnGroup, createInOwnGroup } from '../access/byGroup'
 import {
   adminOrStaffField,
   coachGroupIds,
-  hasRole,
   adminBranchId,
   branchGroupIds,
   isFullOwner,
@@ -56,7 +55,7 @@ export const TrainingSessions: CollectionConfig = {
     plural: 'Расписание',
   },
   access: {
-    create: ({ req: { user } }) => hasRole(user, 'owner', 'admin', 'coach'),
+    create: createInOwnGroup,
     read: readSessions,
     update: adminOrCoachOwnGroup,
     delete: adminOrCoachOwnGroup,

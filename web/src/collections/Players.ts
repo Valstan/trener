@@ -1,9 +1,9 @@
 import type { Access, CollectionConfig, Where } from 'payload'
 
-import { adminOrCoachOwnGroup } from '../access/byGroup'
+import { adminOrCoachOwnGroup, createInOwnGroup } from '../access/byGroup'
 import { cleanupPlayerRelations } from '../hooks/cleanupPlayerRelations'
 import { demoGuestLimit } from '../hooks/demoGuestLimit'
-import { adminBranchId, branchGroupIds, coachGroupIds, hasRole, isChild, isCoach, isFullOwner, isParent, ownerField } from '../access/roles'
+import { adminBranchId, branchGroupIds, coachGroupIds, isChild, isCoach, isFullOwner, isParent, ownerField } from '../access/roles'
 
 // Ребёнок (игрок).
 //
@@ -47,7 +47,7 @@ export const Players: CollectionConfig = {
     plural: 'Дети',
   },
   access: {
-    create: ({ req: { user } }) => hasRole(user, 'owner', 'admin', 'coach'),
+    create: createInOwnGroup,
     read: readPlayers,
     update: adminOrCoachOwnGroup,
     delete: adminOrCoachOwnGroup,

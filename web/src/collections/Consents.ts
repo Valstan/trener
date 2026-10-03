@@ -1,7 +1,7 @@
 import type { Access, CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
-import { adminOrStaffField, isFullOwner } from '../access/roles'
+import { adminOrStaffField, hasRole, isFullOwner, isParent } from '../access/roles'
 import { CONSENT_POLICY_VERSION } from '../lib/consent'
 
 // Согласие родителя/законного представителя на обработку ПДн ребёнка (152-ФЗ).
@@ -21,6 +21,21 @@ const readConsents: Access = ({ req: { user } }) => {
   return { parent: { equals: user.id } }
 }
 
+// #015: согласие — юридическая запись «родитель X дал согласие за детей Y».
+// Поэтому create требует права на САМОГО родителя: родитель — только на себя,
+// персонал (живой owner/admin) — без ограничения. Раньше было `Boolean(user)`:
+// через REST `POST /api/consents` согласие мог создать кто угодно за любого
+// родителя (152-ФЗ-контур, аудит #015).
+const createConsent: Access = ({ req: { user }, data }) => {
+  if (!user) return false
+  if (hasRole(user, 'owner', 'admin')) return true
+  if (!isParent(user)) return false
+  const raw = (data as { parent?: unknown } | undefined)?.parent
+  const parentId =
+    raw != null && typeof raw === 'object' ? (raw as { id?: string | number }).id : (raw as string | number | null | undefined)
+  return parentId != null && String(parentId) === String(user.id)
+}
+
 export const Consents: CollectionConfig = {
   slug: 'consents',
   labels: {
@@ -28,8 +43,7 @@ export const Consents: CollectionConfig = {
     plural: 'Согласия (152-ФЗ)',
   },
   access: {
-    // Согласие создаёт сам родитель при онбординге (PR2) либо персонал.
-    create: ({ req: { user } }) => Boolean(user),
+    create: createConsent,
     read: readConsents,
     update: adminOnly,
     delete: adminOnly,
