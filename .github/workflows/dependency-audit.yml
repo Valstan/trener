@@ -46,12 +46,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       # pnpm/action-setup ставит pnpm напрямую (без corepack) → обходит G53
       # и corepack-в-subdir; версия пинится под packageManager из web/package.json.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 10.15.0
 
@@ -61,7 +61,7 @@ jobs:
       # роняет ВЕСЬ job. Оба шага аудита при этом зелёные: первый прогон на #176
       # выглядел как «аудит нашёл проблемы», хотя нашёл их только кэш.
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 22
 

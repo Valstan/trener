@@ -57,8 +57,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         # ref = ветка, выбранная при dispatch (для apply-before-merge — ветка фичи).
+        # Токен джобой не используется и не должен лежать в .git/config — аудит #057 (e).
         persist-credentials: false
 
       - name: Setup SSH
@@ -83,7 +84,33 @@ jobs:
             echo "::error::Secrets PROD_SSH_HOST / PROD_SSH_USER не заданы."
             exit 1
           fi
-          ssh-keyscan -H "${PROD_SSH_HOST}" >> ~/.ssh/known_hosts 2>/dev/null
+          # Отпечаток сверяется с ОЖИДАЕМЫМ (секрет PROD_SSH_HOST_FINGERPRINT), а не
+          # принимается на веру того, кто ответил на порт 22 (TOFU). Здесь это особенно
+          # важно: дальше по этому же ключу открывается туннель к ПРОД-БД и гоняется
+          # миграция от имени ветки. Пины берётся с бокса (docs/machines/<host>.md).
+          if [ -z "${PROD_SSH_HOST_FINGERPRINT}" ]; then
+            echo "::error::Secret PROD_SSH_HOST_FINGERPRINT не задан — сверять identity бокса нечем."
+            exit 1
+          fi
+          ssh-keyscan -H "${PROD_SSH_HOST}" > /tmp/hostkeys.new 2>/dev/null
+          if [ ! -s /tmp/hostkeys.new ]; then
+            echo "::error::ssh-keyscan не вернул ключей хоста — соединение не устанавливаем."
+            exit 1
+          fi
+          ACTUAL="$(ssh-keygen -lf /tmp/hostkeys.new | awk '{print $2}')"
+          EXPECTED="$(printf '%s' "${PROD_SSH_HOST_FINGERPRINT}" | tr -d '\r')"
+          MATCH=0
+          for FP in ${EXPECTED}; do
+            if printf '%s\n' "${ACTUAL}" | grep -qxF "${FP}"; then MATCH=1; fi
+          done
+          if [ "${MATCH}" != "1" ]; then
+            echo "::error::Ни один отпечаток хоста не совпал с ожидаемым — возможен MITM. Соединение не устанавливаем."
+            echo "ожидалось (кол-во): $(printf '%s\n' ${EXPECTED} | wc -l)"
+            echo "получено:"; printf '%s\n' "${ACTUAL}"
+            exit 1
+          fi
+          cat /tmp/hostkeys.new >> ~/.ssh/known_hosts
+          rm -f /tmp/hostkeys.new
           cat > ~/.ssh/config <<EOF
           Host TRENERBOX
             HostName ${PROD_SSH_HOST}
@@ -96,12 +123,12 @@ jobs:
           chmod 600 ~/.ssh/config
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
         with:
           version: 10.15.0
 
       - name: Setup Node
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 20
           cache: pnpm
