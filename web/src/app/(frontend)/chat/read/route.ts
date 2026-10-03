@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { markTopicRead } from '@/lib/chatRead'
+import { consentRequiredResponse } from '@/lib/consentGate'
 
 // POST { topicId } → «прочитал тему до сейчас» (M9). Идемпотентно: у пары
 // (участник × тема) одна запись, повторный вызов двигает момент вперёд.
@@ -18,6 +19,9 @@ export const POST = async (req: Request): Promise<Response> => {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user) return NextResponse.json({ ok: false }, { status: 401 })
+    // 152-ФЗ: родитель без согласия не подтверждает и не спрашивает (аудит #057 (c)).
+    const consentGate = await consentRequiredResponse(payload, user)
+    if (consentGate) return consentGate
 
     let topicId: unknown = null
     try {

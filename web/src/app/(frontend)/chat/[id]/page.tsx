@@ -6,6 +6,7 @@ import React from 'react'
 
 import { isChild, isCoach, isOwner, isParent, isPending } from '@/access/roles'
 import { relId } from '@/lib/relId'
+import { requireConsentPage } from '@/lib/consentGate'
 
 import { AppShell, CHILD_TABS, COACH_TABS, PARENT_TABS, type Tab } from '../../components/AppShell'
 import { MarkTopicRead } from './MarkTopicRead'
@@ -39,6 +40,9 @@ const TopicPage = async ({ params }: { params: Promise<{ id: string }> }) => {
   const { user } = await payload.auth({ headers: await nextHeaders() })
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
+  // 152-ФЗ: родитель без записанного согласия не видит данные ребёнка
+  // (аудит #057 (c); раньше гейт стоял только на /parent).
+  await requireConsentPage(payload, user)
 
   let topic
   try {

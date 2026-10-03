@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 import { readChatScope } from '../access/chatScope'
 import { isFullOwner } from '../access/roles'
@@ -36,6 +37,11 @@ export const ChatTopics: CollectionConfig = {
       'Темы общих чатов групп: тренеры и родители одной группы. Тему заводит тренер, писать в неё могут все участники группы.',
   },
   hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    // адресной строкой и API-вызовом.
     // Гейт «своя цель» — в beforeValidate, а не только в access: на создании
     // access-Where ничего не ограничивает (см. комментарий в guardTopicGroup).
     beforeValidate: [guardTopicGroup],

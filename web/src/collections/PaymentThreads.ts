@@ -4,6 +4,7 @@ import { adminBranchId, isFullOwner, isParent } from '../access/roles'
 import { cleanupPaymentThread } from '../hooks/cleanupPaymentThread'
 import { demoGuestLimit } from '../hooks/demoGuestLimit'
 import { fanOutPaymentMessage } from '../hooks/fanOutPaymentMessage'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 // Доводка 09.08: админ филиала — ведёт учёт оплат филиала, но был отрезан от
 // платёжных диалогов (только owner). Роль «бухгалтер филиала» существовала
@@ -57,7 +58,14 @@ export const PaymentThreads: CollectionConfig = {
     defaultColumns: ['parent', 'branch', 'lastMessageAt'],
     description: 'Неудаляемые личные диалоги родителей с бухгалтерией. Ведутся из приложения.',
   },
-  hooks: { beforeChange: [demoGuestLimit], beforeDelete: [cleanupPaymentThread] },
+  hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    beforeChange: [demoGuestLimit],
+    beforeDelete: [cleanupPaymentThread],
+  },
   indexes: [{ fields: ['parent', 'branch'], unique: true }],
   fields: [
     // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
@@ -82,7 +90,13 @@ export const PaymentMessages: CollectionConfig = {
   access: { create: () => false, read: readPaymentMessages, update: () => false, delete: () => false },
   admin: { defaultColumns: ['thread', 'authorName', 'createdAt'], description: 'История неизменяема и не удаляется.' },
   // Пуш второй стороне диалога (родителю или бухгалтерии) — раньше нить молчала.
-  hooks: { afterChange: [fanOutPaymentMessage], beforeChange: [demoGuestLimit] },
+  hooks: {
+    // 152-ФЗ (аудит #057 (c)): сообщения платёжного диалога — данные ребёнка,
+    // гейт тот же, что у payment-threads.
+    beforeOperation: [denyParentWithoutConsent],
+    afterChange: [fanOutPaymentMessage],
+    beforeChange: [demoGuestLimit],
+  },
   fields: [
     // D-029: лимит 5 сущностей на демо-посетителя. Ставится ТОЛЬКО хуком
     // demoGuestLimit (field-access режет только клиентский ввод).

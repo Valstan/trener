@@ -1,4 +1,5 @@
 import type { Access, CollectionConfig } from 'payload'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 import { adminOrCoachOwnGroup, createInOwnGroup } from '../access/byGroup'
 import {
@@ -68,6 +69,11 @@ export const TrainingSessions: CollectionConfig = {
   // (afterChange) → каскадная чистка связей при удалении (afterDelete).
   // Подробности и решения критика — docs/m2-core-design.md.
   hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    // адресной строкой и API-вызовом.
     beforeChange: [demoGuestLimit, trackSessionChange],
     afterChange: [fanOutScheduleChange, revalidateSchedule],
     // cleanup — beforeDelete (FK SET NULL ⨯ NOT NULL: чистим детей до удаления родителя).

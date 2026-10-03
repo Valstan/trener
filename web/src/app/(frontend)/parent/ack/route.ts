@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { isParent } from '@/access/roles'
 import { decideAck } from '@/lib/notifications/ack'
 import { relId } from '@/lib/relId'
+import { consentRequiredResponse } from '@/lib/consentGate'
 
 // POST { notificationId } → родитель подтверждает («вижу») уведомление об изменении.
 // M8: статус двигается только вперёд и только владельцем. Сервер берёт parent из
@@ -17,6 +18,9 @@ export const POST = async (req: Request): Promise<Response> => {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user || !isParent(user)) return NextResponse.json({ ok: false }, { status: 401 })
+    // 152-ФЗ: родитель без согласия не подтверждает и не спрашивает (аудит #057 (c)).
+    const consentGate = await consentRequiredResponse(payload, user)
+    if (consentGate) return consentGate
 
     let notificationId: unknown
     try {

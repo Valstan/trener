@@ -5,6 +5,7 @@ import { getPayload } from 'payload'
 
 import { isParent, isPending } from '@/access/roles'
 import { relId } from '@/lib/relId'
+import { requireConsentPage } from '@/lib/consentGate'
 
 import { AppShell, PARENT_TABS } from '../../components/AppShell'
 import { PaymentMessageForm } from '../../components/PaymentMessageForm'
@@ -17,6 +18,9 @@ const ParentPaymentChat = async () => {
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/home')
+  // 152-ФЗ: родитель без записанного согласия не видит данные ребёнка
+  // (аудит #057 (c); раньше гейт стоял только на /parent).
+  await requireConsentPage(payload, user)
   const players = await payload.find({ collection: 'players', where: { parent: { equals: user.id } }, depth: 1, limit: 100, overrideAccess: true })
   const branchIds = [...new Set(players.docs.map((p) => p.group && typeof p.group === 'object' ? relId(p.group.branch) : relId(p.branch)).filter((id): id is number => id != null))]
   const [branches, threads] = await Promise.all([

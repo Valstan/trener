@@ -7,6 +7,7 @@ import { apiErrorResponse } from '@/lib/apiErrorResponse'
 import { parseMessageCreate } from '@/lib/chatInput'
 import { markTopicRead } from '@/lib/chatRead'
 import { relId } from '@/lib/relId'
+import { consentRequiredResponse } from '@/lib/consentGate'
 
 // POST { topicId, body } → реплика в тему (M9). Писать может любой участник группы,
 // включая родителя, поэтому create в коллекции закрыт наглухо, а участие проверяется
@@ -19,6 +20,9 @@ export const POST = async (req: Request): Promise<Response> => {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user) return NextResponse.json({ ok: false }, { status: 401 })
+    // 152-ФЗ: родитель без согласия не подтверждает и не спрашивает (аудит #057 (c)).
+    const consentGate = await consentRequiredResponse(payload, user)
+    if (consentGate) return consentGate
 
     let raw: unknown = null
     try {

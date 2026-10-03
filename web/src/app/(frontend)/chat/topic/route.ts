@@ -7,6 +7,7 @@ import { parseTopicCreate } from '@/lib/chatInput'
 import { canCreateTopic } from '@/lib/chatTopicScope'
 import { allowedChatTargets } from '@/access/chatScope'
 import { isFullOwner } from '@/access/roles'
+import { consentRequiredResponse } from '@/lib/consentGate'
 
 // POST { groupId, title } → новая тема в комнате группы (M9).
 //
@@ -21,6 +22,9 @@ export const POST = async (req: Request): Promise<Response> => {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user) return NextResponse.json({ ok: false }, { status: 401 })
+    // 152-ФЗ: родитель без согласия не подтверждает и не спрашивает (аудит #057 (c)).
+    const consentGate = await consentRequiredResponse(payload, user)
+    if (consentGate) return consentGate
 
     let raw: unknown = null
     try {

@@ -2,6 +2,7 @@ import type { CollectionConfig } from 'payload'
 
 import { adminOnly } from '../access/adminOnly'
 import { selfByUser } from '../access/scoped'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 // Отметка «до какого момента я прочитал тему» (M9). Одна запись на пару
 // (участник × тема) — по ней в списке тем горит точка «есть новое».
@@ -16,6 +17,12 @@ import { selfByUser } from '../access/scoped'
 // не наше дело и не дело тренера.
 export const ChatReads: CollectionConfig = {
   slug: 'chat-reads',
+  hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+  },
   labels: {
     singular: 'Отметка прочтения',
     plural: 'Отметки прочтения чатов',

@@ -8,6 +8,7 @@ import { isParent, isPending } from '@/access/roles'
 import { formatDateTime } from '@/lib/notifications/describe'
 import { relId } from '@/lib/relId'
 import { rsvpKey } from '@/lib/rsvp'
+import { requireConsentPage } from '@/lib/consentGate'
 
 import { AppShell, PARENT_TABS } from '../../components/AppShell'
 import { RsvpButtons } from './RsvpButtons'
@@ -31,6 +32,9 @@ const ParentSchedulePage = async () => {
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/')
+  // 152-ФЗ: родитель без записанного согласия не видит данные ребёнка
+  // (аудит #057 (c); раньше гейт стоял только на /parent).
+  await requireConsentPage(payload, user)
 
   // Дети этого родителя (для RSVP-кнопок и фильтра «эта тренировка — про моего ребёнка»).
   const players = await payload.find({

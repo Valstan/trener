@@ -3,6 +3,7 @@ import { getPayload } from 'payload'
 import { NextResponse } from 'next/server'
 
 import { isParent } from '@/access/roles'
+import { consentRequiredResponse } from '@/lib/consentGate'
 
 // POST → пометить непросмотренные уведомления родителя как «просмотрено»
 // (delivered → seen). Зовётся клиентом при открытии inbox (на маунте, не на
@@ -16,6 +17,10 @@ export const POST = async (req: Request): Promise<Response> => {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user || !isParent(user)) return NextResponse.json({ ok: false }, { status: 401 })
+    // 152-ФЗ: родитель без согласия не подтверждает и не помечает прочитанным
+    // (аудит #057 (c)).
+    const consentGate = await consentRequiredResponse(payload, user)
+    if (consentGate) return consentGate
 
     await payload.update({
       collection: 'notifications',

@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 
 import { isParent } from '@/access/roles'
 import { relId } from '@/lib/relId'
+import { consentRequiredResponse } from '@/lib/consentGate'
 
 // POST { sessionId, playerId, response: 'going'|'not_going' } → ответ родителя об
 // участии ребёнка. #015: родитель отвечает ТОЛЬКО за своих детей (проверяем
@@ -18,6 +19,9 @@ export const POST = async (req: Request): Promise<Response> => {
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user || !isParent(user)) return NextResponse.json({ ok: false }, { status: 401 })
+    // 152-ФЗ: родитель без согласия не подтверждает и не спрашивает (аудит #057 (c)).
+    const consentGate = await consentRequiredResponse(payload, user)
+    if (consentGate) return consentGate
 
     let sessionId: unknown
     let playerId: unknown

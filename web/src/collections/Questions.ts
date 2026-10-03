@@ -1,4 +1,5 @@
 import type { Access, CollectionConfig, Where } from 'payload'
+import { denyParentWithoutConsent } from '@/lib/consentGate'
 
 import { adminOnly } from '../access/adminOnly'
 import { adminBranchId, branchGroupIds, coachGroupIds, isFullOwner, isCoach, isParent } from '../access/roles'
@@ -61,6 +62,11 @@ export const Questions: CollectionConfig = {
     description: 'Личные вопросы родителей тренеру: родитель спрашивает — тренер читает и отвечает.',
   },
   hooks: {
+    // 152-ФЗ (аудит #057 (c)): родителю без записанного согласия коллекция
+    // с данными ребёнка недоступна через REST/GraphQL — UI-гейт обходится
+    // адресной строкой и прямым API-вызовом.
+    beforeOperation: [denyParentWithoutConsent],
+    // адресной строкой и API-вызовом.
     afterChange: [fanOutQuestion],
     beforeChange: [demoGuestLimit],
     // M4: реплики нитки — required FK на вопрос; чистим до удаления головы.

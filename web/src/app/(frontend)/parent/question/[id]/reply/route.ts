@@ -6,6 +6,7 @@ import { apiErrorResponse } from '@/lib/apiErrorResponse'
 
 import { isParent } from '@/access/roles'
 import { relId } from '@/lib/relId'
+import { consentRequiredResponse } from '@/lib/consentGate'
 
 // POST { body } → реплика родителя в СВОЕЙ нитке чата M4. #015: владение —
 // question.parent === user (404 без различения not-found/чужая, анти-enumeration).
@@ -18,6 +19,9 @@ export const POST = async (req: Request, ctx: { params: Promise<{ id: string }> 
     const payload = await getPayload({ config })
     const { user } = await payload.auth({ headers: req.headers })
     if (!user || !isParent(user)) return NextResponse.json({ ok: false }, { status: 401 })
+    // 152-ФЗ: родитель без согласия не подтверждает и не спрашивает (аудит #057 (c)).
+    const consentGate = await consentRequiredResponse(payload, user)
+    if (consentGate) return consentGate
 
     const { id } = await ctx.params
     const questionId = Number(id)

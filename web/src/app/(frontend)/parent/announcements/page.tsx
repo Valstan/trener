@@ -7,6 +7,7 @@ import React from 'react'
 import type { Group } from '@/payload-types'
 import { isParent, isPending } from '@/access/roles'
 import { relId } from '@/lib/relId'
+import { requireConsentPage } from '@/lib/consentGate'
 
 import { AppShell, PARENT_TABS } from '../../components/AppShell'
 import { AnnouncementsFeed, type FeedItem } from '../AnnouncementsFeed'
@@ -21,6 +22,9 @@ const ParentAnnouncementsPage = async () => {
   if (!user) redirect('/login')
   if (isPending(user)) redirect('/pending')
   if (!isParent(user)) redirect('/')
+  // 152-ФЗ: родитель без записанного согласия не видит данные ребёнка
+  // (аудит #057 (c); раньше гейт стоял только на /parent).
+  await requireConsentPage(payload, user)
 
   const announcements = await payload.find({
     collection: 'announcements',
