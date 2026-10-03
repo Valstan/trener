@@ -2,45 +2,54 @@
 
 > Короткая записка для продолжения работы после `/start`. История изменений — в Git и PR.
 
-**Status:** ✅ Мандат безопасности 14.09 закрыт целиком (4 critical → 0, 17 high → 0, пять заголовков, аудит по расписанию); D-088 закрыт с нашей стороны; **Next 16.3.5 на проде** — комбинация снова в матрице поддержки Payload, сквозная приёмка пройдена целиком
-**Updated:** 2026-09-14, PC79
+**Status:** ✅ Мандат безопасности 14.09 закрыт целиком; **Payload 3.90.1 + Next 16.3.8 на проде** (аудит: critical 0, high 0); **аудит #015 (серверный write-authz) закрыт — 4 дыры**; строки D-096 (02.10 и 16.10 досрочно) и рекомендации 21.09 отданы
+**Updated:** 2026-10-03, PC79
 **Branch:** `main`
 
 ## Текущая нить
 
-Сессия 14.09 (PC79) — день безопасности по мандату Мозга 14.09 (срок был 16.09, закрыт в
-тот же день) плюс срез D-088. Семь PR, все смержены и выкачены, прод проверен смоуком
-после каждого.
+Сессия 03.10 (PC79) — разбор входящих после паузы и закрытие хвостов мандата 14.09.
+Четыре PR, все смержены, на проде, smoke после каждого.
 
-- [#172](https://github.com/Valstan/trener/pull/172) — `next` 15.4.11 → 15.5.25,
-  `payload`/`@payloadcms/*` 3.75.0 → 3.89.0. **4 critical → 0.** Обе breaking-точки
-  (`Widget.ComponentPath`, access-дефолты `jobs`) нас не касаются — проверено грепом.
-  Миграций не потребовалось, и это ПРОВЕРЕНО на живом Postgres, а не принято деплоем.
-- [#175](https://github.com/Valstan/trener/pull/175) — пять заголовков безопасности +
-  `poweredByHeader: false`. До 14.09 не отдавалось **ни одного**, и заметили это не мы, а
-  Мозг снаружи. Рецепт — от портала вМалмыже (ADR-0007, чтение соседа).
-- [#176](https://github.com/Valstan/trener/pull/176) — workflow аудита зависимостей
-  (пн/чт + кнопка + смена lockfile, НЕ required check) и **17 high → 0**: `sharp` 0.34.2 →
-  0.35.4 плюс `pnpm.overrides` на пять транзитивных.
-- [#177](https://github.com/Valstan/trener/pull/177) — D-088: файл Вебмастера, `llms.txt`,
-  JSON-LD, `canonical`, `title`/`h1` с именем и городом; фикстурный стенд смоука.
-- [#178](https://github.com/Valstan/trener/pull/178) — фикс: мой же `canonical`-гейт ронял
-  деплой на исправном проде.
-- Письма Мозгу: `2026-09-14-next-and-payload-updated-zero-critical-one-report-line-missing`,
-  `2026-09-14-d088-verification-file-live-seo-slice-applied-json-ld-without-invented-nap`,
-  `2026-09-14-three-findings-a-gate-that-blessed-itself-and-a-rule-with-no-tooling`.
+- [#184](https://github.com/Valstan/trener/pull/184) — `payload` + все `@payloadcms/*`
+  3.89.0 → **3.90.1** (письмо Мозга 21.09), миграция `reset_password_requested_at`
+  (G388: колонка нужна всем, детектор — `generate:types`), накат до мержа. Попутно
+  CI-аудит сам поймал **critical GHSA-vcvr-r3jv-pc5j** (RCE в `next/og`) →
+  `next` **16.3.8**. `pnpm audit --prod`: critical 0, **high 0** (`undici`/`nodemailer`
+  overrides; `sass@^1.105.1` убрал `braces` CVE-2026-93687 — фикса апстрима нет).
+- [#185](https://github.com/Valstan/trener/pull/185) — эрратум G322: `cmd | grep -q`
+  под `pipefail` в `smoke.sh` (2 точки) и превентивно в `recon-lint.sh` → `case`
+  без пайпа. smoke-selftest 15/15.
+- [#186](https://github.com/Valstan/trener/pull/186) — канон: #166/#125/#152 одной строкой,
+  строка комнаты КАРМАНа (`trener`), `brain_find.py` в consult-library блоке
+  (D-096 / D-097 / D-102).
+- [#187](https://github.com/Valstan/trener/pull/187) — **аудит #015** (write-authz):
+  `createInOwnGroup` для Players/TrainingSessions (create по REST был без скоупа),
+  `consents.create` только за себя, `/coach/payment` по `isFullOwner`, демо-фильтр в
+  `fanOutRegistration`. +10 тестов, оба новых гейта приняты мутацией.
+- Письма Мозгу: `2026-10-03-payload-3-90-1-on-prod-reset-password-requested-at-in-place`,
+  `2026-10-03-d096-d097-d102-cheap-lines-03-10`, `2026-10-03-015-write-authz-audit-report`,
+  `2026-10-03-d096-done-lines-16-10-early`.
 
-Тестов: **402 → 413**. Профиль машины `PC79` заведён ([#173](https://github.com/Valstan/trener/pull/173)).
+Тестов: **413 → 423**. Версии на проде: `next` 16.3.8, `payload` 3.90.1 (из lockfile
+сборки, G392), колонка `reset_password_requested_at` на месте.
 
 ## Следующий шаг
 
-1. **Приоритет 1 из бэклога — юридический контур**
+1. **#057 — состязательный security-аудит одним Workflow** (D-096; дата в таблице Мозга
+   30.10). Рецепт и Workflow лежат у Мозга
+   ([`ideas/057-adversarial-multiagent-security-audit-template.md`](../../brain_matrica/cross-project-ideas/ideas/057-adversarial-multiagent-security-audit-template.md)),
+   отчёт обязан печатать покрытие ([#293](../../brain_matrica/cross-project-ideas/ideas/293-a-fan-out-review-must-report-its-coverage.md)).
+   **Дата названа и стоит в будильнике** — ориентир 30.10; подтверждения Мозга пока нет
+   (спрошено в письме от 03.10). Перед стартом: свой стек Payload/Next 16, `pnpm audit`
+   уже зелёный — чтобы не переделывать.
+2. **Приоритет 1 из бэклога — юридический контур**
    ([`backlog-e2e-2026-08-24.md`](backlog-e2e-2026-08-24.md)): гейт согласия,
    `parentNeedsConsent` зовётся ровно в одном месте (`parent/page.tsx:35`), после отзыва
    согласия остаются открытыми `/parent/schedule`, `/parent/payments`,
    `/parent/announcements`, `/chat`. ⚠️ Это работа **под паузой D-079** — в отличие от
    безопасности и D-088, отдельного разрешения владельца она не имеет.
-2. **Разобрать пять мест `react-hooks/set-state-in-effect`**
+3. **Разобрать пять мест `react-hooks/set-state-in-effect`**
    ([`PENDING_FOLLOWUPS.md`](PENDING_FOLLOWUPS.md)) — правила React Compiler приехали с
    Next 16 и стоят в `warn`, чтобы бамп не превратился в кампанию по UI.
 
@@ -238,11 +247,30 @@
 - ✅ **`sharp`** — утром отложил как «вне мандата», днём выяснилось, что это прямая
   зависимость с двумя собственными advisory; закрыт в #176 (0.35.4).
 - ✅ **Фикстуры смоука** — правило с 24.08 стало исполнимым (#177), гейт в CI.
-- ✅ **Next 16.3.5 на проде** ([#180](https://github.com/Valstan/trener/pull/180)) — вышли из
-  комбинации, которую Payload 3.89 не поддерживает. Сквозная приёмка пройдена целиком
-  (24 шага + красный путь в обе стороны), журнал прода после выката чист, `NRestarts=0`.
-  Четыре breaking разобраны: удалён `next lint`, `FlatCompat` стал падающим,
-  `import.meta` в `next.config.ts` роняет загрузку конфига, правила React Compiler.
+- ✅ **Next 16.3.5 → 16.3.8, Payload 3.89 → 3.90.1 на проде** (14.09 и 03.10) — вышли
+  из комбинации, которую Payload 3.89 не поддерживает; 03.10 подняли ещё на ступеньку
+  (второй набор critical + свежий RCE в `next/og`, пойманный CI-аудитом). Сквозная
+  приёмка после #180 пройдена целиком (24 шага + красный путь в обе стороны), журнал
+  прода после выкаток чист, `NRestarts=0`. Четыре breaking Next 16 разобраны: удалён
+  `next lint`, `FlatCompat` стал падающим, `import.meta` в `next.config.ts` роняет
+  загрузку конфига, правила React Compiler.
+- 🆕 **Create-гейт без скоупа — дыра, пока update/delete скоуплены** (#015): на create у
+  Payload нет документа для Where-фильтра (G211), поэтому `hasRole` проверяет только роль.
+  Скоуп на create возможен только вручную по `req.data` — и он нужен на **каждой**
+  коллекции с групповой привязкой. Теперь `createInOwnGroup` в `access/byGroup.ts`.
+- 🆕 **Фан-аут с глобальным списком адресатов** (`roles:['owner']` без фильтра) не режется
+  на отправке — `sendPushToUser` проверяет только адресата. Режется **у источника**, по
+  демо-флагу (образец — `fanOutPaymentMessage`; раньше забыли в `fanOutRegistration`).
+- 🆕 **Промежуточная защита второго порядка (хук) ≠ защита**: `/coach/payment` держался на
+  `stampSubscription` и был открыт ровно до первого рефакторинга хука. Скоуп должен быть
+  в роуте, хук — страховка.
+- 🆕 **G322 на живом примере**: `cmd | grep -q` под `set -o pipefail` — ложное «не
+  найдено» (EPIPE → 141). В `smoke.sh` таких точек было две (locale-детект, проверка
+  CSP-директивы), обе вылечены `case` без пайпа; фикстуры смоука (15 режимов) держат гейт.
+- 🆕 **`payload migrate` на БД с сентинелом `(dev,-1)`** — интерактивный промпт даже при
+  `NODE_ENV=production` (это не drizzle-push-промпт); в CI стдин пуст → job висит до
+  таймаута. Лечится пересозданием dev-БД и накатом с нуля (прод-вариант — DELETE сентинела,
+  `docs/migrations.md`).
 - ✅ **ssh-доступ к прод-боксу с `PC79` заведён 14.09** — отдельный ключ + алиас
   (значения только в `~/.ssh/config`, D-038; как пользоваться — в профиле машины).
   Строка отчёта про журнал этим закрыта, см. ниже.
@@ -259,7 +287,10 @@
 - **rmz4val:** `corepack pnpm -C web …` не работает в Git Bash (только `cd web && corepack pnpm …`), но **через preview-лончер эта форма отрабатывает** — конфиг `web-dev` в `.claude/launch.json` поднялся 24.08 как есть; corepack-шим глотает коды выхода — гейты судить **по выводу**; `gh` перемежающе таймаутится — длинные цепочки гонять фоном с ретраем; **агентская сессия не admin** (S4U-задачи, `Start-Service` — через обходы из профиля); на `/start` проверять свежесть `D:\YandexDisk\Backups\trener\_pull.log`.
 - Тестовый владелец после seed: `admin@trener.local` / `devpass1234`.
 - Основные гейты: `cd web && corepack pnpm lint / typecheck / test -- --run / knip / build`; в корне — `bash scripts/recon-lint.sh` и `bash scripts/smoke-selftest.sh` (самопроверка смоука на фикстурах, 15 режимов; в CI шагом внутри `web-quality`).
-- Тестов на конец сессии: **413** (после #177 — гейт `structuredData`/canonical).
+- Тестов на конец сессии: **423** (после #187 — гейты `createInOwnGroup` и `consents.create`).
+- **dev-БД на PC79 пересоздана 03.10** (была сентинелом `(dev,-1)` от dev-push — на
+  ней `payload migrate` висел на промпте). Теперь схема накатывается миграциями; сиды
+  после дропа нужно прогнать заново (`seed` + `seed:legal` + `seed:demo`).
 - **Скриншоты встроенной панели на этой машине не работают** («pane is not displayed»),
   поэтому клик по координатам там недоступен (координаты требуют скриншота) — только по
   `ref`; визуальная часть — внешний Chrome.
