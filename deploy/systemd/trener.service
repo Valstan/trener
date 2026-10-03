@@ -54,7 +54,14 @@ NoNewPrivileges=yes
 PrivateTmp=yes
 PrivateDevices=yes
 ProtectSystem=strict
-ProtectHome=yes
+# ProtectHome НЕ включаем: WorkingDirectory = $HOME/trener/releases/current, и под
+# ProtectHome=yes systemd не может сделать chdir в рабочий каталог — сервис падает со
+# status=200/CHDIR (случилось 03.10, прод лежал ~20 минут до ручного снятия на боксе).
+# Вместо него закрываем то, что действительно опасно: /root и /home ЧУЖИХ пользователей
+# не нужны процессу, а весь доступ к «своей» части уже ограничен ProtectSystem=strict +
+# ReadWritePaths. Если WorkingDirectory когда-нибудь уедет из $HOME — тогда включаем
+# ProtectHome=yes.
+ProtectHome=read-only
 ProtectKernelTunables=yes
 ProtectKernelModules=yes
 ProtectControlGroups=yes
