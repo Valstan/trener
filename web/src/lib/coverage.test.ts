@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 
-import { buildCoverage, type CoverageEntry } from './coverage'
+import { buildCoverage, coverageVerdict, type CoverageEntry } from './coverage'
 
 const entry = (parentId: number, status: CoverageEntry['status']): CoverageEntry => ({
   parentId,
@@ -33,5 +33,19 @@ describe('buildCoverage', () => {
     expect(s.acked).toBe(2)
     expect(s.total).toBe(2)
     expect(s.pending).toHaveLength(0)
+  })
+})
+
+describe('coverageVerdict', () => {
+  it('пустая волна 0/0 — не «все подтвердили» (бэклог п.6)', () => {
+    expect(coverageVerdict(buildCoverage([]))).toBe('empty')
+  })
+
+  it('есть неподтвердившие → pending', () => {
+    expect(coverageVerdict(buildCoverage([entry(1, 'acked'), entry(2, 'seen')]))).toBe('pending')
+  })
+
+  it('все подтвердили при total > 0 → done', () => {
+    expect(coverageVerdict(buildCoverage([entry(1, 'acked'), entry(2, 'acked')]))).toBe('done')
   })
 })

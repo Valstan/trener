@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 
 import type { CoverageResult } from '@/lib/coverage'
+import { coverageVerdict } from '@/lib/coverage'
 
 type Change = { title: string; lines: string[] } | null
 
@@ -53,6 +54,7 @@ export const CoverageView = ({
   const { summary, unreachable, rsvp } = cov
   const pct = summary.total ? Math.round((100 * summary.acked) / summary.total) : 0
   const allDone = summary.total > 0 && summary.acked === summary.total
+  const verdict = coverageVerdict(summary)
 
   return (
     <div className="stack">
@@ -110,7 +112,7 @@ export const CoverageView = ({
         </div>
       )}
 
-      {summary.pending.length > 0 ? (
+      {verdict === 'pending' ? (
         <div className="stack-sm">
           <strong>Не подтвердили — напомните:</strong>
           {summary.pending.map((e) => (
@@ -125,8 +127,13 @@ export const CoverageView = ({
             </div>
           ))}
         </div>
-      ) : (
+      ) : verdict === 'done' ? (
         <p className="success-text">Все подтвердили — отлично.</p>
+      ) : (
+        <p className="error-text">
+          Уведомление не ушло никому — в волне нет получателей. Проверьте состав группы и
+          привязку родителей.
+        </p>
       )}
     </div>
   )
