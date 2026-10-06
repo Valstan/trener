@@ -65,6 +65,14 @@ export const buildCoverage = (entries: CoverageEntry[]): CoverageSummary => {
   }
 }
 
+// Вердикт нижней строки coverage-экрана (бэклог п.6): пустая волна 0/0 — это не
+// «все подтвердили», а «уведомление не ушло никому». Чистая функция, юнит-тестируемая.
+export type CoverageVerdict = 'empty' | 'pending' | 'done'
+export const coverageVerdict = (summary: CoverageSummary): CoverageVerdict => {
+  if (summary.total === 0) return 'empty'
+  return summary.pending.length > 0 ? 'pending' : 'done'
+}
+
 export type CoverageResult = {
   wave: string | null // changedAt текущей волны; null → изменений нет, нечего подтверждать
   summary: CoverageSummary
