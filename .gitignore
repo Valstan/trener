@@ -43,6 +43,9 @@ coverage/
 .codex/
 .gemini/
 
+# Hotline (Телефон): присутствие эфемерно, не коммитить; ленты outbox — коммитятся обычным flow
+hotline/presence.json
+
 # Локальные зеркала навыков Codex; канон проектных правил — отслеживаемый AGENTS.md.
 
 # worktree-каталоги фоновых агентов (isolation: worktree) — локальное, не для Git
