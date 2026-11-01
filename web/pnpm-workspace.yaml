@@ -1,0 +1,39 @@
+# Настройки pnpm — здесь, а не в поле "pnpm" package.json.
+#
+# Почему: pnpm 11 поле "pnpm" в package.json больше НЕ читает (проверено 01.11.2026:
+# 10.15.0 и 10.20.0 читают молча, 11.24.0 печатает
+# `[WARN] The "pnpm" field in package.json is no longer read by pnpm … "pnpm.overrides"`).
+# А `engines.pnpm` в package.json пускает `^9 || ^10 || ^11` — то есть бамп pnpm на
+# любой машине или в CI молча выключил бы overrides и onlyBuiltDependencies: `install`
+# не падает, дерево остаётся без переопределений. Это письмо Мозга 31.10 (G521).
+#
+# Приёмка после правки: `pnpm install --frozen-lockfile` зелёный (то же, что делает CI),
+# предупреждения нет, а версии из `overrides` видно в pnpm-lock.yaml.
+
+# Сборка нативных пакетов разрешена только этим трём (пост-установочные скрипты
+# остальных игнорируются — supply-chain floor).
+onlyBuiltDependencies:
+  - sharp
+  - esbuild
+  - unrs-resolver
+
+# Переопределения транзитивных зависимостей. Держим их здесь, а не в package.json:
+# иначе они декоративны на pnpm 11.
+overrides:
+  js-yaml: ^4.3.2
+  immutable: ^5.1.5
+  fast-uri: ^3.1.9
+  postcss: ^8.5.18
+  nanoid: ^3.3.18
+  undici: ^7.30.1
+  nodemailer: ^10.3.1
+  sass: ^1.105.1
+  # Добавлено 01.11.2026 по письму Мозга 22.10 (красный Dependency audit).
+  # Адреса: payload → undici, @payloadcms/ui → monaco-editor → dompurify,
+  # @payloadcms/richtext-lexical → @lexical/headless → happy-dom,
+  # @payloadcms/next → sass → source-map-js.
+  dompurify: ^3.4.17
+  happy-dom: ^21.0.4
+  source-map-js: ^1.2.2
+  # low/moderate того же аудита (ниже гейта, но правка в одну строку).
+  fast-copy: ^3.1.0
